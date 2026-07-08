@@ -1015,11 +1015,11 @@ function ReconciliationPage(props: {
   onCreateRequisition: (input: { provider?: string; institutionId?: string }) => Promise<{ redirectUrl: string }>;
 }) {
   return (
-    <div className="reconciliation-layout">
-      <section className="panel">
-        <div className="panel-heading">
-          <h2>Statement lines</h2>
-          <span>Imported bank feed</span>
+    <div className="stack-page">
+      <section className="page-hero">
+        <div>
+          <h2>Bank reconciliation</h2>
+          <p>Cross-reference imported statement lines against processed receipts and lock audited matches.</p>
         </div>
         <div className="toolbar">
           <button
@@ -1033,18 +1033,37 @@ function ReconciliationPage(props: {
             Connect bank feed
           </button>
         </div>
-        <div className="recon-grid">
-          {props.lines.map((line) => (
-            <article className="recon-line" key={line.id}>
-              <div>
-                <strong>{line.remittanceInformation}</strong>
-                <p>
-                  {line.statementDate ?? line.bookingDate} | {currency(line.amountSpent ?? line.transactionAmount)}
-                </p>
-              </div>
-              <StatusPill status={line.status === "Open" ? "Review" : "Published"} />
-            </article>
-          ))}
+      </section>
+
+      <div className="reconciliation-layout">
+      <section className="panel">
+        <div className="panel-heading">
+          <h2>Statement lines</h2>
+          <span>Imported bank feed</span>
+        </div>
+        <div className="table-panel">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Amount Spent</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {props.lines.map((line) => (
+                <tr key={line.id}>
+                  <td>{line.statementDate ?? line.bookingDate}</td>
+                  <td>{line.description ?? line.remittanceInformation}</td>
+                  <td>{currency(line.amountSpent ?? line.transactionAmount)}</td>
+                  <td>
+                    <StatusPill status={line.status === "Open" ? "Review" : "Published"} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -1053,33 +1072,55 @@ function ReconciliationPage(props: {
           <h2>Candidate matches</h2>
           <span>Closest date and amount proximity</span>
         </div>
-        <div className="recon-grid">
+        <div className="candidate-groups">
           {props.lines.map((line) => (
             <article className="candidate-group" key={line.id}>
-              <strong>{line.remittanceInformation}</strong>
-              {line.candidates.map((candidate) => (
-                <div className="candidate-row" key={candidate.id}>
-                  <div>
-                    <span>{candidate.vendorName ?? "Unknown supplier"}</span>
-                    <p>
-                      {candidate.invoiceDate ?? "Pending"} | {currency(candidate.totalAmount)} | score{" "}
-                      {candidate.matchScore.toFixed(2)}
-                    </p>
-                  </div>
-                  <button
-                    className="primary-action"
-                    type="button"
-                    disabled={line.status === "Audited"}
-                    onClick={() => props.onMatch(line.id, candidate.id)}
-                  >
-                    Match & Clear
-                  </button>
-                </div>
-              ))}
+              <div className="candidate-group-header">
+                <strong>{line.remittanceInformation}</strong>
+                <span>
+                  {line.statementDate ?? line.bookingDate} | {currency(line.amountSpent ?? line.transactionAmount)}
+                </span>
+              </div>
+              <div className="table-panel">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Supplier</th>
+                      <th>Receipt Date</th>
+                      <th>Gross Total</th>
+                      <th>Source</th>
+                      <th>Match Score</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {line.candidates.map((candidate) => (
+                      <tr key={candidate.id}>
+                        <td>{candidate.vendorName ?? "Unknown supplier"}</td>
+                        <td>{candidate.invoiceDate ?? "Pending"}</td>
+                        <td>{currency(candidate.totalAmount)}</td>
+                        <td>{sourceLabel(candidate.receiptSource)}</td>
+                        <td>{candidate.matchScore.toFixed(2)}</td>
+                        <td>
+                          <button
+                            className="primary-action"
+                            type="button"
+                            disabled={line.status === "Audited"}
+                            onClick={() => props.onMatch(line.id, candidate.id)}
+                          >
+                            Match & Clear
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </article>
           ))}
         </div>
       </section>
+    </div>
     </div>
   );
 }

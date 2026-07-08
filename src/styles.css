@@ -547,21 +547,39 @@ input {
   gap: 14px;
 }
 
+.candidate-groups {
+  display: grid;
+  gap: 16px;
+}
+
+.candidate-group {
+  display: grid;
+  gap: 14px;
+  align-items: stretch;
+  padding: 16px 0 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.candidate-group-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: baseline;
+}
+
+.candidate-group-header span {
+  color: var(--muted);
+}
+
 .rule-row,
 .candidate-row,
-.recon-line,
-.candidate-group {
+.recon-line {
   display: flex;
   justify-content: space-between;
   gap: 14px;
   align-items: center;
   padding: 16px 0;
   border-bottom: 1px solid var(--line);
-}
-
-.candidate-group {
-  display: grid;
-  align-items: stretch;
 }
 
 .settings-panel {
