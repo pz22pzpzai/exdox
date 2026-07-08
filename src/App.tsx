@@ -1394,6 +1394,24 @@ function SettingsPage(props: {
         <h2>{draft.organisationName}</h2>
         <span>Central company settings</span>
       </div>
+      <div className="summary-list">
+        <div>
+          <strong>Organisation Profile</strong>
+          <span>Organisation #{draft.organisationId}</span>
+        </div>
+        <div>
+          <strong>VAT posture</strong>
+          <span>{draft.isVatRegistered ? "VAT registered" : "No VAT registration"}</span>
+        </div>
+        <div>
+          <strong>Default fallback tax</strong>
+          <span>{draft.defaultTaxRate}</span>
+        </div>
+        <div>
+          <strong>Parity impact</strong>
+          <span>Saved changes feed both the desktop dashboard and the mobile extraction workflow.</span>
+        </div>
+      </div>
       <div className="form-grid">
         <label className="toggle-field">
           Company is VAT Registered
@@ -1416,6 +1434,10 @@ function SettingsPage(props: {
           </select>
         </label>
       </div>
+      <p>
+        Turn VAT off to force downstream extraction toward gross-only treatment and a `No VAT` tax tier across
+        incoming receipt processing.
+      </p>
       <div className="toolbar">
         <button
           className="primary-action"
