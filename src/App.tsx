@@ -772,10 +772,12 @@ function ClaimsPage({ claims }: { claims: ClaimRecord[] }) {
         {claims.map((claim) => (
           <button className="claim-card" key={claim.id} type="button" onClick={() => navigate(`/claims/${claim.id}`)}>
             <strong>{claim.name}</strong>
-            <span>{currency(claim.totalAmount)} total</span>
+            <span>Total value: {currency(claim.totalAmount)}</span>
+            <span>Claiming employee: {claimEmployeeLabel(claim)}</span>
+            <span>Submission date: {claim.createdAt.slice(0, 10)}</span>
+            <span>Approval status: {claimStatusLabel(claim.status)}</span>
             <span>{claim.documentCount} receipt lines</span>
-            <span>{claim.createdAt.slice(0, 10)}</span>
-            <StatusPill status={claim.status === "pending" ? "Review" : claim.status === "approved" ? "Ready" : "Published"} />
+            <StatusPill status={claimStatusToPill(claim.status)} />
           </button>
         ))}
       </section>
@@ -1423,6 +1425,30 @@ function buildPendingReceipts(
     createdAt: now,
     updatedAt: now,
   }));
+}
+
+function claimEmployeeLabel(claim: ClaimRecord) {
+  return claim.createdByUserId ? `User ${claim.createdByUserId}` : "Employee pending";
+}
+
+function claimStatusLabel(status: ClaimRecord["status"]) {
+  return status === "pending"
+    ? "Pending"
+    : status === "approved"
+      ? "Approved"
+      : status === "paid"
+        ? "Paid"
+        : "Rejected";
+}
+
+function claimStatusToPill(status: ClaimRecord["status"]): "Review" | "Ready" | "Published" | "Processing" {
+  return status === "pending"
+    ? "Review"
+    : status === "approved"
+      ? "Ready"
+      : status === "rejected"
+        ? "Processing"
+        : "Published";
 }
 
 function sourceLabel(source: ReceiptRecord["receiptSource"]) {
