@@ -315,7 +315,15 @@ function DashboardShell(props: {
               <Route path="/overview" element={<OverviewPage store={props.store} />} />
               <Route
                 path="/costs"
-                element={<InboxPage title="Costs Inbox" records={props.store.costs} basePath="/costs" />}
+                element={
+                  <InboxPage
+                    title="Costs Inbox"
+                    records={props.store.costs}
+                    basePath="/costs"
+                    uploadBusy={uploadBusy}
+                    onUpload={(files) => props.onUpload("cost", files)}
+                  />
+                }
               />
               <Route
                 path="/costs/:id"
@@ -331,7 +339,15 @@ function DashboardShell(props: {
               />
               <Route
                 path="/sales"
-                element={<InboxPage title="Sales Inbox" records={props.store.sales} basePath="/sales" />}
+                element={
+                  <InboxPage
+                    title="Sales Inbox"
+                    records={props.store.sales}
+                    basePath="/sales"
+                    uploadBusy={uploadBusy}
+                    onUpload={(files) => props.onUpload("sales", files)}
+                  />
+                }
               />
               <Route
                 path="/sales/:id"
@@ -449,10 +465,14 @@ function InboxPage({
   title,
   records,
   basePath,
+  uploadBusy,
+  onUpload,
 }: {
   title: string;
   records: ReceiptRecord[];
   basePath: "/costs" | "/sales";
+  uploadBusy: boolean;
+  onUpload: (files: File[]) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
@@ -497,6 +517,17 @@ function InboxPage({
           </select>
         </div>
       </section>
+
+      <UploadDropZone
+        title={basePath === "/costs" ? "Drop supplier bills, receipts, and invoices" : "Drop outward sales invoices and revenue evidence"}
+        subtitle={
+          basePath === "/costs"
+            ? "Files upload straight into secure processing and land in the costs inbox with a Processing status."
+            : "Bulk sales files route into the sales ledger workspace without mixing into expense review."
+        }
+        busy={uploadBusy}
+        onFiles={onUpload}
+      />
 
       <section className="panel table-panel">
         <table className="data-table">
@@ -1131,6 +1162,72 @@ function UploadButton(props: { busy: boolean; onFiles: (files: File[]) => Promis
         }}
       />
     </label>
+  );
+}
+
+function UploadDropZone(props: {
+  title: string;
+  subtitle: string;
+  busy: boolean;
+  onFiles: (files: File[]) => Promise<void>;
+}) {
+  const [dragActive, setDragActive] = useState(false);
+
+  const pushFiles = async (fileList: FileList | null) => {
+    const files = Array.from(fileList ?? []);
+    if (!files.length || props.busy) {
+      return;
+    }
+    await props.onFiles(files);
+  };
+
+  return (
+    <section
+      className={`panel dropzone-panel${dragActive ? " active" : ""}${props.busy ? " busy" : ""}`}
+      onDragEnter={(event) => {
+        event.preventDefault();
+        setDragActive(true);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        if (!dragActive) {
+          setDragActive(true);
+        }
+      }}
+      onDragLeave={(event) => {
+        event.preventDefault();
+        const relatedTarget = event.relatedTarget as Node | null;
+        if (!relatedTarget || !event.currentTarget.contains(relatedTarget)) {
+          setDragActive(false);
+        }
+      }}
+      onDrop={async (event) => {
+        event.preventDefault();
+        setDragActive(false);
+        await pushFiles(event.dataTransfer.files);
+      }}
+    >
+      <div>
+        <p className="dropzone-kicker">Bulk ingestion API</p>
+        <h3>{props.title}</h3>
+        <p>{props.subtitle}</p>
+      </div>
+      <label className="dropzone-picker">
+        {props.busy ? "Uploading files..." : "Choose files"}
+        <input
+          type="file"
+          multiple
+          hidden
+          onChange={async (event) => {
+            await pushFiles(event.target.files);
+            event.target.value = "";
+          }}
+        />
+      </label>
+      <span className="dropzone-hint">
+        Drag multiple PDFs or images here, or use the picker to send them to the processing queue.
+      </span>
+    </section>
   );
 }
 

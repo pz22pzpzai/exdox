@@ -365,6 +365,66 @@ input {
   font-size: 2rem;
 }
 
+.dropzone-panel {
+  display: grid;
+  gap: 14px;
+  border-style: dashed;
+  border-width: 2px;
+  background:
+    linear-gradient(135deg, rgba(31, 139, 120, 0.08), rgba(255, 255, 255, 0.55)),
+    var(--surface);
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.dropzone-panel.active {
+  border-color: var(--teal);
+  transform: translateY(-1px);
+  box-shadow: 0 28px 70px rgba(31, 139, 120, 0.12);
+}
+
+.dropzone-panel.busy {
+  opacity: 0.82;
+}
+
+.dropzone-kicker {
+  margin: 0 0 6px;
+  color: var(--teal);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+.dropzone-panel h3 {
+  margin: 0 0 8px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+
+.dropzone-panel p,
+.dropzone-hint {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.dropzone-picker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  width: fit-content;
+  border-radius: 14px;
+  padding: 0 16px;
+  cursor: pointer;
+  color: white;
+  background: linear-gradient(135deg, var(--teal), #156657);
+}
+
+.dropzone-hint {
+  font-size: 0.94rem;
+}
+
 .table-panel {
   overflow: auto;
 }
