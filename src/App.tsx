@@ -10,6 +10,7 @@ import {
 } from "react-router-dom";
 
 import {
+  completeBankCallback,
   createRequisition,
   deleteReceipt,
   fetchSession,
@@ -199,6 +200,7 @@ export function App() {
               }));
             }}
             onCreateRequisition={async (input) => createRequisition(session.token, input)}
+            onCompleteBankCallback={async (input) => completeBankCallback(session.token, input)}
             onSettingsSave={async (payload) => {
               const saved = await saveSettings(session.token, payload);
               setStore((current) => ({
@@ -236,6 +238,11 @@ function DashboardShell(props: {
   onRuleDelete: (id: number) => Promise<void>;
   onMatch: (statementLineId: number, receiptId: number) => Promise<void>;
   onCreateRequisition: (input: { provider?: string; institutionId?: string }) => Promise<{ redirectUrl: string }>;
+  onCompleteBankCallback: (input: {
+    state: string;
+    requisitionId?: string | null;
+    consentId?: string | null;
+  }) => Promise<{ linked: boolean; state: string; externalRequisitionId: string | null }>;
   onSettingsSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null }>;
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
@@ -389,7 +396,10 @@ function DashboardShell(props: {
                 }
               />
               <Route path="/requisitions" element={<RequisitionPage onCreateRequisition={props.onCreateRequisition} />} />
-              <Route path="/bank-callback" element={<BankCallbackPage />} />
+              <Route
+                path="/bank-callback"
+                element={<BankCallbackPage onComplete={props.onCompleteBankCallback} />}
+              />
               <Route path="*" element={<Navigate to="/overview" replace />} />
             </>
           ) : (
@@ -1066,9 +1076,48 @@ function RequisitionPage(props: {
   );
 }
 
-function BankCallbackPage() {
+function BankCallbackPage(props: {
+  onComplete: (input: {
+    state: string;
+    requisitionId?: string | null;
+    consentId?: string | null;
+  }) => Promise<{ linked: boolean; state: string; externalRequisitionId: string | null }>;
+}) {
+  const { onComplete } = props;
   const location = useLocation();
   const params = new URLSearchParams(location.search);
+  const [status, setStatus] = useState<"loading" | "linked" | "failed">("loading");
+  const [message, setMessage] = useState("Completing the bank callback handshake...");
+  const [externalRequisitionId, setExternalRequisitionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(location.search);
+    const state = nextParams.get("state");
+    if (!state) {
+      setStatus("failed");
+      setMessage("Missing callback state. The bank requisition could not be verified.");
+      return;
+    }
+
+    onComplete({
+      state,
+      requisitionId: nextParams.get("requisition_id"),
+      consentId: nextParams.get("consent_id"),
+    })
+      .then((result) => {
+        setStatus(result.linked ? "linked" : "failed");
+        setExternalRequisitionId(result.externalRequisitionId);
+        setMessage(
+          result.linked
+            ? "The read-only bank connection has been linked and is ready for reconciliation imports."
+            : "The bank callback returned, but the requisition could not be linked.",
+        );
+      })
+      .catch((error: Error) => {
+        setStatus("failed");
+        setMessage(error.message || "Could not complete the bank callback.");
+      });
+  }, [location.search, onComplete]);
 
   return (
     <section className="panel settings-panel">
@@ -1076,11 +1125,21 @@ function BankCallbackPage() {
         <h2>Bank callback received</h2>
         <span>Provider return route</span>
       </div>
-      <p>
-        State: {params.get("state") ?? "Missing"}
-        <br />
-        Requisition: {params.get("requisition_id") ?? params.get("consent_id") ?? "Pending"}
-      </p>
+      <div className="summary-list">
+        <div>
+          <strong>Status</strong>
+          <span>{status === "loading" ? "Linking..." : status === "linked" ? "Linked" : "Failed"}</span>
+        </div>
+        <div>
+          <strong>State</strong>
+          <span>{params.get("state") ?? "Missing"}</span>
+        </div>
+        <div>
+          <strong>Requisition</strong>
+          <span>{externalRequisitionId ?? params.get("requisition_id") ?? params.get("consent_id") ?? "Pending"}</span>
+        </div>
+      </div>
+      <p>{message}</p>
     </section>
   );
 }

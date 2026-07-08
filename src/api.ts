@@ -287,6 +287,40 @@ export async function createRequisition(
   return response.requisition;
 }
 
+export async function completeBankCallback(
+  token: string,
+  input: { state: string; requisitionId?: string | null; consentId?: string | null },
+): Promise<{ linked: boolean; state: string; externalRequisitionId: string | null }> {
+  if (!API_BASE_URL || token === "demo-token") {
+    return {
+      linked: true,
+      state: input.state,
+      externalRequisitionId: input.requisitionId ?? input.consentId ?? null,
+    };
+  }
+
+  const params = new URLSearchParams();
+  params.set("state", input.state);
+  if (input.requisitionId) {
+    params.set("requisition_id", input.requisitionId);
+  }
+  if (input.consentId) {
+    params.set("consent_id", input.consentId);
+  }
+
+  const response = await apiFetch<{
+    linked: boolean;
+    state: string;
+    externalRequisitionId: string | null;
+  }>(`/bank-callback?${params.toString()}`, token);
+
+  return {
+    linked: response.linked,
+    state: response.state,
+    externalRequisitionId: response.externalRequisitionId,
+  };
+}
+
 export async function getSettings(token: string): Promise<OrganisationSettings> {
   if (!API_BASE_URL || token === "demo-token") {
     return demoSettings;
