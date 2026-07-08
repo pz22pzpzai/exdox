@@ -692,6 +692,19 @@ function DocumentWorkspacePage(props: {
             <input value={receipt.invoiceNumber ?? ""} onChange={(event) => setReceipt({ ...receipt, invoiceNumber: event.target.value })} />
           </label>
           <label>
+            Due Date
+            <input type="date" value={receipt.dueDate ?? ""} onChange={(event) => setReceipt({ ...receipt, dueDate: event.target.value })} />
+          </label>
+          <label>
+            Workflow Status
+            <select value={receipt.status} onChange={(event) => setReceipt({ ...receipt, status: event.target.value as ReceiptRecord["status"] })}>
+              <option value="Processing">Processing</option>
+              <option value="Review">Review</option>
+              <option value="Ready">Ready</option>
+              <option value="Published">Published</option>
+            </select>
+          </label>
+          <label>
             Net Amount
             <input type="number" value={receipt.netAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, netAmount: Number(event.target.value) })} />
           </label>
@@ -712,6 +725,27 @@ function DocumentWorkspacePage(props: {
                 </option>
               ))}
             </select>
+          </label>
+          <label>
+            Payment Method
+            <select value={receipt.paymentMethod} onChange={(event) => setReceipt({ ...receipt, paymentMethod: event.target.value as ReceiptRecord["paymentMethod"] })}>
+              <option value="business_card">Business card</option>
+              <option value="cash_personal">Personal spend</option>
+              <option value="bank_transfer">Bank transfer</option>
+              <option value="not_applicable">Not applicable</option>
+            </select>
+          </label>
+          <label>
+            Source Channel
+            <input value={sourceLabel(receipt.receiptSource)} readOnly />
+          </label>
+          <label className="form-span-2">
+            Extraction Notes
+            <textarea
+              rows={4}
+              value={receipt.rawTextSummary ?? ""}
+              onChange={(event) => setReceipt({ ...receipt, rawTextSummary: event.target.value })}
+            />
           </label>
         </div>
 
