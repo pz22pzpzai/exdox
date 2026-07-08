@@ -268,7 +268,6 @@ function DashboardShell(props: {
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null }>;
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
 }) {
-  const location = useLocation();
   const [uploadBusy, setUploadBusy] = useState(false);
   const businessAdmin = isBusinessAdmin(props.session);
   const visibleNavItems = businessAdmin
@@ -323,18 +322,47 @@ function DashboardShell(props: {
             <button className="icon-button" type="button" aria-label="Notifications">
               3
             </button>
-            <UploadButton
-              busy={uploadBusy}
-              onFiles={async (files) => {
-                const workspaceContext = location.pathname.startsWith("/sales") ? "sales" : "cost";
-                setUploadBusy(true);
-                try {
-                  await props.onUpload(workspaceContext, files);
-                } finally {
-                  setUploadBusy(false);
-                }
-              }}
-            />
+            {businessAdmin ? (
+              <>
+                <UploadButton
+                  busy={uploadBusy}
+                  label="Upload Costs"
+                  onFiles={async (files) => {
+                    setUploadBusy(true);
+                    try {
+                      await props.onUpload("cost", files);
+                    } finally {
+                      setUploadBusy(false);
+                    }
+                  }}
+                />
+                <UploadButton
+                  busy={uploadBusy}
+                  label="Upload Sales"
+                  onFiles={async (files) => {
+                    setUploadBusy(true);
+                    try {
+                      await props.onUpload("sales", files);
+                    } finally {
+                      setUploadBusy(false);
+                    }
+                  }}
+                />
+              </>
+            ) : (
+              <UploadButton
+                busy={uploadBusy}
+                label="Upload Receipts"
+                onFiles={async (files) => {
+                  setUploadBusy(true);
+                  try {
+                    await props.onUpload("cost", files);
+                  } finally {
+                    setUploadBusy(false);
+                  }
+                }}
+              />
+            )}
           </div>
         </header>
 
@@ -1386,10 +1414,10 @@ function SettingsPage(props: {
   );
 }
 
-function UploadButton(props: { busy: boolean; onFiles: (files: File[]) => Promise<void> }) {
+function UploadButton(props: { busy: boolean; label: string; onFiles: (files: File[]) => Promise<void> }) {
   return (
     <label className="upload-button">
-      {props.busy ? "Uploading..." : "Quick Upload"}
+      {props.busy ? "Uploading..." : props.label}
       <input
         type="file"
         multiple
