@@ -968,6 +968,13 @@ function ClaimDetailPage(props: {
         </div>
       </section>
 
+      <section className="metrics-grid">
+        <MetricCard label="Claim total" value={currency(claim.totalAmount)} detail={`${receipts.length} linked receipts`} />
+        <MetricCard label="Claiming employee" value={claimEmployeeLabel(claim)} detail="Claim owner" />
+        <MetricCard label="Approval status" value={claimStatusLabel(claim.status)} detail="Current review state" />
+        <MetricCard label="Submitted" value={claim.createdAt.slice(0, 10)} detail="Folder submission date" />
+      </section>
+
       <section className="panel table-panel">
         <table className="data-table">
           <thead>
