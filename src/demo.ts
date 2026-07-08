@@ -14,11 +14,12 @@ export const demoSession: SessionState = {
     organisationId: 101,
     email: "finance@exdox.co.uk",
     fullName: "Alex Rowe",
-    role: "Admin",
+    role: "Business_Admin",
     status: "active",
   },
   organisations: [{ id: 101, name: "Exdox Advisory Ltd" }],
   activeOrganisationId: 101,
+  allowedWebRoutes: ["/overview", "/costs", "/sales", "/claims", "/rules", "/reconciliation", "/settings", "/requisitions", "/bank-callback"],
 };
 
 export const demoReceipts: ReceiptRecord[] = [
@@ -152,6 +153,10 @@ export const demoRules: SupplierRule[] = [
 export const demoReconciliation: ReconciliationLine[] = [
   {
     id: 81,
+    transactionId: "txn_aws_0703",
+    bookingDate: "2026-07-03",
+    remittanceInformation: "AWS EMEA AWS AMAZON.CO.UK",
+    transactionAmount: 412.5,
     statementDate: "2026-07-03",
     description: "AWS EMEA AWS AMAZON.CO.UK",
     amountSpent: 412.5,
@@ -172,6 +177,10 @@ export const demoReconciliation: ReconciliationLine[] = [
   },
   {
     id: 82,
+    transactionId: "txn_avanti_0703",
+    bookingDate: "2026-07-03",
+    remittanceInformation: "AVANTI WEST COAST",
+    transactionAmount: 148,
     statementDate: "2026-07-03",
     description: "AVANTI WEST COAST",
     amountSpent: 148,

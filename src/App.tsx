@@ -10,6 +10,7 @@ import {
 } from "react-router-dom";
 
 import {
+  createRequisition,
   deleteReceipt,
   fetchSession,
   getClaim,
@@ -56,6 +57,7 @@ const navItems = [
   { to: "/rules", label: "Supplier Rules" },
   { to: "/reconciliation", label: "Bank Reconciliation" },
   { to: "/settings", label: "Company Settings" },
+  { to: "/requisitions", label: "Open Banking" },
 ];
 
 type AppStore = {
@@ -87,16 +89,18 @@ export function App() {
       return;
     }
 
-    Promise.all([
-      fetchSession(stored.token),
-      listReceipts(stored.token, "cost"),
-      listReceipts(stored.token, "sales"),
-      listClaims(stored.token),
-      listRules(stored.token),
-      listReconciliation(stored.token),
-      getSettings(stored.token),
-    ])
-      .then(([nextSession, costs, sales, claims, rules, reconciliation, settings]) => {
+    fetchSession(stored.token)
+      .then(async (nextSession) => {
+        const businessAdmin = isBusinessAdmin(nextSession);
+        const [costs, sales, claims, rules, reconciliation, settings] = await Promise.all([
+          listReceipts(stored.token, "cost"),
+          businessAdmin ? listReceipts(stored.token, "sales") : Promise.resolve([]),
+          businessAdmin ? listClaims(stored.token) : Promise.resolve([]),
+          businessAdmin ? listRules(stored.token) : Promise.resolve([]),
+          businessAdmin ? listReconciliation(stored.token) : Promise.resolve([]),
+          businessAdmin ? getSettings(stored.token) : Promise.resolve(null),
+        ]);
+
         setSession(nextSession);
         setStore({
           costs,
@@ -127,7 +131,7 @@ export function App() {
     <Routes>
       <Route
         path="/"
-        element={<Navigate to="/overview" replace />}
+        element={<Navigate to={isBusinessAdmin(session) ? "/overview" : "/dropbox"} replace />}
       />
       <Route
         path="/*"
@@ -194,6 +198,7 @@ export function App() {
                 reconciliation: refreshed,
               }));
             }}
+            onCreateRequisition={async (input) => createRequisition(session.token, input)}
             onSettingsSave={async (payload) => {
               const saved = await saveSettings(session.token, payload);
               setStore((current) => ({
@@ -230,12 +235,15 @@ function DashboardShell(props: {
   ) => Promise<void>;
   onRuleDelete: (id: number) => Promise<void>;
   onMatch: (statementLineId: number, receiptId: number) => Promise<void>;
+  onCreateRequisition: (input: { provider?: string; institutionId?: string }) => Promise<{ redirectUrl: string }>;
   onSettingsSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null }>;
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
 }) {
   const location = useLocation();
   const [uploadBusy, setUploadBusy] = useState(false);
+  const businessAdmin = isBusinessAdmin(props.session);
+  const visibleNavItems = businessAdmin ? navItems : [{ to: "/dropbox", label: "My Drop Box" }];
 
   return (
     <div className="dashboard-shell">
@@ -249,7 +257,7 @@ function DashboardShell(props: {
             </div>
           </div>
           <nav className="sidebar-nav" aria-label="Primary">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <NavLink
                 key={item.to}
                 className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}
@@ -271,7 +279,7 @@ function DashboardShell(props: {
         <header className="topbar">
           <div>
             <p className="topbar-kicker">Active workspace</p>
-            <h1>{routeTitle(location.pathname)}</h1>
+            <h1>{businessAdmin ? routeTitle(location.pathname) : "Employee Drop Box"}</h1>
           </div>
           <div className="topbar-actions">
             <select className="org-selector" defaultValue={props.session.activeOrganisationId}>
@@ -302,62 +310,78 @@ function DashboardShell(props: {
         {props.error ? <div className="error-banner">{props.error}</div> : null}
 
         <Routes>
-          <Route path="/overview" element={<OverviewPage store={props.store} />} />
-          <Route
-            path="/costs"
-            element={<InboxPage title="Costs Inbox" records={props.store.costs} basePath="/costs" />}
-          />
-          <Route
-            path="/costs/:id"
-            element={
-              <DocumentWorkspacePage
-                mode="cost"
-                fallbackRecords={props.store.costs}
-                onSave={props.onReceiptSave}
-                onDelete={props.onReceiptDelete}
-                loadReceipt={props.loadReceipt}
+          {businessAdmin ? (
+            <>
+              <Route path="/overview" element={<OverviewPage store={props.store} />} />
+              <Route
+                path="/costs"
+                element={<InboxPage title="Costs Inbox" records={props.store.costs} basePath="/costs" />}
               />
-            }
-          />
-          <Route
-            path="/sales"
-            element={<InboxPage title="Sales Inbox" records={props.store.sales} basePath="/sales" />}
-          />
-          <Route
-            path="/sales/:id"
-            element={
-              <DocumentWorkspacePage
-                mode="sales"
-                fallbackRecords={props.store.sales}
-                onSave={props.onReceiptSave}
-                onDelete={props.onReceiptDelete}
-                loadReceipt={props.loadReceipt}
+              <Route
+                path="/costs/:id"
+                element={
+                  <DocumentWorkspacePage
+                    mode="cost"
+                    fallbackRecords={props.store.costs}
+                    onSave={props.onReceiptSave}
+                    onDelete={props.onReceiptDelete}
+                    loadReceipt={props.loadReceipt}
+                  />
+                }
               />
-            }
-          />
-          <Route path="/claims" element={<ClaimsPage claims={props.store.claims} />} />
-          <Route
-            path="/claims/:id"
-            element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} loadClaim={props.loadClaim} />}
-          />
-          <Route
-            path="/rules"
-            element={
-              <RulesPage rules={props.store.rules} onSave={props.onRuleSave} onDelete={props.onRuleDelete} />
-            }
-          />
-          <Route
-            path="/reconciliation"
-            element={
-              <ReconciliationPage lines={props.store.reconciliation} onMatch={props.onMatch} />
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <SettingsPage settings={props.store.settings} onSave={props.onSettingsSave} />
-            }
-          />
+              <Route
+                path="/sales"
+                element={<InboxPage title="Sales Inbox" records={props.store.sales} basePath="/sales" />}
+              />
+              <Route
+                path="/sales/:id"
+                element={
+                  <DocumentWorkspacePage
+                    mode="sales"
+                    fallbackRecords={props.store.sales}
+                    onSave={props.onReceiptSave}
+                    onDelete={props.onReceiptDelete}
+                    loadReceipt={props.loadReceipt}
+                  />
+                }
+              />
+              <Route path="/claims" element={<ClaimsPage claims={props.store.claims} />} />
+              <Route
+                path="/claims/:id"
+                element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} loadClaim={props.loadClaim} />}
+              />
+              <Route
+                path="/rules"
+                element={
+                  <RulesPage rules={props.store.rules} onSave={props.onRuleSave} onDelete={props.onRuleDelete} />
+                }
+              />
+              <Route
+                path="/reconciliation"
+                element={
+                  <ReconciliationPage
+                    lines={props.store.reconciliation}
+                    onMatch={props.onMatch}
+                    onCreateRequisition={props.onCreateRequisition}
+                  />
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <SettingsPage settings={props.store.settings} onSave={props.onSettingsSave} />
+                }
+              />
+              <Route path="/requisitions" element={<RequisitionPage onCreateRequisition={props.onCreateRequisition} />} />
+              <Route path="/bank-callback" element={<BankCallbackPage />} />
+              <Route path="*" element={<Navigate to="/overview" replace />} />
+            </>
+          ) : (
+            <>
+              <Route path="/dropbox" element={<EmployeeDropboxPage receipts={props.store.costs} onUpload={props.onUpload} />} />
+              <Route path="*" element={<Navigate to="/dropbox" replace />} />
+            </>
+          )}
         </Routes>
       </main>
     </div>
@@ -670,6 +694,58 @@ function ClaimsPage({ claims }: { claims: ClaimRecord[] }) {
   );
 }
 
+function EmployeeDropboxPage(props: {
+  receipts: ReceiptRecord[];
+  onUpload: (workspaceContext: "cost" | "sales", files: File[]) => Promise<void>;
+}) {
+  return (
+    <div className="stack-page">
+      <section className="page-hero">
+        <div>
+          <h2>My drop box</h2>
+          <p>
+            Employees can upload receipts and view only their own history.
+            Company-wide metrics, bank transactions, settings, and peer uploads remain admin-only.
+          </p>
+        </div>
+      </section>
+      <section className="panel">
+        <div className="panel-heading">
+          <h2>Upload into processing</h2>
+          <span>Secure ingestion queue</span>
+        </div>
+        <UploadButton busy={false} onFiles={(files) => props.onUpload("cost", files)} />
+      </section>
+      <section className="panel table-panel">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Upload Date</th>
+              <th>Supplier</th>
+              <th>Net</th>
+              <th>VAT</th>
+              <th>Gross</th>
+            </tr>
+          </thead>
+          <tbody>
+            {props.receipts.map((receipt) => (
+              <tr key={receipt.id}>
+                <td><StatusPill status={receipt.status} /></td>
+                <td>{receipt.createdAt.slice(0, 10)}</td>
+                <td>{receipt.vendorName ?? receipt.sourceFilename}</td>
+                <td>{currency(receipt.netAmount)}</td>
+                <td>{currency(receipt.vatAmount)}</td>
+                <td>{currency(receipt.totalAmount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    </div>
+  );
+}
+
 function ClaimDetailPage(props: {
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
   onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
@@ -845,6 +921,7 @@ function RulesPage(props: {
 function ReconciliationPage(props: {
   lines: ReconciliationLine[];
   onMatch: (statementLineId: number, receiptId: number) => Promise<void>;
+  onCreateRequisition: (input: { provider?: string; institutionId?: string }) => Promise<{ redirectUrl: string }>;
 }) {
   return (
     <div className="reconciliation-layout">
@@ -853,13 +930,25 @@ function ReconciliationPage(props: {
           <h2>Statement lines</h2>
           <span>Imported bank feed</span>
         </div>
+        <div className="toolbar">
+          <button
+            className="secondary-action"
+            type="button"
+            onClick={async () => {
+              const requisition = await props.onCreateRequisition({ provider: "truelayer" });
+              window.location.href = requisition.redirectUrl;
+            }}
+          >
+            Connect bank feed
+          </button>
+        </div>
         <div className="recon-grid">
           {props.lines.map((line) => (
             <article className="recon-line" key={line.id}>
               <div>
-                <strong>{line.description}</strong>
+                <strong>{line.remittanceInformation}</strong>
                 <p>
-                  {line.statementDate} · {currency(line.amountSpent)}
+                  {line.statementDate ?? line.bookingDate} · {currency(line.amountSpent ?? line.transactionAmount)}
                 </p>
               </div>
               <StatusPill status={line.status === "Open" ? "Review" : "Published"} />
@@ -901,6 +990,67 @@ function ReconciliationPage(props: {
         </div>
       </section>
     </div>
+  );
+}
+
+function RequisitionPage(props: {
+  onCreateRequisition: (input: { provider?: string; institutionId?: string }) => Promise<{ redirectUrl: string }>;
+}) {
+  const [provider, setProvider] = useState("truelayer");
+  const [institutionId, setInstitutionId] = useState("");
+
+  return (
+    <section className="panel settings-panel">
+      <div className="panel-heading">
+        <h2>Open Banking requisitions</h2>
+        <span>Read-only ledger connection</span>
+      </div>
+      <div className="form-grid">
+        <label>
+          Provider
+          <select value={provider} onChange={(event) => setProvider(event.target.value)}>
+            <option value="truelayer">TrueLayer</option>
+            <option value="yapily">Yapily</option>
+            <option value="tink">Tink</option>
+          </select>
+        </label>
+        <label>
+          Institution Id
+          <input value={institutionId} onChange={(event) => setInstitutionId(event.target.value)} placeholder="optional bank institution id" />
+        </label>
+      </div>
+      <div className="toolbar">
+        <button
+          className="primary-action"
+          type="button"
+          onClick={async () => {
+            const requisition = await props.onCreateRequisition({ provider, institutionId });
+            window.location.href = requisition.redirectUrl;
+          }}
+        >
+          Start bank OAuth
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function BankCallbackPage() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+
+  return (
+    <section className="panel settings-panel">
+      <div className="panel-heading">
+        <h2>Bank callback received</h2>
+        <span>Provider return route</span>
+      </div>
+      <p>
+        State: {params.get("state") ?? "Missing"}
+        <br />
+        Requisition: {params.get("requisition_id") ?? params.get("consent_id") ?? "Pending"}
+      </p>
+    </section>
   );
 }
 
@@ -1038,6 +1188,10 @@ function sourceLabel(source: ReceiptRecord["receiptSource"]) {
   return source === "web_upload" ? "Web" : source === "bank_import" ? "Bank" : source === "email" ? "Email" : "Mobile";
 }
 
+function isBusinessAdmin(session: SessionState) {
+  return session.user.role === "Business_Admin";
+}
+
 function routeTitle(pathname: string) {
   if (pathname.startsWith("/costs/")) {
     return "Cost Workspace";
@@ -1047,6 +1201,12 @@ function routeTitle(pathname: string) {
   }
   if (pathname.startsWith("/claims/")) {
     return "Claim Review";
+  }
+  if (pathname.startsWith("/bank-callback")) {
+    return "Bank Callback";
+  }
+  if (pathname.startsWith("/dropbox")) {
+    return "My Drop Box";
   }
 
   const matched = navItems.find((item) => pathname.startsWith(item.to));

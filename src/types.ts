@@ -75,12 +75,26 @@ export type ReconciliationCandidate = {
 
 export type ReconciliationLine = {
   id: number;
-  statementDate: string;
-  description: string;
-  amountSpent: number;
+  transactionId: string;
+  bookingDate: string;
+  remittanceInformation: string;
+  transactionAmount: number;
+  statementDate?: string;
+  description?: string;
+  amountSpent?: number;
   status: "Open" | "Audited";
   matchedReceiptId: number | null;
   candidates: ReconciliationCandidate[];
+};
+
+export type BankRequisition = {
+  id: number;
+  provider: string;
+  externalRequisitionId: string;
+  institutionId: string | null;
+  status: "pending" | "linked" | "failed";
+  redirectUrl: string;
+  callbackState: string;
 };
 
 export type OrganisationSettings = {
@@ -95,7 +109,7 @@ export type SessionUser = {
   organisationId: number;
   email: string;
   fullName: string | null;
-  role: "Admin" | "Standard_Employee";
+  role: "Business_Admin" | "Standard_Employee";
   status: "pending_invite" | "active";
 };
 
@@ -104,4 +118,5 @@ export type SessionState = {
   user: SessionUser;
   organisations: Array<{ id: number; name: string }>;
   activeOrganisationId: number;
+  allowedWebRoutes?: string[];
 };

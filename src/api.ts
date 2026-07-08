@@ -7,6 +7,7 @@ import {
   demoSettings,
 } from "./demo";
 import type {
+  BankRequisition,
   ClaimRecord,
   OrganisationSettings,
   ReceiptRecord,
@@ -36,7 +37,7 @@ export async function fetchSession(token: string): Promise<SessionState> {
     return demoSession;
   }
 
-  const response = await apiFetch<{ user: SessionState["user"]; organisations: SessionState["organisations"]; activeOrganisationId: number }>(
+  const response = await apiFetch<{ user: SessionState["user"]; organisations: SessionState["organisations"]; activeOrganisationId: number; allowedWebRoutes?: string[] }>(
     "/session",
     token,
   );
@@ -46,6 +47,7 @@ export async function fetchSession(token: string): Promise<SessionState> {
     user: response.user,
     organisations: response.organisations,
     activeOrganisationId: response.activeOrganisationId,
+    allowedWebRoutes: response.allowedWebRoutes,
   };
 }
 
@@ -207,12 +209,17 @@ export async function listReconciliation(token: string): Promise<ReconciliationL
   }
 
   const response = await apiFetch<{ lines: ReconciliationLine[] }>("/reconciliation", token);
-  return response.lines;
+  return response.lines.map((line) => ({
+    ...line,
+    statementDate: line.statementDate ?? line.bookingDate,
+    description: line.description ?? line.remittanceInformation,
+    amountSpent: line.amountSpent ?? line.transactionAmount,
+  }));
 }
 
 export async function matchReconciliation(
   token: string,
-  statementLineId: number,
+  bankTransactionId: number,
   receiptId: number,
 ): Promise<void> {
   if (!API_BASE_URL || token === "demo-token") {
@@ -221,8 +228,31 @@ export async function matchReconciliation(
 
   await apiFetch("/reconciliation/match", token, {
     method: "POST",
-    body: JSON.stringify({ statementLineId, receiptId }),
+    body: JSON.stringify({ bankTransactionId, receiptId }),
   });
+}
+
+export async function createRequisition(
+  token: string,
+  input: { provider?: string; institutionId?: string },
+): Promise<BankRequisition> {
+  if (!API_BASE_URL || token === "demo-token") {
+    return {
+      id: Date.now(),
+      provider: input.provider ?? "truelayer",
+      externalRequisitionId: `req_${Date.now()}`,
+      institutionId: input.institutionId ?? null,
+      status: "pending",
+      redirectUrl: "https://console.truelayer.com",
+      callbackState: "demo-state",
+    };
+  }
+
+  const response = await apiFetch<{ requisition: BankRequisition }>("/requisitions", token, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return response.requisition;
 }
 
 export async function getSettings(token: string): Promise<OrganisationSettings> {
