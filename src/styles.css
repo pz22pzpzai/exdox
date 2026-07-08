@@ -53,6 +53,7 @@ a {
 }
 
 .login-panel,
+.loading-panel,
 .empty-state {
   max-width: 620px;
   border: 1px solid var(--line);
@@ -87,16 +88,25 @@ a {
   padding: 10px 8px 26px;
 }
 
-.brand-mark {
-  width: 44px;
-  height: 44px;
+.brand-logo-shell,
+.loading-mark-shell {
   display: grid;
   place-items: center;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--teal), #16353d);
-  font-family: "Space Grotesk", sans-serif;
-  font-size: 1.3rem;
-  font-weight: 700;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 36px rgba(8, 17, 43, 0.16);
+}
+
+.brand-logo-shell {
+  min-width: 124px;
+  padding: 10px 12px;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 100px;
+  height: auto;
 }
 
 .brand-lockup span,
@@ -135,6 +145,38 @@ a {
   margin: 10px 0 0;
   color: #d0c7ba;
   line-height: 1.6;
+}
+
+.loading-panel {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.loading-panel p,
+.login-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.loading-mark-shell {
+  width: 120px;
+  height: 120px;
+  animation: brandPulse 1.8s ease-in-out infinite;
+}
+
+.loading-mark {
+  width: 88px;
+  height: auto;
+}
+
+.login-logo {
+  display: block;
+  max-width: 184px;
+  width: 100%;
+  margin: 0 auto 18px;
 }
 
 .workspace {
@@ -514,6 +556,14 @@ input {
   place-items: center;
   text-align: center;
   padding: 28px;
+  gap: 10px;
+}
+
+.placeholder-logo {
+  width: 140px;
+  max-width: 40%;
+  height: auto;
+  opacity: 0.94;
 }
 
 .form-grid {
@@ -642,5 +692,18 @@ input {
   .claim-card {
     padding: 18px;
     border-radius: 22px;
+  }
+}
+
+@keyframes brandPulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 18px 36px rgba(8, 17, 43, 0.16);
+  }
+
+  50% {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 22px 42px rgba(8, 17, 43, 0.22);
   }
 }

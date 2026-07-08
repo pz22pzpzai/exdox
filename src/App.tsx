@@ -62,6 +62,9 @@ const navItems = [
   { to: "/requisitions", label: "Open Banking" },
 ];
 
+const brandLogoSrc = "/branding/exdox-logo.png";
+const brandMarkSrc = "/branding/exdox-mark.png";
+
 type AppStore = {
   costs: ReceiptRecord[];
   sales: ReceiptRecord[];
@@ -122,7 +125,17 @@ export function App() {
   }, []);
 
   if (loading) {
-    return <div className="app-loading">Loading Exdox workspace...</div>;
+    return (
+      <div className="app-loading">
+        <div className="loading-panel">
+          <div className="loading-mark-shell">
+            <img className="loading-mark" src={brandMarkSrc} alt="exdox" />
+          </div>
+          <strong>Loading Exdox workspace</strong>
+          <p>Preparing your dashboard and organisation context.</p>
+        </div>
+      </div>
+    );
   }
 
   if (!session) {
@@ -296,10 +309,12 @@ function DashboardShell(props: {
       <aside className="sidebar">
         <div>
           <div className="brand-lockup">
-            <div className="brand-mark">E</div>
+            <div className="brand-logo-shell">
+              <img className="brand-logo" src={brandLogoSrc} alt="exdox" />
+            </div>
             <div>
               <strong>exdox</strong>
-              <span>Desktop workspace</span>
+              <span>Pre-accounting dashboard</span>
             </div>
           </div>
           <nav className="sidebar-nav" aria-label="Primary">
@@ -719,6 +734,7 @@ function DocumentWorkspacePage(props: {
           <iframe className="document-frame" src={assetUrl} title={receipt.sourceFilename} />
         ) : (
           <div className="document-placeholder">
+            <img className="placeholder-logo" src={brandMarkSrc} alt="exdox preview placeholder" />
             <strong>S3 document preview</strong>
             <p>The secure asset URL resolves here when the API is configured. Demo mode keeps the viewer stateful without exposing a bucket.</p>
           </div>
@@ -1606,6 +1622,7 @@ function LoginState() {
   return (
     <div className="login-state">
       <div className="login-panel">
+        <img className="login-logo" src={brandLogoSrc} alt="exdox" />
         <strong>Authentication required</strong>
         <p>
           Store an `exdox-auth-session-v1` token in local storage or configure `VITE_EXDOX_API_BASE_URL`
