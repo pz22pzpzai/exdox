@@ -128,11 +128,13 @@ export function App() {
     return <LoginState />;
   }
 
+  const defaultRoute = getDefaultRoute(session);
+
   return (
     <Routes>
       <Route
         path="/"
-        element={<Navigate to={isBusinessAdmin(session) ? "/overview" : "/dropbox"} replace />}
+        element={<Navigate to={defaultRoute} replace />}
       />
       <Route
         path="/*"
@@ -250,7 +252,10 @@ function DashboardShell(props: {
   const location = useLocation();
   const [uploadBusy, setUploadBusy] = useState(false);
   const businessAdmin = isBusinessAdmin(props.session);
-  const visibleNavItems = businessAdmin ? navItems : [{ to: "/dropbox", label: "My Drop Box" }];
+  const visibleNavItems = businessAdmin
+    ? navItems.filter((item) => isRouteAllowed(props.session, item.to))
+    : [{ to: "/dropbox", label: "My Drop Box" }];
+  const defaultRoute = getDefaultRoute(props.session);
 
   return (
     <div className="dashboard-shell">
@@ -319,93 +324,117 @@ function DashboardShell(props: {
         <Routes>
           {businessAdmin ? (
             <>
-              <Route path="/overview" element={<OverviewPage store={props.store} />} />
-              <Route
-                path="/costs"
-                element={
-                  <InboxPage
-                    title="Costs Inbox"
-                    records={props.store.costs}
-                    basePath="/costs"
-                    uploadBusy={uploadBusy}
-                    onUpload={(files) => props.onUpload("cost", files)}
-                  />
-                }
-              />
-              <Route
-                path="/costs/:id"
-                element={
-                  <DocumentWorkspacePage
-                    mode="cost"
-                    fallbackRecords={props.store.costs}
-                    onSave={props.onReceiptSave}
-                    onDelete={props.onReceiptDelete}
-                    loadReceipt={props.loadReceipt}
-                  />
-                }
-              />
-              <Route
-                path="/sales"
-                element={
-                  <InboxPage
-                    title="Sales Inbox"
-                    records={props.store.sales}
-                    basePath="/sales"
-                    uploadBusy={uploadBusy}
-                    onUpload={(files) => props.onUpload("sales", files)}
-                  />
-                }
-              />
-              <Route
-                path="/sales/:id"
-                element={
-                  <DocumentWorkspacePage
-                    mode="sales"
-                    fallbackRecords={props.store.sales}
-                    onSave={props.onReceiptSave}
-                    onDelete={props.onReceiptDelete}
-                    loadReceipt={props.loadReceipt}
-                  />
-                }
-              />
-              <Route path="/claims" element={<ClaimsPage claims={props.store.claims} />} />
-              <Route
-                path="/claims/:id"
-                element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} loadClaim={props.loadClaim} />}
-              />
-              <Route
-                path="/rules"
-                element={
-                  <RulesPage rules={props.store.rules} onSave={props.onRuleSave} onDelete={props.onRuleDelete} />
-                }
-              />
-              <Route
-                path="/reconciliation"
-                element={
-                  <ReconciliationPage
-                    lines={props.store.reconciliation}
-                    onMatch={props.onMatch}
-                    onCreateRequisition={props.onCreateRequisition}
-                  />
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <SettingsPage settings={props.store.settings} onSave={props.onSettingsSave} />
-                }
-              />
-              <Route path="/requisitions" element={<RequisitionPage onCreateRequisition={props.onCreateRequisition} />} />
-              <Route
-                path="/bank-callback"
-                element={<BankCallbackPage onComplete={props.onCompleteBankCallback} />}
-              />
-              <Route path="*" element={<Navigate to="/overview" replace />} />
+              {isRouteAllowed(props.session, "/overview") ? (
+                <Route path="/overview" element={<OverviewPage store={props.store} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/costs") ? (
+                <Route
+                  path="/costs"
+                  element={
+                    <InboxPage
+                      title="Costs Inbox"
+                      records={props.store.costs}
+                      basePath="/costs"
+                      uploadBusy={uploadBusy}
+                      onUpload={(files) => props.onUpload("cost", files)}
+                    />
+                  }
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/costs") ? (
+                <Route
+                  path="/costs/:id"
+                  element={
+                    <DocumentWorkspacePage
+                      mode="cost"
+                      fallbackRecords={props.store.costs}
+                      onSave={props.onReceiptSave}
+                      onDelete={props.onReceiptDelete}
+                      loadReceipt={props.loadReceipt}
+                    />
+                  }
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/sales") ? (
+                <Route
+                  path="/sales"
+                  element={
+                    <InboxPage
+                      title="Sales Inbox"
+                      records={props.store.sales}
+                      basePath="/sales"
+                      uploadBusy={uploadBusy}
+                      onUpload={(files) => props.onUpload("sales", files)}
+                    />
+                  }
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/sales") ? (
+                <Route
+                  path="/sales/:id"
+                  element={
+                    <DocumentWorkspacePage
+                      mode="sales"
+                      fallbackRecords={props.store.sales}
+                      onSave={props.onReceiptSave}
+                      onDelete={props.onReceiptDelete}
+                      loadReceipt={props.loadReceipt}
+                    />
+                  }
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/claims") ? (
+                <Route path="/claims" element={<ClaimsPage claims={props.store.claims} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/claims") ? (
+                <Route
+                  path="/claims/:id"
+                  element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} loadClaim={props.loadClaim} />}
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/rules") ? (
+                <Route
+                  path="/rules"
+                  element={
+                    <RulesPage rules={props.store.rules} onSave={props.onRuleSave} onDelete={props.onRuleDelete} />
+                  }
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/reconciliation") ? (
+                <Route
+                  path="/reconciliation"
+                  element={
+                    <ReconciliationPage
+                      lines={props.store.reconciliation}
+                      onMatch={props.onMatch}
+                      onCreateRequisition={props.onCreateRequisition}
+                    />
+                  }
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/settings") ? (
+                <Route
+                  path="/settings"
+                  element={
+                    <SettingsPage settings={props.store.settings} onSave={props.onSettingsSave} />
+                  }
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/requisitions") ? (
+                <Route path="/requisitions" element={<RequisitionPage onCreateRequisition={props.onCreateRequisition} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/bank-callback") ? (
+                <Route
+                  path="/bank-callback"
+                  element={<BankCallbackPage onComplete={props.onCompleteBankCallback} />}
+                />
+              ) : null}
+              <Route path="*" element={<Navigate to={defaultRoute} replace />} />
             </>
           ) : (
             <>
               <Route path="/dropbox" element={<EmployeeDropboxPage receipts={props.store.costs} onUpload={props.onUpload} />} />
-              <Route path="*" element={<Navigate to="/dropbox" replace />} />
+              <Route path="*" element={<Navigate to={defaultRoute} replace />} />
             </>
           )}
         </Routes>
@@ -1346,6 +1375,24 @@ function sourceLabel(source: ReceiptRecord["receiptSource"]) {
 
 function isBusinessAdmin(session: SessionState) {
   return session.user.role === "Business_Admin";
+}
+
+function isRouteAllowed(session: SessionState, pathname: string) {
+  const allowedRoutes = session.allowedWebRoutes;
+  if (!allowedRoutes?.length) {
+    return isBusinessAdmin(session) ? pathname !== "/dropbox" : pathname === "/dropbox";
+  }
+
+  return allowedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+function getDefaultRoute(session: SessionState) {
+  const allowedRoutes = session.allowedWebRoutes;
+  if (allowedRoutes?.length) {
+    return allowedRoutes[0]!;
+  }
+
+  return isBusinessAdmin(session) ? "/overview" : "/dropbox";
 }
 
 function routeTitle(pathname: string) {
