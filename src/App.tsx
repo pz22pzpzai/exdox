@@ -452,7 +452,16 @@ function DashboardShell(props: {
             </>
           ) : (
             <>
-              <Route path="/dropbox" element={<EmployeeDropboxPage receipts={props.store.costs} onUpload={props.onUpload} />} />
+              <Route
+                path="/dropbox"
+                element={
+                  <EmployeeDropboxPage
+                    receipts={props.store.costs}
+                    onUpload={props.onUpload}
+                    uploadBusy={uploadBusy}
+                  />
+                }
+              />
               <Route path="*" element={<Navigate to={defaultRoute} replace />} />
             </>
           )}
@@ -822,6 +831,7 @@ function ClaimsPage({ claims }: { claims: ClaimRecord[] }) {
 function EmployeeDropboxPage(props: {
   receipts: ReceiptRecord[];
   onUpload: (workspaceContext: "cost" | "sales", files: File[]) => Promise<void>;
+  uploadBusy: boolean;
 }) {
   return (
     <div className="stack-page">
@@ -834,13 +844,12 @@ function EmployeeDropboxPage(props: {
           </p>
         </div>
       </section>
-      <section className="panel">
-        <div className="panel-heading">
-          <h2>Upload into processing</h2>
-          <span>Secure ingestion queue</span>
-        </div>
-        <UploadButton busy={false} onFiles={(files) => props.onUpload("cost", files)} />
-      </section>
+      <UploadDropZone
+        title="Drop receipts into your employee queue"
+        subtitle="Send multiple files into processing while keeping company-wide dashboards, settings, and peer uploads hidden from employee sessions."
+        busy={props.uploadBusy}
+        onFiles={(files) => props.onUpload("cost", files)}
+      />
       <section className="panel table-panel">
         <table className="data-table">
           <thead>
