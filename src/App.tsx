@@ -434,7 +434,7 @@ function OverviewPage({ store }: { store: AppStore }) {
               <li key={rule.id}>
                 <strong>{rule.supplierMatchText}</strong>
                 <span>
-                  {rule.category} · {rule.taxRate} · {rule.paymentMethod}
+                  {rule.category} | {rule.taxRate} | {rule.paymentMethod}
                 </span>
               </li>
             ))}
@@ -904,7 +904,7 @@ function RulesPage(props: {
               <div>
                 <strong>IF supplier contains "{rule.supplierMatchText}"</strong>
                 <p>
-                  Category = {rule.category} · Tax Rate = {rule.taxRate} · Payment Method = {rule.paymentMethod}
+                  Category = {rule.category} | Tax Rate = {rule.taxRate} | Payment Method = {rule.paymentMethod}
                 </p>
               </div>
               <button className="danger-action" type="button" onClick={() => props.onDelete(rule.id)}>
@@ -948,7 +948,7 @@ function ReconciliationPage(props: {
               <div>
                 <strong>{line.remittanceInformation}</strong>
                 <p>
-                  {line.statementDate ?? line.bookingDate} · {currency(line.amountSpent ?? line.transactionAmount)}
+                  {line.statementDate ?? line.bookingDate} | {currency(line.amountSpent ?? line.transactionAmount)}
                 </p>
               </div>
               <StatusPill status={line.status === "Open" ? "Review" : "Published"} />
@@ -965,13 +965,13 @@ function ReconciliationPage(props: {
         <div className="recon-grid">
           {props.lines.map((line) => (
             <article className="candidate-group" key={line.id}>
-              <strong>{line.description}</strong>
+              <strong>{line.remittanceInformation}</strong>
               {line.candidates.map((candidate) => (
                 <div className="candidate-row" key={candidate.id}>
                   <div>
                     <span>{candidate.vendorName ?? "Unknown supplier"}</span>
                     <p>
-                      {candidate.invoiceDate ?? "Pending"} · {currency(candidate.totalAmount)} · score{" "}
+                      {candidate.invoiceDate ?? "Pending"} | {currency(candidate.totalAmount)} | score{" "}
                       {candidate.matchScore.toFixed(2)}
                     </p>
                   </div>
@@ -1212,3 +1212,4 @@ function routeTitle(pathname: string) {
   const matched = navItems.find((item) => pathname.startsWith(item.to));
   return matched?.label ?? "Overview";
 }
+
