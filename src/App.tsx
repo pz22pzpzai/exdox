@@ -935,6 +935,7 @@ function ClaimDetailPage(props: {
   const { id } = useParams();
   const [claim, setClaim] = useState<ClaimRecord | null>(null);
   const [receipts, setReceipts] = useState<ReceiptRecord[]>([]);
+  const [savingStatus, setSavingStatus] = useState<ClaimRecord["status"] | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -951,6 +952,16 @@ function ClaimDetailPage(props: {
     return <div className="empty-state">Claim detail unavailable.</div>;
   }
 
+  const updateStatus = async (status: ClaimRecord["status"]) => {
+    setSavingStatus(status);
+    try {
+      await props.onStatusChange(claim.id, status);
+      setClaim((current) => (current ? { ...current, status } : current));
+    } finally {
+      setSavingStatus(null);
+    }
+  };
+
   return (
     <div className="stack-page">
       <section className="page-hero">
@@ -959,10 +970,28 @@ function ClaimDetailPage(props: {
           <p>{claim.description ?? "Employee reimbursement folder"}</p>
         </div>
         <div className="filter-row">
-          <button className="secondary-action" type="button" onClick={() => props.onStatusChange(claim.id, "approved")}>
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={savingStatus !== null}
+            onClick={() => void updateStatus("approved")}
+          >
             Approve claim
           </button>
-          <button className="danger-action" type="button" onClick={() => props.onStatusChange(claim.id, "rejected")}>
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={savingStatus !== null}
+            onClick={() => void updateStatus("paid")}
+          >
+            Mark paid
+          </button>
+          <button
+            className="danger-action"
+            type="button"
+            disabled={savingStatus !== null}
+            onClick={() => void updateStatus("rejected")}
+          >
             Reject claim
           </button>
         </div>
