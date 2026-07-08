@@ -161,6 +161,23 @@ a {
   line-height: 1.7;
 }
 
+.login-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.login-form label {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  font-size: 0.94rem;
+}
+
+.login-submit {
+  justify-content: center;
+}
+
 .loading-mark-shell {
   width: 120px;
   height: 120px;
@@ -289,6 +306,16 @@ input {
 .upload-button:hover,
 .toggle-button:hover {
   transform: translateY(-1px);
+}
+
+.primary-action:disabled,
+.secondary-action:disabled,
+.danger-action:disabled,
+.upload-button:disabled,
+.toggle-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .error-banner,

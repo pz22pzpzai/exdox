@@ -1,11 +1,3 @@
-import {
-  demoClaims,
-  demoReceipts,
-  demoReconciliation,
-  demoRules,
-  demoSession,
-  demoSettings,
-} from "./demo";
 import type {
   BankRequisition,
   ClaimRecord,
@@ -16,38 +8,74 @@ import type {
   SupplierRule,
 } from "./types";
 
-const API_BASE_URL = import.meta.env.VITE_EXDOX_API_BASE_URL?.replace(/\/$/, "") ?? "";
+const API_BASE_URL =
+  import.meta.env.VITE_EXDOX_API_BASE_URL?.replace(/\/$/, "") ||
+  "https://hz2zkm6jkf.execute-api.eu-west-2.amazonaws.com/prod";
 const SESSION_STORAGE_KEY = "exdox-auth-session-v1";
-const EMPLOYEE_VISIBLE_RECEIPT_IDS = new Set([502]);
+
+type AuthResponse =
+  | {
+      success: true;
+      token: string;
+      user: SessionState["user"];
+    }
+  | {
+      success: false;
+      message?: string;
+    };
 
 export function loadStoredSession(): SessionState | null {
-  const override = resolveDemoSessionOverride();
-  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+  const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY) ?? window.localStorage.getItem(SESSION_STORAGE_KEY);
   if (!raw) {
-    return override ?? demoSession;
+    return null;
   }
 
   try {
-    const parsed = JSON.parse(raw) as SessionState;
-    return override ? { ...parsed, ...override, token: override.token } : parsed;
+    return JSON.parse(raw) as SessionState;
   } catch {
-    return override ?? demoSession;
+    clearStoredSession();
+    return null;
   }
 }
 
 export function saveStoredSession(session: SessionState) {
-  window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+  const serialized = JSON.stringify(session);
+  window.sessionStorage.setItem(SESSION_STORAGE_KEY, serialized);
+  window.localStorage.setItem(SESSION_STORAGE_KEY, serialized);
+}
+
+export function clearStoredSession() {
+  window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  window.localStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
+export async function loginWithEmail(input: { email: string; password: string }): Promise<SessionState> {
+  const response = await fetch(`${API_BASE_URL}/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  const payload = (await response.json()) as AuthResponse;
+  if (!response.ok || !payload.success) {
+    throw new Error(("message" in payload && payload.message) || "Authentication failed.");
+  }
+
+  const session = await fetchSession(payload.token);
+  const hydrated = { ...session, token: payload.token };
+  saveStoredSession(hydrated);
+  return hydrated;
 }
 
 export async function fetchSession(token: string): Promise<SessionState> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return resolveDemoSessionOverride() ?? demoSession;
-  }
-
-  const response = await apiFetch<{ user: SessionState["user"]; organisations: SessionState["organisations"]; activeOrganisationId: number; allowedWebRoutes?: string[] }>(
-    "/session",
-    token,
-  );
+  const response = await apiFetch<{
+    user: SessionState["user"];
+    organisations: SessionState["organisations"];
+    activeOrganisationId: number;
+    allowedWebRoutes?: string[];
+  }>("/session", token);
 
   return {
     token,
@@ -62,15 +90,6 @@ export async function listReceipts(
   token: string,
   workspaceContext: "cost" | "sales",
 ): Promise<ReceiptRecord[]> {
-  if (!API_BASE_URL || token === "demo-token") {
-    const session = resolveDemoSessionOverride() ?? demoSession;
-    return demoReceipts
-      .filter((receipt) => receipt.workspaceContext === workspaceContext)
-      .filter((receipt) =>
-        session.user.role === "Business_Admin" ? true : EMPLOYEE_VISIBLE_RECEIPT_IDS.has(receipt.id),
-      );
-  }
-
   const response = await apiFetch<{ receipts: ReceiptRecord[] }>(
     `/receipts?workspace_context=${workspaceContext}&limit=200`,
     token,
@@ -78,48 +97,12 @@ export async function listReceipts(
   return response.receipts;
 }
 
-function resolveDemoSessionOverride(): SessionState | null {
-  const params = new URLSearchParams(window.location.search);
-  const requestedRole = params.get("demoRole");
-  if (requestedRole !== "employee" && requestedRole !== "admin") {
-    return null;
-  }
-
-  if (requestedRole === "employee") {
-    return {
-      ...demoSession,
-      user: {
-        ...demoSession.user,
-        id: 22,
-        email: "employee@exdox.co.uk",
-        fullName: "Employee User",
-        role: "Standard_Employee",
-      },
-      allowedWebRoutes: ["/dropbox"],
-    };
-  }
-
-  return demoSession;
-}
-
 export async function getReceipt(token: string, id: number): Promise<ReceiptRecord> {
-  if (!API_BASE_URL || token === "demo-token") {
-    const receipt = demoReceipts.find((item) => item.id === id);
-    if (!receipt) {
-      throw new Error("Receipt not found.");
-    }
-    return receipt;
-  }
-
   const response = await apiFetch<{ receipt: ReceiptRecord }>(`/receipts/${id}`, token);
   return response.receipt;
 }
 
 export async function getReceiptAssetUrl(token: string, id: number): Promise<string | null> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return null;
-  }
-
   const response = await apiFetch<{ asset: { downloadUrl: string } }>(`/receipts/${id}/asset-url`, token);
   return response.asset.downloadUrl;
 }
@@ -129,14 +112,6 @@ export async function saveReceipt(
   id: number,
   payload: Partial<ReceiptRecord>,
 ): Promise<ReceiptRecord> {
-  if (!API_BASE_URL || token === "demo-token") {
-    const current = demoReceipts.find((item) => item.id === id);
-    if (!current) {
-      throw new Error("Receipt not found.");
-    }
-    return { ...current, ...payload };
-  }
-
   const response = await apiFetch<{ receipt: ReceiptRecord }>(`/receipts/${id}`, token, {
     method: "PUT",
     body: JSON.stringify(payload),
@@ -145,36 +120,17 @@ export async function saveReceipt(
 }
 
 export async function deleteReceipt(token: string, id: number): Promise<void> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return;
-  }
-
   await apiFetch(`/receipts/${id}`, token, {
     method: "DELETE",
   });
 }
 
 export async function listClaims(token: string): Promise<ClaimRecord[]> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return demoClaims;
-  }
-
   const response = await apiFetch<{ claims: ClaimRecord[] }>("/claims?limit=200", token);
   return response.claims;
 }
 
 export async function getClaim(token: string, id: number): Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }> {
-  if (!API_BASE_URL || token === "demo-token") {
-    const claim = demoClaims.find((item) => item.id === id);
-    if (!claim) {
-      throw new Error("Claim not found.");
-    }
-    return {
-      claim,
-      receipts: demoReceipts.filter((receipt) => receipt.claimId === id),
-    };
-  }
-
   return apiFetch(`/claims/${id}`, token);
 }
 
@@ -183,14 +139,6 @@ export async function updateClaimStatus(
   id: number,
   status: ClaimRecord["status"],
 ): Promise<ClaimRecord> {
-  if (!API_BASE_URL || token === "demo-token") {
-    const claim = demoClaims.find((item) => item.id === id);
-    if (!claim) {
-      throw new Error("Claim not found.");
-    }
-    return { ...claim, status };
-  }
-
   const response = await apiFetch<{ claim: ClaimRecord }>(`/claims/${id}`, token, {
     method: "PUT",
     body: JSON.stringify({ status }),
@@ -199,10 +147,6 @@ export async function updateClaimStatus(
 }
 
 export async function listRules(token: string): Promise<SupplierRule[]> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return demoRules;
-  }
-
   const response = await apiFetch<{ rules: SupplierRule[] }>("/rules", token);
   return response.rules;
 }
@@ -211,17 +155,6 @@ export async function saveRule(
   token: string,
   payload: Partial<SupplierRule> & Pick<SupplierRule, "supplierMatchText" | "category" | "taxRate" | "paymentMethod" | "isActive">,
 ): Promise<SupplierRule> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return {
-      id: payload.id ?? Math.floor(Math.random() * 100000),
-      supplierMatchText: payload.supplierMatchText,
-      category: payload.category,
-      taxRate: payload.taxRate,
-      paymentMethod: payload.paymentMethod,
-      isActive: payload.isActive,
-    };
-  }
-
   const response = await apiFetch<{ rule: SupplierRule }>("/rules", token, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -230,20 +163,12 @@ export async function saveRule(
 }
 
 export async function removeRule(token: string, id: number): Promise<void> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return;
-  }
-
   await apiFetch(`/rules/${id}`, token, {
     method: "DELETE",
   });
 }
 
 export async function listReconciliation(token: string): Promise<ReconciliationLine[]> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return demoReconciliation;
-  }
-
   const response = await apiFetch<{ lines: ReconciliationLine[] }>("/reconciliation", token);
   return response.lines.map((line) => ({
     ...line,
@@ -258,10 +183,6 @@ export async function matchReconciliation(
   bankTransactionId: number,
   receiptId: number,
 ): Promise<void> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return;
-  }
-
   await apiFetch("/reconciliation/match", token, {
     method: "POST",
     body: JSON.stringify({ bankTransactionId, receiptId }),
@@ -272,18 +193,6 @@ export async function createRequisition(
   token: string,
   input: { provider?: string; institutionId?: string },
 ): Promise<BankRequisition> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return {
-      id: Date.now(),
-      provider: input.provider ?? "truelayer",
-      externalRequisitionId: `req_${Date.now()}`,
-      institutionId: input.institutionId ?? null,
-      status: "pending",
-      redirectUrl: "https://console.truelayer.com",
-      callbackState: "demo-state",
-    };
-  }
-
   const response = await apiFetch<{ requisition: BankRequisition }>("/requisitions", token, {
     method: "POST",
     body: JSON.stringify(input),
@@ -295,14 +204,6 @@ export async function completeBankCallback(
   token: string,
   input: { state: string; requisitionId?: string | null; consentId?: string | null },
 ): Promise<{ linked: boolean; state: string; externalRequisitionId: string | null }> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return {
-      linked: true,
-      state: input.state,
-      externalRequisitionId: input.requisitionId ?? input.consentId ?? null,
-    };
-  }
-
   const params = new URLSearchParams();
   params.set("state", input.state);
   if (input.requisitionId) {
@@ -326,10 +227,6 @@ export async function completeBankCallback(
 }
 
 export async function getSettings(token: string): Promise<OrganisationSettings> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return demoSettings;
-  }
-
   const response = await apiFetch<{ settings: OrganisationSettings }>("/settings", token);
   return response.settings;
 }
@@ -338,13 +235,6 @@ export async function saveSettings(
   token: string,
   payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">,
 ): Promise<OrganisationSettings> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return {
-      ...demoSettings,
-      ...payload,
-    };
-  }
-
   const response = await apiFetch<{ settings: OrganisationSettings }>("/settings", token, {
     method: "PUT",
     body: JSON.stringify(payload),
@@ -357,10 +247,6 @@ export async function uploadDocuments(
   workspaceContext: "cost" | "sales",
   files: File[],
 ): Promise<void> {
-  if (!API_BASE_URL || token === "demo-token") {
-    return;
-  }
-
   await Promise.all(
     files.map(async (file) => {
       const formData = new FormData();
@@ -369,7 +255,7 @@ export async function uploadDocuments(
       formData.set("document_type", workspaceContext === "sales" ? "invoice" : "receipt");
       formData.set("payment_method", workspaceContext === "sales" ? "bank_transfer" : "business_card");
 
-      const response = await fetch(`${API_BASE_URL}/expenses/process`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/expenses/process`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -377,8 +263,12 @@ export async function uploadDocuments(
         body: formData,
       });
 
+      const payload = response.headers.get("content-type")?.includes("application/json")
+        ? ((await response.json()) as { message?: string })
+        : null;
+
       if (!response.ok) {
-        throw new Error(`Upload failed for ${file.name}`);
+        throw new Error(payload?.message || `Upload failed for ${file.name}`);
       }
     }),
   );
@@ -392,8 +282,8 @@ async function apiFetch<T = Record<string, never>>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -401,9 +291,13 @@ async function apiFetch<T = Record<string, never>>(
   const payload = (await response.json()) as T & {
     success?: boolean;
     message?: string;
+    error?: string;
   };
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearStoredSession();
+    }
     throw new Error(payload.message || "API request failed.");
   }
 

@@ -10,6 +10,7 @@ import {
 } from "react-router-dom";
 
 import {
+  clearStoredSession,
   completeBankCallback,
   createRequisition,
   deleteReceipt,
@@ -22,6 +23,7 @@ import {
   listReceipts,
   listReconciliation,
   listRules,
+  loginWithEmail,
   loadStoredSession,
   matchReconciliation,
   removeRule,
@@ -86,6 +88,33 @@ export function App() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const loadWorkspace = async (token: string) => {
+    const nextSession = await fetchSession(token);
+    const businessAdmin = isBusinessAdmin(nextSession);
+    const [costs, sales, claims, rules, reconciliation, settings] = await Promise.all([
+      listReceipts(token, "cost"),
+      businessAdmin ? listReceipts(token, "sales") : Promise.resolve([]),
+      businessAdmin ? listClaims(token) : Promise.resolve([]),
+      businessAdmin ? listRules(token) : Promise.resolve([]),
+      businessAdmin ? listReconciliation(token) : Promise.resolve([]),
+      businessAdmin ? getSettings(token) : Promise.resolve(null),
+    ]);
+
+    setSession(nextSession);
+    setStore({
+      costs,
+      sales,
+      claims,
+      rules,
+      reconciliation,
+      settings,
+    });
+    setError(null);
+    setAuthError(null);
+  };
 
   useEffect(() => {
     const stored = loadStoredSession();
@@ -94,30 +123,11 @@ export function App() {
       return;
     }
 
-    fetchSession(stored.token)
-      .then(async (nextSession) => {
-        const businessAdmin = isBusinessAdmin(nextSession);
-        const [costs, sales, claims, rules, reconciliation, settings] = await Promise.all([
-          listReceipts(stored.token, "cost"),
-          businessAdmin ? listReceipts(stored.token, "sales") : Promise.resolve([]),
-          businessAdmin ? listClaims(stored.token) : Promise.resolve([]),
-          businessAdmin ? listRules(stored.token) : Promise.resolve([]),
-          businessAdmin ? listReconciliation(stored.token) : Promise.resolve([]),
-          businessAdmin ? getSettings(stored.token) : Promise.resolve(null),
-        ]);
-
-        setSession(nextSession);
-        setStore({
-          costs,
-          sales,
-          claims,
-          rules,
-          reconciliation,
-          settings,
-        });
-      })
+    loadWorkspace(stored.token)
       .catch((nextError: Error) => {
+        clearStoredSession();
         setError(nextError.message);
+        setSession(null);
       })
       .finally(() => {
         setLoading(false);
@@ -139,7 +149,26 @@ export function App() {
   }
 
   if (!session) {
-    return <LoginState />;
+    return (
+      <LoginState
+        busy={authBusy}
+        error={authError}
+        onLogin={async (email, password) => {
+          setAuthBusy(true);
+          setAuthError(null);
+          setError(null);
+          try {
+            const nextSession = await loginWithEmail({ email, password });
+            await loadWorkspace(nextSession.token);
+          } catch (loginError) {
+            setSession(null);
+            setAuthError(loginError instanceof Error ? loginError.message : "Sign in failed.");
+          } finally {
+            setAuthBusy(false);
+          }
+        }}
+      />
+    );
   }
 
   const defaultRoute = getDefaultRoute(session);
@@ -243,7 +272,7 @@ export function App() {
                 settings: saved,
               }));
             }}
-            onActiveOrganisationChange={(organisationId) => {
+            onActiveOrganisationChange={async (organisationId) => {
               setSession((current) => {
                 if (!current || current.activeOrganisationId === organisationId) {
                   return current;
@@ -256,6 +285,21 @@ export function App() {
                 saveStoredSession(nextSession);
                 return nextSession;
               });
+              await loadWorkspace(session.token);
+            }}
+            onSignOut={() => {
+              clearStoredSession();
+              setSession(null);
+              setStore({
+                costs: [],
+                sales: [],
+                claims: [],
+                rules: [],
+                reconciliation: [],
+                settings: null,
+              });
+              setError(null);
+              setAuthError(null);
             }}
             loadReceipt={async (id) => {
               const [receipt, assetUrl] = await Promise.all([
@@ -293,11 +337,13 @@ function DashboardShell(props: {
     consentId?: string | null;
   }) => Promise<{ linked: boolean; state: string; externalRequisitionId: string | null }>;
   onSettingsSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
-  onActiveOrganisationChange: (organisationId: number) => void;
+  onActiveOrganisationChange: (organisationId: number) => Promise<void>;
+  onSignOut: () => void;
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null }>;
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
 }) {
   const [uploadBusy, setUploadBusy] = useState(false);
+  const location = useLocation();
   const businessAdmin = isBusinessAdmin(props.session);
   const visibleNavItems = businessAdmin
     ? navItems.filter((item) => isRouteAllowed(props.session, item.to))
@@ -356,6 +402,9 @@ function DashboardShell(props: {
             </select>
             <button className="icon-button" type="button" aria-label="Notifications">
               3
+            </button>
+            <button className="secondary-action" type="button" onClick={props.onSignOut}>
+              Sign out
             </button>
             {businessAdmin ? (
               <>
@@ -576,14 +625,21 @@ function OverviewPage({ store }: { store: AppStore }) {
             <span>Supplier rules</span>
           </div>
           <ul className="summary-list">
-            {store.rules.slice(0, 4).map((rule) => (
-              <li key={rule.id}>
-                <strong>{rule.supplierMatchText}</strong>
-                <span>
-                  {rule.category} | {rule.taxRate} | {rule.paymentMethod}
-                </span>
+            {store.rules.length ? (
+              store.rules.slice(0, 4).map((rule) => (
+                <li key={rule.id}>
+                  <strong>{rule.supplierMatchText}</strong>
+                  <span>
+                    {rule.category} | {rule.taxRate} | {rule.paymentMethod}
+                  </span>
+                </li>
+              ))
+            ) : (
+              <li>
+                <strong>No supplier rules yet</strong>
+                <span>Automation rules will appear here once they are created.</span>
               </li>
-            ))}
+            )}
           </ul>
         </article>
       </section>
@@ -736,7 +792,7 @@ function DocumentWorkspacePage(props: {
           <div className="document-placeholder">
             <img className="placeholder-logo" src={brandMarkSrc} alt="exdox preview placeholder" />
             <strong>S3 document preview</strong>
-            <p>The secure asset URL resolves here when the API is configured. Demo mode keeps the viewer stateful without exposing a bucket.</p>
+            <p>The secure source file preview will appear here when the stored document asset is available.</p>
           </div>
         )}
       </section>
@@ -1618,17 +1674,54 @@ function StatusPill({ status }: { status: "pending" | "approved" | "paid" | "rej
   return <span className={`status-pill status-${normalized.toLowerCase()}`}>{status}</span>;
 }
 
-function LoginState() {
+function LoginState(props: {
+  busy: boolean;
+  error: string | null;
+  onLogin: (email: string, password: string) => Promise<void>;
+}) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   return (
     <div className="login-state">
       <div className="login-panel">
         <img className="login-logo" src={brandLogoSrc} alt="exdox" />
-        <strong>Authentication required</strong>
-        <p>
-          Store an `exdox-auth-session-v1` token in local storage or configure `VITE_EXDOX_API_BASE_URL`
-          against the AWS-backed API. The dashboard falls back to seeded demo data until a live session is
-          available.
-        </p>
+        <strong>Sign in to exdox</strong>
+        <p>Use the same email address and password that you already use in the mobile app.</p>
+        <form
+          className="login-form"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            await props.onLogin(email, password);
+          }}
+        >
+          <label>
+            Email
+            <input
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="name@company.com"
+              required
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Enter your password"
+              required
+            />
+          </label>
+          {props.error ? <div className="error-banner">{props.error}</div> : null}
+          <button className="primary-action login-submit" type="submit" disabled={props.busy}>
+            {props.busy ? "Signing in..." : "Sign in"}
+          </button>
+        </form>
       </div>
     </div>
   );
