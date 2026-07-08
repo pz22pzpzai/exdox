@@ -959,6 +959,7 @@ function RulesPage(props: {
   onDelete: (id: number) => Promise<void>;
 }) {
   const [draft, setDraft] = useState({
+    id: undefined as number | undefined,
     supplierMatchText: "",
     category: "",
     taxRate: "20% Standard",
@@ -970,7 +971,7 @@ function RulesPage(props: {
     <div className="stack-page rules-layout">
       <section className="panel">
         <div className="panel-heading">
-          <h2>Create new rule</h2>
+          <h2>{draft.id ? "Edit rule" : "Create new rule"}</h2>
           <span>Automation layer</span>
         </div>
         <div className="form-grid">
@@ -1006,6 +1007,16 @@ function RulesPage(props: {
               <option value="not_applicable">Not applicable</option>
             </select>
           </label>
+          <label className="toggle-field">
+            Rule Active
+            <button
+              className={`toggle-button${draft.isActive ? " on" : ""}`}
+              type="button"
+              onClick={() => setDraft({ ...draft, isActive: !draft.isActive })}
+            >
+              {draft.isActive ? "Active" : "Inactive"}
+            </button>
+          </label>
         </div>
         <div className="toolbar">
           <button
@@ -1014,6 +1025,7 @@ function RulesPage(props: {
             onClick={async () => {
               await props.onSave(draft);
               setDraft({
+                id: undefined,
                 supplierMatchText: "",
                 category: "",
                 taxRate: "20% Standard",
@@ -1022,8 +1034,26 @@ function RulesPage(props: {
               });
             }}
           >
-            Create New Rule
+            {draft.id ? "Save Rule" : "Create New Rule"}
           </button>
+          {draft.id ? (
+            <button
+              className="secondary-action"
+              type="button"
+              onClick={() =>
+                setDraft({
+                  id: undefined,
+                  supplierMatchText: "",
+                  category: "",
+                  taxRate: "20% Standard",
+                  paymentMethod: "business_card",
+                  isActive: true,
+                })
+              }
+            >
+              Cancel Edit
+            </button>
+          ) : null}
         </div>
       </section>
 
@@ -1038,12 +1068,30 @@ function RulesPage(props: {
               <div>
                 <strong>IF supplier contains "{rule.supplierMatchText}"</strong>
                 <p>
-                  Category = {rule.category} | Tax Rate = {rule.taxRate} | Payment Method = {rule.paymentMethod}
+                  Category = {rule.category} | Tax Rate = {rule.taxRate} | Payment Method = {rule.paymentMethod} | {rule.isActive ? "Active" : "Inactive"}
                 </p>
               </div>
-              <button className="danger-action" type="button" onClick={() => props.onDelete(rule.id)}>
-                Delete
-              </button>
+              <div className="toolbar">
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={() =>
+                    setDraft({
+                      id: rule.id,
+                      supplierMatchText: rule.supplierMatchText,
+                      category: rule.category,
+                      taxRate: rule.taxRate,
+                      paymentMethod: rule.paymentMethod,
+                      isActive: rule.isActive,
+                    })
+                  }
+                >
+                  Edit
+                </button>
+                <button className="danger-action" type="button" onClick={() => props.onDelete(rule.id)}>
+                  Delete
+                </button>
+              </div>
             </article>
           ))}
         </div>
