@@ -144,12 +144,31 @@ export function App() {
             store={store}
             error={error}
             onUpload={async (workspaceContext, files) => {
-              await uploadDocuments(session.token, workspaceContext, files);
-              const refreshed = await listReceipts(session.token, workspaceContext);
+              const pendingReceipts = buildPendingReceipts(session, workspaceContext, files);
+              const targetKey = workspaceContext === "cost" ? "costs" : "sales";
+              setError(null);
               setStore((current) => ({
                 ...current,
-                [workspaceContext === "cost" ? "costs" : "sales"]: refreshed,
+                [targetKey]: [...pendingReceipts, ...current[targetKey]],
               }));
+
+              try {
+                await uploadDocuments(session.token, workspaceContext, files);
+                const refreshed = await listReceipts(session.token, workspaceContext);
+                setStore((current) => ({
+                  ...current,
+                  [targetKey]: refreshed,
+                }));
+              } catch (uploadError) {
+                setStore((current) => ({
+                  ...current,
+                  [targetKey]: current[targetKey].filter(
+                    (receipt) => !pendingReceipts.some((pending) => pending.id === receipt.id),
+                  ),
+                }));
+                setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+                throw uploadError;
+              }
             }}
             onReceiptSave={async (id, payload) => {
               const saved = await saveReceipt(session.token, id, payload);
@@ -1367,6 +1386,43 @@ function currency(value: number | null) {
 
 function sumGross(records: ReceiptRecord[]) {
   return records.reduce((sum, record) => sum + (record.totalAmount ?? 0), 0);
+}
+
+function buildPendingReceipts(
+  session: SessionState,
+  workspaceContext: "cost" | "sales",
+  files: File[],
+): ReceiptRecord[] {
+  const now = new Date().toISOString();
+  const baseId = Date.now();
+
+  return files.map((file, index) => ({
+    id: -(baseId + index),
+    organisationId: session.activeOrganisationId,
+    workspaceContext,
+    paymentMethod: workspaceContext === "sales" ? "bank_transfer" : "business_card",
+    claimId: null,
+    status: "Processing",
+    category: workspaceContext === "sales" ? "Accounts receivable" : "Uncategorised",
+    receiptSource: "web_upload",
+    sourceFilename: file.name,
+    sourceMimeType: file.type || "application/octet-stream",
+    s3Bucket: "",
+    s3Key: "",
+    vendorName: null,
+    invoiceDate: null,
+    dueDate: null,
+    invoiceNumber: null,
+    currency: "GBP",
+    totalAmount: null,
+    netAmount: null,
+    vatAmount: null,
+    taxRateApplied: null,
+    needsReview: true,
+    rawTextSummary: "Uploading into processing queue...",
+    createdAt: now,
+    updatedAt: now,
+  }));
 }
 
 function sourceLabel(source: ReceiptRecord["receiptSource"]) {
