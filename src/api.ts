@@ -18,23 +18,26 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_EXDOX_API_BASE_URL?.replace(/\/$/, "") ?? "";
 const SESSION_STORAGE_KEY = "exdox-auth-session-v1";
+const EMPLOYEE_VISIBLE_RECEIPT_IDS = new Set([502]);
 
 export function loadStoredSession(): SessionState | null {
+  const override = resolveDemoSessionOverride();
   const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
   if (!raw) {
-    return demoSession;
+    return override ?? demoSession;
   }
 
   try {
-    return JSON.parse(raw) as SessionState;
+    const parsed = JSON.parse(raw) as SessionState;
+    return override ? { ...parsed, ...override, token: override.token } : parsed;
   } catch {
-    return demoSession;
+    return override ?? demoSession;
   }
 }
 
 export async function fetchSession(token: string): Promise<SessionState> {
   if (!API_BASE_URL || token === "demo-token") {
-    return demoSession;
+    return resolveDemoSessionOverride() ?? demoSession;
   }
 
   const response = await apiFetch<{ user: SessionState["user"]; organisations: SessionState["organisations"]; activeOrganisationId: number; allowedWebRoutes?: string[] }>(
@@ -56,7 +59,12 @@ export async function listReceipts(
   workspaceContext: "cost" | "sales",
 ): Promise<ReceiptRecord[]> {
   if (!API_BASE_URL || token === "demo-token") {
-    return demoReceipts.filter((receipt) => receipt.workspaceContext === workspaceContext);
+    const session = resolveDemoSessionOverride() ?? demoSession;
+    return demoReceipts
+      .filter((receipt) => receipt.workspaceContext === workspaceContext)
+      .filter((receipt) =>
+        session.user.role === "Business_Admin" ? true : EMPLOYEE_VISIBLE_RECEIPT_IDS.has(receipt.id),
+      );
   }
 
   const response = await apiFetch<{ receipts: ReceiptRecord[] }>(
@@ -64,6 +72,30 @@ export async function listReceipts(
     token,
   );
   return response.receipts;
+}
+
+function resolveDemoSessionOverride(): SessionState | null {
+  const params = new URLSearchParams(window.location.search);
+  const requestedRole = params.get("demoRole");
+  if (requestedRole !== "employee" && requestedRole !== "admin") {
+    return null;
+  }
+
+  if (requestedRole === "employee") {
+    return {
+      ...demoSession,
+      user: {
+        ...demoSession.user,
+        id: 22,
+        email: "employee@exdox.co.uk",
+        fullName: "Employee User",
+        role: "Standard_Employee",
+      },
+      allowedWebRoutes: ["/dropbox"],
+    };
+  }
+
+  return demoSession;
 }
 
 export async function getReceipt(token: string, id: number): Promise<ReceiptRecord> {
