@@ -91,16 +91,21 @@ export function App() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const loadWorkspace = async (token: string) => {
-    const nextSession = await fetchSession(token);
+  const loadWorkspace = async (token: string, fallbackSession?: SessionState | null) => {
+    const nextSession = await fetchSession(token).catch((error) => {
+      if (fallbackSession) {
+        return fallbackSession;
+      }
+      throw error;
+    });
     const businessAdmin = isBusinessAdmin(nextSession);
     const [costs, sales, claims, rules, reconciliation, settings] = await Promise.all([
       listReceipts(token, "cost"),
       businessAdmin ? listReceipts(token, "sales") : Promise.resolve([]),
       businessAdmin ? listClaims(token) : Promise.resolve([]),
-      businessAdmin ? listRules(token) : Promise.resolve([]),
-      businessAdmin ? listReconciliation(token) : Promise.resolve([]),
-      businessAdmin ? getSettings(token) : Promise.resolve(null),
+      businessAdmin ? listRules(token).catch(() => []) : Promise.resolve([]),
+      businessAdmin ? listReconciliation(token).catch(() => []) : Promise.resolve([]),
+      businessAdmin ? getSettings(token).catch(() => null) : Promise.resolve(null),
     ]);
 
     setSession(nextSession);
@@ -123,7 +128,7 @@ export function App() {
       return;
     }
 
-    loadWorkspace(stored.token)
+    loadWorkspace(stored.token, stored)
       .catch((nextError: Error) => {
         clearStoredSession();
         setError(nextError.message);
@@ -159,7 +164,7 @@ export function App() {
           setError(null);
           try {
             const nextSession = await loginWithEmail({ email, password });
-            await loadWorkspace(nextSession.token);
+            await loadWorkspace(nextSession.token, nextSession);
           } catch (loginError) {
             setSession(null);
             setAuthError(loginError instanceof Error ? loginError.message : "Sign in failed.");
@@ -285,7 +290,7 @@ export function App() {
                 saveStoredSession(nextSession);
                 return nextSession;
               });
-              await loadWorkspace(session.token);
+              await loadWorkspace(session.token, session);
             }}
             onSignOut={() => {
               clearStoredSession();

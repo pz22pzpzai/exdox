@@ -4,6 +4,7 @@ import type {
   OrganisationSettings,
   ReceiptRecord,
   ReconciliationLine,
+  SessionUser,
   SessionState,
   SupplierRule,
 } from "./types";
@@ -69,8 +70,14 @@ export async function loginWithEmail(input: { email: string; password: string })
     throw new Error(("message" in payload && payload.message) || "Authentication failed.");
   }
 
-  const session = await fetchSession(payload.token);
-  const hydrated = { ...session, token: payload.token };
+  let hydrated: SessionState;
+  try {
+    const session = await fetchSession(payload.token);
+    hydrated = { ...session, token: payload.token };
+  } catch {
+    hydrated = buildFallbackSession(payload.token, payload.user);
+  }
+
   saveStoredSession(hydrated);
   return hydrated;
 }
@@ -308,4 +315,22 @@ async function apiFetch<T = Record<string, never>>(
   }
 
   return payload;
+}
+
+export function buildFallbackSession(token: string, user: SessionUser): SessionState {
+  return {
+    token,
+    user,
+    organisations: [
+      {
+        id: user.organisationId,
+        name: "Primary organisation",
+      },
+    ],
+    activeOrganisationId: user.organisationId,
+    allowedWebRoutes:
+      user.role === "Business_Admin"
+        ? ["/overview", "/costs", "/sales", "/claims", "/rules", "/reconciliation", "/settings", "/requisitions", "/bank-callback"]
+        : ["/dropbox"],
+  };
 }
