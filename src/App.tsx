@@ -152,7 +152,7 @@ export function App() {
     return (
       <LoginState
         busy={authBusy}
-        error={authError}
+        error={authError ?? error}
         onLogin={async (email, password) => {
           setAuthBusy(true);
           setAuthError(null);
@@ -345,6 +345,11 @@ function DashboardShell(props: {
   const [uploadBusy, setUploadBusy] = useState(false);
   const location = useLocation();
   const businessAdmin = isBusinessAdmin(props.session);
+  const notificationCount =
+    props.store.costs.filter((receipt) => receipt.needsReview).length +
+    props.store.sales.filter((receipt) => receipt.needsReview).length +
+    props.store.claims.filter((claim) => claim.status === "pending").length +
+    props.store.reconciliation.filter((line) => line.status === "Open").length;
   const visibleNavItems = businessAdmin
     ? navItems.filter((item) => isRouteAllowed(props.session, item.to))
     : [{ to: "/dropbox", label: "My Drop Box" }];
@@ -400,8 +405,13 @@ function DashboardShell(props: {
                 </option>
               ))}
             </select>
-            <button className="icon-button" type="button" aria-label="Notifications">
-              3
+            <button
+              className="icon-button"
+              type="button"
+              aria-label={`Notifications: ${notificationCount}`}
+              title={`${notificationCount} items need attention`}
+            >
+              {notificationCount}
             </button>
             <button className="secondary-action" type="button" onClick={props.onSignOut}>
               Sign out
@@ -602,7 +612,7 @@ function OverviewPage({ store }: { store: AppStore }) {
         <article className="panel">
           <div className="panel-heading">
             <h2>Inbox throughput</h2>
-            <span>Last 7 days</span>
+            <span>Live totals</span>
           </div>
           <div className="status-strip">
             {(["Processing", "Review", "Ready", "Published"] as InboxStatus[]).map((status) => (
