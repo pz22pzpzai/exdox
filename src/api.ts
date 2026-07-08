@@ -35,6 +35,10 @@ export function loadStoredSession(): SessionState | null {
   }
 }
 
+export function saveStoredSession(session: SessionState) {
+  window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+}
+
 export async function fetchSession(token: string): Promise<SessionState> {
   if (!API_BASE_URL || token === "demo-token") {
     return resolveDemoSessionOverride() ?? demoSession;

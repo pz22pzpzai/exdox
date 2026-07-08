@@ -25,6 +25,7 @@ import {
   loadStoredSession,
   matchReconciliation,
   removeRule,
+  saveStoredSession,
   saveReceipt,
   saveRule,
   saveSettings,
@@ -229,6 +230,20 @@ export function App() {
                 settings: saved,
               }));
             }}
+            onActiveOrganisationChange={(organisationId) => {
+              setSession((current) => {
+                if (!current || current.activeOrganisationId === organisationId) {
+                  return current;
+                }
+
+                const nextSession = {
+                  ...current,
+                  activeOrganisationId: organisationId,
+                };
+                saveStoredSession(nextSession);
+                return nextSession;
+              });
+            }}
             loadReceipt={async (id) => {
               const [receipt, assetUrl] = await Promise.all([
                 getReceipt(session.token, id),
@@ -265,6 +280,7 @@ function DashboardShell(props: {
     consentId?: string | null;
   }) => Promise<{ linked: boolean; state: string; externalRequisitionId: string | null }>;
   onSettingsSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
+  onActiveOrganisationChange: (organisationId: number) => void;
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null }>;
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
 }) {
@@ -312,7 +328,11 @@ function DashboardShell(props: {
             <h1>{businessAdmin ? routeTitle(location.pathname) : "Employee Drop Box"}</h1>
           </div>
           <div className="topbar-actions">
-            <select className="org-selector" defaultValue={props.session.activeOrganisationId}>
+            <select
+              className="org-selector"
+              value={props.session.activeOrganisationId}
+              onChange={(event) => props.onActiveOrganisationChange(Number(event.target.value))}
+            >
               {props.session.organisations.map((organisation) => (
                 <option key={organisation.id} value={organisation.id}>
                   {organisation.name}
