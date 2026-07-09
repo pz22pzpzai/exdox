@@ -54,14 +54,14 @@ const taxRates: TaxRate[] = [
 ];
 
 const navItems = [
-  { to: "/overview", label: "Overview" },
-  { to: "/costs", label: "Costs Inbox" },
-  { to: "/sales", label: "Sales Inbox" },
-  { to: "/claims", label: "Expense Claims" },
-  { to: "/rules", label: "Supplier Rules" },
-  { to: "/reconciliation", label: "Bank Reconciliation" },
-  { to: "/settings", label: "Company Settings" },
-  { to: "/requisitions", label: "Open Banking" },
+  { to: "/overview", label: "Overview", icon: "overview" },
+  { to: "/costs", label: "Costs Inbox", icon: "costs" },
+  { to: "/sales", label: "Sales Inbox", icon: "sales" },
+  { to: "/claims", label: "Expense Claims", icon: "claims" },
+  { to: "/rules", label: "Supplier Rules", icon: "rules" },
+  { to: "/reconciliation", label: "Bank Reconciliation", icon: "bank" },
+  { to: "/settings", label: "Company Settings", icon: "settings" },
+  { to: "/requisitions", label: "Open Banking", icon: "open-banking" },
 ];
 
 const brandLogoSrc = "/branding/exdox-logo.png";
@@ -77,6 +77,7 @@ type AppStore = {
 };
 
 export function App() {
+  const location = useLocation();
   const [session, setSession] = useState<SessionState | null>(null);
   const [store, setStore] = useState<AppStore>({
     costs: [],
@@ -151,6 +152,10 @@ export function App() {
         </div>
       </div>
     );
+  }
+
+  if (!session && location.pathname !== "/login") {
+    return <PublicHome />;
   }
 
   if (!session) {
@@ -357,7 +362,7 @@ function DashboardShell(props: {
     props.store.reconciliation.filter((line) => line.status === "Open").length;
   const visibleNavItems = businessAdmin
     ? navItems.filter((item) => isRouteAllowed(props.session, item.to))
-    : [{ to: "/dropbox", label: "My Drop Box" }];
+    : [{ to: "/dropbox", label: "My Drop Box", icon: "costs" }];
   const defaultRoute = getDefaultRoute(props.session);
 
   return (
@@ -365,13 +370,8 @@ function DashboardShell(props: {
       <aside className="sidebar">
         <div>
           <div className="brand-lockup">
-            <div className="brand-logo-shell">
-              <img className="brand-logo" src={brandLogoSrc} alt="exdox" />
-            </div>
-            <div>
-              <strong>exdox</strong>
-              <span>Pre-accounting dashboard</span>
-            </div>
+            <img className="brand-mark" src={brandMarkSrc} alt="" />
+            <strong>exdox</strong>
           </div>
           <nav className="sidebar-nav" aria-label="Primary">
             {visibleNavItems.map((item) => (
@@ -380,6 +380,7 @@ function DashboardShell(props: {
                 className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}
                 to={item.to}
               >
+                <NavIcon name={item.icon} />
                 {item.label}
               </NavLink>
             ))}
@@ -395,7 +396,7 @@ function DashboardShell(props: {
       <main className="workspace">
         <header className="topbar">
           <div>
-            <p className="topbar-kicker">Active workspace</p>
+            <p className="topbar-kicker">{props.session.organisations[0]?.name ?? "Active workspace"}</p>
             <h1>{businessAdmin ? routeTitle(location.pathname) : "Employee Drop Box"}</h1>
           </div>
           <div className="topbar-actions">
@@ -1699,47 +1700,144 @@ function LoginState(props: {
 
   return (
     <div className="login-state">
-      <div className="login-panel">
-        <img className="login-logo" src={brandLogoSrc} alt="exdox" />
-        <strong>Sign in to exdox</strong>
-        <p>Use the same email address and password that you already use in the mobile app.</p>
-        <form
-          className="login-form"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            await props.onLogin(email, password);
-          }}
-        >
-          <label>
-            Email
-            <input
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="name@company.com"
-              required
-            />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Enter your password"
-              required
-            />
-          </label>
-          {props.error ? <div className="error-banner">{props.error}</div> : null}
-          <button className="primary-action login-submit" type="submit" disabled={props.busy}>
-            {props.busy ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
+      <div className="login-shell">
+        <header className="login-header">
+          <div className="login-brand">
+            <img src={brandMarkSrc} alt="" />
+            <strong>exdox</strong>
+          </div>
+        </header>
+        <main className="login-main">
+          <section className="login-visual" aria-label="Secure receipt capture">
+            <img src="/branding/exdox-login-hero.png" alt="Cafe owner capturing a receipt with exdox" />
+            <span className="login-callout callout-snap">Snap &amp; Sync</span>
+            <span className="login-callout callout-hmrc">HMRC-Compliant Capture</span>
+            <span className="login-callout callout-total">Total Expense View</span>
+          </section>
+          <div className="login-panel">
+            <h1>Log in to your exdox Workspace</h1>
+            <p>Use the same details as your mobile app.</p>
+            <form
+              className="login-form"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                await props.onLogin(email, password);
+              }}
+            >
+              <label>
+                Registered Email
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="your.name@company.co.uk"
+                  required
+                />
+              </label>
+              <label>
+                Password
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Enter your password"
+                  required
+                />
+              </label>
+              {props.error ? <div className="error-banner">{props.error}</div> : null}
+              <button className="primary-action login-submit" type="submit" disabled={props.busy}>
+                {props.busy ? "Signing in..." : "Get Access"}
+              </button>
+            </form>
+            <div className="login-links">
+              <span>Forgot Password?</span>
+              <span>Request Demo Access</span>
+            </div>
+          </div>
+        </main>
+        <footer className="login-footer">
+          <span>Legal &nbsp; | &nbsp; Privacy</span>
+          <span>Compatible with Xero, QuickBooks and Sage</span>
+          <span>© {new Date().getFullYear()} exdox.co.uk</span>
+        </footer>
       </div>
     </div>
   );
+}
+
+function PublicHome() {
+  return (
+    <div className="public-home">
+      <header className="public-header">
+        <a className="public-brand" href="/" aria-label="exdox home">
+          <img src={brandMarkSrc} alt="" />
+          <strong>exdox</strong>
+        </a>
+        <nav className="public-nav" aria-label="Website">
+          <a className="active" href="#home">Home</a>
+          <a href="#platform">Platform</a>
+          <a href="#integration">Integration</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#company">Company</a>
+        </nav>
+        <div className="public-actions">
+          <a href="/login">Log In</a>
+          <a className="public-button" href="mailto:hello@exdox.co.uk">Request Demo</a>
+        </div>
+      </header>
+
+      <main>
+        <section className="public-hero" id="home">
+          <div className="public-hero-copy">
+            <h1>Automate Your Accounts Payable. Instant, Accurate, Integrated.</h1>
+            <p>exdox captures invoice data and syncs it directly to your accounting workflow.</p>
+            <a className="public-primary" href="/login">Start Your Free Trial</a>
+            <span>No credit card required.</span>
+          </div>
+          <img src="/branding/exdox-platform-hero.png" alt="Connected exdox accounting workspace" />
+        </section>
+
+        <section className="capabilities-band" id="platform">
+          <h2>Key Platform Capabilities</h2>
+          <div className="capabilities-grid">
+            <article><NavIcon name="costs" /><strong>Invoice Capture</strong><span>AI-Powered Scanner</span></article>
+            <article><NavIcon name="rules" /><strong>Supplier Management</strong><span>Consistent coding</span></article>
+            <article><NavIcon name="claims" /><strong>Approval Workflows</strong><span>Clear review trails</span></article>
+            <article><NavIcon name="bank" /><strong>Audit Trail</strong><span>Evidence connected</span></article>
+          </div>
+        </section>
+
+        <section className="integration-band" id="integration">
+          <div>
+            <h2>Simple Integration</h2>
+            <p>Keep capture, review and accounting data moving together across your existing finance stack.</p>
+          </div>
+          <div className="integration-names" aria-label="Compatible accounting platforms">
+            <strong>Sage</strong>
+            <strong>Xero</strong>
+            <strong>QuickBooks</strong>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function NavIcon({ name }: { name: string }) {
+  const paths: Record<string, React.ReactNode> = {
+    overview: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></>,
+    costs: <><path d="M6 3h12l2 5-2 5H6L4 8l2-5Z" /><path d="M8 17h8M9 21h6" /></>,
+    sales: <><path d="M4 6h16v12H4z" /><path d="m4 9 8 5 8-5" /></>,
+    claims: <><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 13h6M10 17h6" /></>,
+    rules: <><circle cx="8" cy="8" r="3" /><circle cx="16" cy="16" r="3" /><path d="M10.5 10.5 13.5 13.5M16 3v4M3 16h4" /></>,
+    bank: <><path d="m3 9 9-6 9 6M5 10h14M6 10v8M10 10v8M14 10v8M18 10v8M4 21h16" /></>,
+    settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" /></>,
+    "open-banking": <><path d="M4 7h16v13H4zM8 4h8l2 3H6l2-3Z" /><path d="M8 11h8M8 15h5" /></>,
+  };
+
+  return <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name] ?? paths.overview}</svg>;
 }
 
 function currency(value: number | null) {
