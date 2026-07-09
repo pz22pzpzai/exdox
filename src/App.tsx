@@ -1,5 +1,6 @@
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 import {
+  Link,
   NavLink,
   Navigate,
   Route,
@@ -1771,10 +1772,10 @@ function PublicHome() {
   return (
     <div className="public-home">
       <header className="public-header">
-        <a className="public-brand" href="/" aria-label="exdox home">
+        <Link className="public-brand" to="/" aria-label="exdox home">
           <img src={brandMarkSrc} alt="" />
           <strong>exdox</strong>
-        </a>
+        </Link>
         <nav className="public-nav" aria-label="Website">
           <a className="active" href="#home">Home</a>
           <a href="#platform">Platform</a>
@@ -1783,7 +1784,7 @@ function PublicHome() {
           <a href="#company">Company</a>
         </nav>
         <div className="public-actions">
-          <a href="/login">Log In</a>
+          <Link to="/login">Log In</Link>
           <a className="public-button" href="mailto:hello@exdox.co.uk">Request Demo</a>
         </div>
       </header>
@@ -1793,7 +1794,7 @@ function PublicHome() {
           <div className="public-hero-copy">
             <h1>Automate Your Accounts Payable. Instant, Accurate, Integrated.</h1>
             <p>exdox captures invoice data and syncs it directly to your accounting workflow.</p>
-            <a className="public-primary" href="/login">Start Your Free Trial</a>
+            <Link className="public-primary" to="/login">Start Your Free Trial</Link>
             <span>No credit card required.</span>
           </div>
           <img src="/branding/exdox-platform-hero.png" alt="Connected exdox accounting workspace" />

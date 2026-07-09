@@ -26,6 +26,9 @@ jobs:
       - name: Build website
         run: npm run build
 
+      - name: Copy SPA rewrite config
+        run: cp public/.htaccess dist/.htaccess
+
       - name: Deploy over FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
