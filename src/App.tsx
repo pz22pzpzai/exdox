@@ -1555,28 +1555,30 @@ function DocumentWorkspacePage(props: {
           >
             Delete Document
           </button>
-          <button
-            className="secondary-action"
-            type="button"
-            disabled={saving}
-            onClick={async () => {
-              setSaving(true);
-              setFeedback(null);
-              setError(null);
-              try {
-                const nextReceipt = { ...receipt, status: "Published" as ReceiptRecord["status"] };
-                setReceipt(nextReceipt);
-                await props.onSave(receipt.id, nextReceipt);
-                setFeedback("Receipt published to the accounting workflow.");
-              } catch (publishError) {
-                setError(publishError instanceof Error ? publishError.message : "Could not publish this receipt.");
-              } finally {
-                setSaving(false);
-              }
-            }}
-          >
-            Publish to Accounting Tool
-          </button>
+          {!isVaultRecord ? (
+            <button
+              className="secondary-action"
+              type="button"
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true);
+                setFeedback(null);
+                setError(null);
+                try {
+                  const nextReceipt = { ...receipt, status: "Published" as ReceiptRecord["status"] };
+                  setReceipt(nextReceipt);
+                  await props.onSave(receipt.id, nextReceipt);
+                  setFeedback("Receipt published to the accounting workflow.");
+                } catch (publishError) {
+                  setError(publishError instanceof Error ? publishError.message : "Could not publish this receipt.");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              Publish to Accounting Tool
+            </button>
+          ) : null}
           {props.mode === "cost" ? (
             <button
               className="secondary-action"
