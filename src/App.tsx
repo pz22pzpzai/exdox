@@ -447,6 +447,7 @@ function DashboardShell(props: {
   const notificationCount =
     props.store.costs.filter((receipt) => receipt.needsReview).length +
     props.store.sales.filter((receipt) => receipt.needsReview).length +
+    props.store.vault.filter((receipt) => receipt.needsReview || receipt.status === "Processing").length +
     props.store.claims.filter((claim) => claim.status === "pending").length +
     props.store.reconciliation.filter((line) => line.status === "Open").length;
   const visibleNavItems = businessAdmin
@@ -771,6 +772,7 @@ function OverviewPage({ store }: { store: AppStore }) {
   const pendingClaims = store.claims.filter((claim) => claim.status === "pending").length;
   const openMatches = store.reconciliation.filter((line) => line.status === "Open").length;
   const recentVaultDocuments = store.vault.slice(0, 4);
+  const duplicateInsights = buildDuplicateInsights([...store.costs, ...store.sales]);
 
   return (
     <div className="stack-page">
@@ -780,6 +782,15 @@ function OverviewPage({ store }: { store: AppStore }) {
         <MetricCard label="Vault archive" value={String(vaultDocuments)} detail="Stored reference files" />
         <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Approval workload" />
         <MetricCard label="Open bank matches" value={String(openMatches)} detail="Awaiting audit pairing" />
+        <MetricCard
+          label="Duplicate review"
+          value={String(duplicateInsights.groups.length)}
+          detail={
+            duplicateInsights.groups.length
+              ? `${duplicateInsights.receiptIds.size} receipts need a duplicate check`
+              : "No likely duplicate uploads detected"
+          }
+        />
       </section>
 
       <section className="overview-panels">
@@ -793,7 +804,7 @@ function OverviewPage({ store }: { store: AppStore }) {
               <div className="status-box" key={status}>
                 <strong>
                   {
-                    [...store.costs, ...store.sales].filter((item) => item.status === status)
+                    [...store.costs, ...store.sales, ...store.vault].filter((item) => item.status === status)
                       .length
                   }
                 </strong>
@@ -850,6 +861,32 @@ function OverviewPage({ store }: { store: AppStore }) {
             )}
           </ul>
         </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Duplicate review</h2>
+            <span>Likely repeat uploads</span>
+          </div>
+          <ul className="summary-list">
+            {duplicateInsights.groups.length ? (
+              duplicateInsights.groups.slice(0, 4).map((group) => (
+                <li key={group.key}>
+                  <strong>
+                    {group.vendorLabel} | {currency(group.grossAmount)}
+                  </strong>
+                  <span>
+                    {group.documentDate} | {group.workspaceLabel} | {group.records.length} matching uploads
+                  </span>
+                </li>
+              ))
+            ) : (
+              <li>
+                <strong>No duplicate candidates right now</strong>
+                <span>Potential repeat uploads will appear here before they reach final review.</span>
+              </li>
+            )}
+          </ul>
+        </article>
       </section>
     </div>
   );
@@ -875,6 +912,7 @@ function InboxPage({
 
   const search = deferredQuery.trim().toLowerCase();
   const isVaultInbox = basePath === "/vault";
+  const duplicateInsights = buildDuplicateInsights(records);
   const filtered = records.filter((record) => {
     const matchesSearch =
       !search ||
@@ -967,7 +1005,12 @@ function InboxPage({
                 <tr key={record.id} onClick={() => navigate(`${basePath}/${record.id}`)}>
                   {isVaultInbox ? (
                     <>
-                      <td><StatusPill status={record.status} /></td>
+                      <td>
+                        <div className="stacked-cell">
+                          <StatusPill status={record.status} />
+                          {duplicateInsights.byReceiptId.has(record.id) ? <SignalPill tone="warning">Possible duplicate</SignalPill> : null}
+                        </div>
+                      </td>
                       <td>{record.createdAt.slice(0, 10)}</td>
                       <td>{record.sourceFilename}</td>
                       <td>{documentTypeLabel(record.documentType)}</td>
@@ -976,7 +1019,12 @@ function InboxPage({
                     </>
                   ) : (
                     <>
-                      <td><StatusPill status={record.status} /></td>
+                      <td>
+                        <div className="stacked-cell">
+                          <StatusPill status={record.status} />
+                          {duplicateInsights.byReceiptId.has(record.id) ? <SignalPill tone="warning">Possible duplicate</SignalPill> : null}
+                        </div>
+                      </td>
                       <td>{record.invoiceDate ?? "Pending"}</td>
                       <td>{record.vendorName ?? "Unknown supplier"}</td>
                       <td>{record.category ?? "Uncategorised"}</td>
@@ -1046,6 +1094,12 @@ function DocumentWorkspacePage(props: {
     return <div className="empty-state">{error ?? "Receipt workspace unavailable."}</div>;
   }
 
+  const duplicateInsights = buildDuplicateInsights(
+    props.mode === "vault"
+      ? [...props.fallbackRecords.filter((item) => item.id !== receipt.id), receipt]
+      : [...props.fallbackRecords.filter((item) => item.workspaceContext === props.mode && item.id !== receipt.id), receipt],
+  );
+  const duplicateGroup = duplicateInsights.byReceiptId.get(receipt.id) ?? null;
   const categoryOptions =
     props.mode === "sales" ? salesCategoryOptions : props.mode === "vault" ? [] : costCategoryOptions;
   const eligibleClaims = props.claims.filter((claim) => claim.status === "pending" || claim.status === "approved");
@@ -1079,6 +1133,15 @@ function DocumentWorkspacePage(props: {
         </div>
         {error ? <div className="error-banner">{error}</div> : null}
         {feedback ? <div className="success-banner">{feedback}</div> : null}
+        {duplicateGroup ? (
+          <section className="signal-banner warning">
+            <strong>Possible duplicate upload detected.</strong>
+            <span>
+              This document matches {duplicateGroup.records.length - 1} other {duplicateGroup.workspaceLabel.toLowerCase()} upload
+              {duplicateGroup.records.length - 1 === 1 ? "" : "s"} with the same supplier, gross amount, and date.
+            </span>
+          </section>
+        ) : null}
 
         <div className="form-grid">
           <label>
@@ -2483,6 +2546,10 @@ function StatusPill({ status }: { status: "pending" | "approved" | "paid" | "rej
   return <span className={`status-pill status-${normalized.toLowerCase()}`}>{status}</span>;
 }
 
+function SignalPill({ tone, children }: { tone: "warning"; children: string }) {
+  return <span className={`signal-pill ${tone}`}>{children}</span>;
+}
+
 function LoginState(props: {
   busy: boolean;
   error: string | null;
@@ -2766,6 +2833,7 @@ function PublicHome() {
                 <li>Supplier rules for category, tax rate and payment method</li>
                 <li>VAT-aware editable totals, net and tax fields</li>
                 <li>Needs-review queues across costs, sales and claims</li>
+                <li>Duplicate upload checks before final publish</li>
                 <li>Audit-friendly document detail editing before publish</li>
               </ul>
             </article>
@@ -2888,6 +2956,101 @@ function sumGross(records: ReceiptRecord[]) {
   return records.reduce((sum, record) => sum + (record.totalAmount ?? 0), 0);
 }
 
+type DuplicateInsightGroup = {
+  key: string;
+  records: ReceiptRecord[];
+  vendorLabel: string;
+  documentDate: string;
+  grossAmount: number;
+  workspaceLabel: string;
+};
+
+function buildDuplicateInsights(records: ReceiptRecord[]) {
+  const grouped = new Map<string, ReceiptRecord[]>();
+
+  for (const record of records) {
+    for (const key of duplicateCandidateKeys(record)) {
+      const existing = grouped.get(key) ?? [];
+      existing.push(record);
+      grouped.set(key, existing);
+    }
+  }
+
+  const groups = new Map<string, DuplicateInsightGroup>();
+  const byReceiptId = new Map<number, DuplicateInsightGroup>();
+  const receiptIds = new Set<number>();
+
+  for (const recordsForKey of grouped.values()) {
+    if (recordsForKey.length < 2) {
+      continue;
+    }
+
+    const ordered = [...recordsForKey].sort((left, right) => left.id - right.id);
+    const groupKey = ordered.map((record) => record.id).join(":");
+    if (groups.has(groupKey)) {
+      continue;
+    }
+
+    const anchor = ordered[0]!;
+    const group: DuplicateInsightGroup = {
+      key: groupKey,
+      records: ordered,
+      vendorLabel: anchor.vendorName?.trim() || anchor.sourceFilename,
+      documentDate: duplicateCandidateDate(anchor),
+      grossAmount: duplicateCandidateAmount(anchor) ?? 0,
+      workspaceLabel: anchor.workspaceContext === "sales" ? "Sales" : anchor.workspaceContext === "vault" ? "Vault" : "Costs",
+    };
+
+    groups.set(groupKey, group);
+    for (const record of ordered) {
+      byReceiptId.set(record.id, group);
+      receiptIds.add(record.id);
+    }
+  }
+
+  return {
+    groups: Array.from(groups.values()).sort((left, right) => right.records.length - left.records.length || right.key.localeCompare(left.key)),
+    byReceiptId,
+    receiptIds,
+  };
+}
+
+function duplicateCandidateKeys(record: ReceiptRecord) {
+  const amount = duplicateCandidateAmount(record);
+  if (amount === null) {
+    return [];
+  }
+
+  const date = duplicateCandidateDate(record);
+  const baseParts = [record.workspaceContext, amount.toFixed(2), date];
+  const vendor = normalizeDuplicateText(record.vendorName);
+  const fileName = normalizeDuplicateText(record.sourceFilename.replace(/\.[a-z0-9]+$/i, ""));
+  const keys: string[] = [];
+
+  if (vendor) {
+    keys.push(["vendor", vendor, ...baseParts].join("|"));
+  }
+  if (fileName) {
+    keys.push(["file", fileName, ...baseParts].join("|"));
+  }
+
+  return keys;
+}
+
+function duplicateCandidateAmount(record: ReceiptRecord) {
+  const hasComponentAmount = record.netAmount != null || record.vatAmount != null;
+  const gross = record.totalAmount ?? (hasComponentAmount ? (record.netAmount ?? 0) + (record.vatAmount ?? 0) : null);
+  return gross === null || !Number.isFinite(gross) || gross <= 0 ? null : gross;
+}
+
+function duplicateCandidateDate(record: ReceiptRecord) {
+  return (record.invoiceDate ?? record.createdAt).slice(0, 10);
+}
+
+function normalizeDuplicateText(value: string | null | undefined) {
+  return value?.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() ?? "";
+}
+
 function buildPendingReceipts(
   session: SessionState,
   workspaceContext: "cost" | "sales" | "vault",
@@ -2995,6 +3158,9 @@ function getAttentionRoute(session: SessionState, store: AppStore) {
   }
   if (store.sales.some((receipt) => receipt.needsReview)) {
     return "/sales";
+  }
+  if (store.vault.some((receipt) => receipt.needsReview || receipt.status === "Processing")) {
+    return "/vault";
   }
   if (store.claims.some((claim) => claim.status === "pending")) {
     return "/claims";

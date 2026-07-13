@@ -1175,6 +1175,27 @@ input {
   font-size: 0.78rem;
 }
 
+.stacked-cell {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.signal-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 0.73rem;
+  font-weight: 600;
+}
+
+.signal-pill.warning {
+  color: #8b5d0a;
+  background: #fff4d7;
+}
+
 .status-ready,
 .status-approved {
   background: #d8f0df;
@@ -1191,6 +1212,20 @@ input {
 .status-paid {
   background: #d9eefb;
   color: #12648f;
+}
+
+.signal-banner {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.signal-banner.warning {
+  border: 1px solid #f2d797;
+  color: #6e4c12;
+  background: #fff8e7;
 }
 
 .workspace-split {
