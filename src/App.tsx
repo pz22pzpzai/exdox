@@ -803,20 +803,27 @@ function DocumentWorkspacePage(props: {
   );
   const [assetUrl, setAssetUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) {
       return;
     }
 
-    props.loadReceipt(Number(id)).then((payload) => {
-      setReceipt(payload.receipt);
-      setAssetUrl(payload.assetUrl);
-    });
+    props.loadReceipt(Number(id))
+      .then((payload) => {
+        setReceipt(payload.receipt);
+        setAssetUrl(payload.assetUrl);
+        setError(null);
+      })
+      .catch((loadError: Error) => {
+        setError(loadError.message || "Could not load this receipt.");
+      });
   }, [id, props]);
 
   if (!receipt) {
-    return <div className="empty-state">Receipt workspace unavailable.</div>;
+    return <div className="empty-state">{error ?? "Receipt workspace unavailable."}</div>;
   }
 
   const categoryOptions = props.mode === "cost" ? costCategoryOptions : salesCategoryOptions;
@@ -844,6 +851,8 @@ function DocumentWorkspacePage(props: {
           <h2>{props.mode === "cost" ? "Cost coding" : "Sales ledger coding"}</h2>
           <span>Organisation #{receipt.organisationId}</span>
         </div>
+        {error ? <div className="error-banner">{error}</div> : null}
+        {feedback ? <div className="success-banner">{feedback}</div> : null}
 
         <div className="form-grid">
           <label>
@@ -946,21 +955,36 @@ function DocumentWorkspacePage(props: {
             disabled={saving}
             onClick={async () => {
               setSaving(true);
+              setFeedback(null);
+              setError(null);
               try {
                 await props.onSave(receipt.id, receipt);
+                setFeedback("Receipt changes saved.");
+              } catch (saveError) {
+                setError(saveError instanceof Error ? saveError.message : "Could not save this receipt.");
               } finally {
                 setSaving(false);
               }
             }}
           >
-            Save Changes
+            {saving ? "Saving..." : "Save Changes"}
           </button>
           <button
             className="danger-action"
             type="button"
+            disabled={saving}
             onClick={async () => {
-              await props.onDelete(receipt.id);
-              navigate(props.mode === "cost" ? "/costs" : "/sales");
+              setSaving(true);
+              setFeedback(null);
+              setError(null);
+              try {
+                await props.onDelete(receipt.id);
+                navigate(props.mode === "cost" ? "/costs" : "/sales");
+              } catch (deleteError) {
+                setError(deleteError instanceof Error ? deleteError.message : "Could not delete this receipt.");
+              } finally {
+                setSaving(false);
+              }
             }}
           >
             Delete Document
@@ -968,9 +992,21 @@ function DocumentWorkspacePage(props: {
           <button
             className="secondary-action"
             type="button"
+            disabled={saving}
             onClick={async () => {
-              setReceipt({ ...receipt, status: "Published" });
-              await props.onSave(receipt.id, { ...receipt, status: "Published" });
+              setSaving(true);
+              setFeedback(null);
+              setError(null);
+              try {
+                const nextReceipt = { ...receipt, status: "Published" as ReceiptRecord["status"] };
+                setReceipt(nextReceipt);
+                await props.onSave(receipt.id, nextReceipt);
+                setFeedback("Receipt published to the accounting workflow.");
+              } catch (publishError) {
+                setError(publishError instanceof Error ? publishError.message : "Could not publish this receipt.");
+              } finally {
+                setSaving(false);
+              }
             }}
           >
             Publish to Accounting Tool
@@ -1069,27 +1105,39 @@ function ClaimDetailPage(props: {
   const [claim, setClaim] = useState<ClaimRecord | null>(null);
   const [receipts, setReceipts] = useState<ReceiptRecord[]>([]);
   const [savingStatus, setSavingStatus] = useState<ClaimRecord["status"] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) {
       return;
     }
 
-    props.loadClaim(Number(id)).then((payload) => {
-      setClaim(payload.claim);
-      setReceipts(payload.receipts);
-    });
+    props.loadClaim(Number(id))
+      .then((payload) => {
+        setClaim(payload.claim);
+        setReceipts(payload.receipts);
+        setError(null);
+      })
+      .catch((loadError: Error) => {
+        setError(loadError.message || "Could not load this claim.");
+      });
   }, [id, props]);
 
   if (!claim) {
-    return <div className="empty-state">Claim detail unavailable.</div>;
+    return <div className="empty-state">{error ?? "Claim detail unavailable."}</div>;
   }
 
   const updateStatus = async (status: ClaimRecord["status"]) => {
     setSavingStatus(status);
+    setFeedback(null);
+    setError(null);
     try {
       await props.onStatusChange(claim.id, status);
       setClaim((current) => (current ? { ...current, status } : current));
+      setFeedback(`Claim status updated to ${claimStatusLabel(status)}.`);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Could not update this claim.");
     } finally {
       setSavingStatus(null);
     }
@@ -1129,6 +1177,8 @@ function ClaimDetailPage(props: {
           </button>
         </div>
       </section>
+      {error ? <div className="error-banner">{error}</div> : null}
+      {feedback ? <div className="success-banner">{feedback}</div> : null}
 
       <section className="metrics-grid">
         <MetricCard label="Claim total" value={currency(claim.totalAmount)} detail={`${receipts.length} linked receipts`} />
@@ -1183,6 +1233,9 @@ function RulesPage(props: {
     paymentMethod: "business_card" as SupplierRule["paymentMethod"],
     isActive: true,
   });
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="stack-page rules-layout">
@@ -1191,6 +1244,8 @@ function RulesPage(props: {
           <h2>{draft.id ? "Edit rule" : "Create new rule"}</h2>
           <span>Automation layer</span>
         </div>
+        {error ? <div className="error-banner">{error}</div> : null}
+        {feedback ? <div className="success-banner">{feedback}</div> : null}
         <div className="form-grid">
           <label>
             IF Supplier Name CONTAINS
@@ -1239,24 +1294,41 @@ function RulesPage(props: {
           <button
             className="primary-action"
             type="button"
+            disabled={saving}
             onClick={async () => {
-              await props.onSave(draft);
-              setDraft({
-                id: undefined,
-                supplierMatchText: "",
-                category: "",
-                taxRate: "20% Standard",
-                paymentMethod: "business_card",
-                isActive: true,
-              });
+              if (!draft.supplierMatchText.trim() || !draft.category.trim()) {
+                setError("Supplier match text and category are required.");
+                setFeedback(null);
+                return;
+              }
+              setSaving(true);
+              setError(null);
+              setFeedback(null);
+              try {
+                await props.onSave(draft);
+                setDraft({
+                  id: undefined,
+                  supplierMatchText: "",
+                  category: "",
+                  taxRate: "20% Standard",
+                  paymentMethod: "business_card",
+                  isActive: true,
+                });
+                setFeedback(draft.id ? "Rule updated." : "Rule created.");
+              } catch (saveError) {
+                setError(saveError instanceof Error ? saveError.message : "Could not save this rule.");
+              } finally {
+                setSaving(false);
+              }
             }}
           >
-            {draft.id ? "Save Rule" : "Create New Rule"}
+            {saving ? "Saving..." : draft.id ? "Save Rule" : "Create New Rule"}
           </button>
           {draft.id ? (
             <button
               className="secondary-action"
               type="button"
+              disabled={saving}
               onClick={() =>
                 setDraft({
                   id: undefined,
@@ -1292,6 +1364,7 @@ function RulesPage(props: {
                 <button
                   className="secondary-action"
                   type="button"
+                  disabled={saving}
                   onClick={() =>
                     setDraft({
                       id: rule.id,
@@ -1305,7 +1378,34 @@ function RulesPage(props: {
                 >
                   Edit
                 </button>
-                <button className="danger-action" type="button" onClick={() => props.onDelete(rule.id)}>
+                <button
+                  className="danger-action"
+                  type="button"
+                  disabled={saving}
+                  onClick={async () => {
+                    setSaving(true);
+                    setError(null);
+                    setFeedback(null);
+                    try {
+                      await props.onDelete(rule.id);
+                      setFeedback("Rule deleted.");
+                      if (draft.id === rule.id) {
+                        setDraft({
+                          id: undefined,
+                          supplierMatchText: "",
+                          category: "",
+                          taxRate: "20% Standard",
+                          paymentMethod: "business_card",
+                          isActive: true,
+                        });
+                      }
+                    } catch (deleteError) {
+                      setError(deleteError instanceof Error ? deleteError.message : "Could not delete this rule.");
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                >
                   Delete
                 </button>
               </div>
@@ -1322,6 +1422,10 @@ function ReconciliationPage(props: {
   onMatch: (statementLineId: number, receiptId: number) => Promise<void>;
   onCreateRequisition: (input: { provider?: string; institutionId?: string }) => Promise<{ redirectUrl: string }>;
 }) {
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
   return (
     <div className="stack-page">
       <section className="page-hero">
@@ -1333,15 +1437,27 @@ function ReconciliationPage(props: {
           <button
             className="secondary-action"
             type="button"
+            disabled={busy}
             onClick={async () => {
-              const requisition = await props.onCreateRequisition({ provider: "truelayer" });
-              window.location.href = requisition.redirectUrl;
+              setBusy(true);
+              setError(null);
+              setFeedback(null);
+              try {
+                const requisition = await props.onCreateRequisition({ provider: "truelayer" });
+                window.location.href = requisition.redirectUrl;
+              } catch (connectError) {
+                setError(connectError instanceof Error ? connectError.message : "Could not start the bank connection.");
+              } finally {
+                setBusy(false);
+              }
             }}
           >
-            Connect bank feed
+            {busy ? "Connecting..." : "Connect bank feed"}
           </button>
         </div>
       </section>
+      {error ? <div className="error-banner">{error}</div> : null}
+      {feedback ? <div className="success-banner">{feedback}</div> : null}
 
       <div className="reconciliation-layout">
       <section className="panel">
@@ -1413,8 +1529,20 @@ function ReconciliationPage(props: {
                           <button
                             className="primary-action"
                             type="button"
-                            disabled={line.status === "Audited"}
-                            onClick={() => props.onMatch(line.id, candidate.id)}
+                            disabled={line.status === "Audited" || busy}
+                            onClick={async () => {
+                              setBusy(true);
+                              setError(null);
+                              setFeedback(null);
+                              try {
+                                await props.onMatch(line.id, candidate.id);
+                                setFeedback("Statement line matched and cleared.");
+                              } catch (matchError) {
+                                setError(matchError instanceof Error ? matchError.message : "Could not match this statement line.");
+                              } finally {
+                                setBusy(false);
+                              }
+                            }}
                           >
                             Match & Clear
                           </button>
@@ -1438,6 +1566,8 @@ function RequisitionPage(props: {
 }) {
   const [provider, setProvider] = useState("truelayer");
   const [institutionId, setInstitutionId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <section className="panel settings-panel">
@@ -1445,6 +1575,7 @@ function RequisitionPage(props: {
         <h2>Open Banking requisitions</h2>
         <span>Read-only ledger connection</span>
       </div>
+      {error ? <div className="error-banner">{error}</div> : null}
       <div className="form-grid">
         <label>
           Provider
@@ -1463,12 +1594,21 @@ function RequisitionPage(props: {
         <button
           className="primary-action"
           type="button"
+          disabled={busy}
           onClick={async () => {
-            const requisition = await props.onCreateRequisition({ provider, institutionId });
-            window.location.href = requisition.redirectUrl;
+            setBusy(true);
+            setError(null);
+            try {
+              const requisition = await props.onCreateRequisition({ provider, institutionId });
+              window.location.href = requisition.redirectUrl;
+            } catch (createError) {
+              setError(createError instanceof Error ? createError.message : "Could not start this requisition.");
+            } finally {
+              setBusy(false);
+            }
           }}
         >
-          Start bank OAuth
+          {busy ? "Starting..." : "Start bank OAuth"}
         </button>
       </div>
     </section>
@@ -1548,6 +1688,9 @@ function SettingsPage(props: {
   onSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
 }) {
   const [draft, setDraft] = useState<OrganisationSettings | null>(props.settings);
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(props.settings);
@@ -1563,6 +1706,8 @@ function SettingsPage(props: {
         <h2>{draft.organisationName}</h2>
         <span>Central company settings</span>
       </div>
+      {error ? <div className="error-banner">{error}</div> : null}
+      {feedback ? <div className="success-banner">{feedback}</div> : null}
       <div className="summary-list">
         <div>
           <strong>Organisation Profile</strong>
@@ -1587,6 +1732,7 @@ function SettingsPage(props: {
           <button
             className={`toggle-button${draft.isVatRegistered ? " on" : ""}`}
             type="button"
+            disabled={saving}
             onClick={() => setDraft({ ...draft, isVatRegistered: !draft.isVatRegistered })}
           >
             {draft.isVatRegistered ? "True" : "False"}
@@ -1594,7 +1740,7 @@ function SettingsPage(props: {
         </label>
         <label>
           Global fallback tax rate
-          <select value={draft.defaultTaxRate} onChange={(event) => setDraft({ ...draft, defaultTaxRate: event.target.value })}>
+          <select value={draft.defaultTaxRate} disabled={saving} onChange={(event) => setDraft({ ...draft, defaultTaxRate: event.target.value })}>
             {taxRates.map((rate) => (
               <option key={rate} value={rate}>
                 {rate}
@@ -1611,14 +1757,25 @@ function SettingsPage(props: {
         <button
           className="primary-action"
           type="button"
-          onClick={() =>
-            props.onSave({
-              isVatRegistered: draft.isVatRegistered,
-              defaultTaxRate: draft.defaultTaxRate,
-            })
-          }
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true);
+            setError(null);
+            setFeedback(null);
+            try {
+              await props.onSave({
+                isVatRegistered: draft.isVatRegistered,
+                defaultTaxRate: draft.defaultTaxRate,
+              });
+              setFeedback("Organisation settings saved.");
+            } catch (saveError) {
+              setError(saveError instanceof Error ? saveError.message : "Could not save these settings.");
+            } finally {
+              setSaving(false);
+            }
+          }}
         >
-          Save settings
+          {saving ? "Saving..." : "Save settings"}
         </button>
       </div>
     </section>

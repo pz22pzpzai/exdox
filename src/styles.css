@@ -956,6 +956,15 @@ input {
   box-shadow: none;
 }
 
+.success-banner {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid #cce7d8;
+  border-radius: 6px;
+  background: #eef9f1;
+  color: #1d7043;
+}
+
 .stack-page {
   gap: 14px;
 }
