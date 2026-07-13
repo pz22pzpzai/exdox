@@ -376,6 +376,7 @@ function DashboardShell(props: {
 }) {
   const [uploadBusy, setUploadBusy] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
   const notificationCount =
     props.store.costs.filter((receipt) => receipt.needsReview).length +
@@ -438,6 +439,7 @@ function DashboardShell(props: {
               type="button"
               aria-label={`Notifications: ${notificationCount}`}
               title={`${notificationCount} items need attention`}
+              onClick={() => navigate(getAttentionRoute(props.session, props.store))}
             >
               {notificationCount}
             </button>
@@ -1795,15 +1797,15 @@ function LoginState(props: {
               </button>
             </form>
             <div className="login-links">
-              <span>Forgot Password?</span>
-              <span>Request Demo Access</span>
+              <a href="mailto:hello@exdox.co.uk?subject=Password%20reset%20request">Forgot Password?</a>
+              <a href="mailto:hello@exdox.co.uk?subject=Demo%20access%20request">Request Demo Access</a>
             </div>
           </div>
         </main>
         <footer className="login-footer">
           <span>Legal &nbsp; | &nbsp; Privacy</span>
           <span>Compatible with Xero, QuickBooks and Sage</span>
-          <span>© {new Date().getFullYear()} exdox.co.uk</span>
+          <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
         </footer>
       </div>
     </div>
@@ -1834,8 +1836,11 @@ function PublicHome() {
       <main>
         <section className="public-hero" id="home">
           <div className="public-hero-copy">
-            <h1>Automate Your Accounts Payable. Instant, Accurate, Integrated.</h1>
-            <p>exdox captures invoice data and syncs it directly to your accounting workflow.</p>
+            <h1>Capture, review and publish business spend without chasing paper.</h1>
+            <p>
+              exdox gives your team the same synced workspace across mobile and web for receipt capture,
+              invoice review, expense claims, supplier rules and bank-led reconciliation.
+            </p>
             <Link className="public-primary" to="/login">Start Your Free Trial</Link>
             <span>No credit card required.</span>
           </div>
@@ -1845,22 +1850,128 @@ function PublicHome() {
         <section className="capabilities-band" id="platform">
           <h2>Key Platform Capabilities</h2>
           <div className="capabilities-grid">
-            <article><NavIcon name="costs" /><strong>Invoice Capture</strong><span>AI-Powered Scanner</span></article>
-            <article><NavIcon name="rules" /><strong>Supplier Management</strong><span>Consistent coding</span></article>
-            <article><NavIcon name="claims" /><strong>Approval Workflows</strong><span>Clear review trails</span></article>
-            <article><NavIcon name="bank" /><strong>Audit Trail</strong><span>Evidence connected</span></article>
+            <article><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></article>
+            <article><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent coding and tax defaults</span></article>
+            <article><NavIcon name="claims" /><strong>Expense Claims</strong><span>Review, approve and publish faster</span></article>
+            <article><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match evidence back to spend</span></article>
+          </div>
+        </section>
+
+        <section className="workflow-band">
+          <div className="section-heading">
+            <div>
+              <p className="section-kicker">Feature Coverage</p>
+              <h2>Built around the same workflow finance teams expect from Dext</h2>
+            </div>
+            <p>
+              Capture, review, rules, approvals, open banking and reconciliation are all available inside the
+              same Exdox web workspace that syncs with the mobile app.
+            </p>
+          </div>
+          <div className="workflow-grid">
+            <article className="workflow-card">
+              <strong>Capture any way your team works</strong>
+              <ul>
+                <li>Mobile receipt capture in the app</li>
+                <li>Drag-and-drop uploads in costs and sales inboxes</li>
+                <li>Dedicated employee drop box for non-admin users</li>
+                <li>Separate workspaces for purchase and sales documents</li>
+              </ul>
+            </article>
+            <article className="workflow-card">
+              <strong>Automate the review layer</strong>
+              <ul>
+                <li>Supplier rules for category, tax rate and payment method</li>
+                <li>VAT-aware editable totals, net and tax fields</li>
+                <li>Needs-review queues across costs, sales and claims</li>
+                <li>Audit-friendly document detail editing before publish</li>
+              </ul>
+            </article>
+            <article className="workflow-card">
+              <strong>Close the loop with finance controls</strong>
+              <ul>
+                <li>Open banking requisitions and callback handling</li>
+                <li>Reconciliation matching against imported bank lines</li>
+                <li>Organisation-level VAT settings and tax defaults</li>
+                <li>Live sync with the same receipt records used in mobile</li>
+              </ul>
+            </article>
           </div>
         </section>
 
         <section className="integration-band" id="integration">
           <div>
             <h2>Simple Integration</h2>
-            <p>Keep capture, review and accounting data moving together across your existing finance stack.</p>
+            <p>
+              Keep capture, review and accounting data moving together across your finance stack with
+              synced web and mobile workflows, organisation switching, and bank-linked reconciliation.
+            </p>
           </div>
           <div className="integration-names" aria-label="Compatible accounting platforms">
             <strong>Sage</strong>
             <strong>Xero</strong>
             <strong>QuickBooks</strong>
+          </div>
+        </section>
+
+        <section className="pricing-band" id="pricing">
+          <div className="section-heading">
+            <div>
+              <p className="section-kicker">Pricing</p>
+              <h2>Roll out Exdox by workflow, not by disconnected tools</h2>
+            </div>
+            <p>
+              Start with employee capture, then layer in supplier rules, claims, tax controls and
+              reconciliation as your finance process matures.
+            </p>
+          </div>
+          <div className="pricing-grid">
+            <article className="pricing-card">
+              <span>Employee Capture</span>
+              <strong>Drop box uploads</strong>
+              <p>For teams who need staff to submit receipts without opening the full finance control surface.</p>
+            </article>
+            <article className="pricing-card featured">
+              <span>Business Control</span>
+              <strong>Costs, sales and claims</strong>
+              <p>For businesses running receipt review, invoice handling, tax editing and approval workflows.</p>
+            </article>
+            <article className="pricing-card">
+              <span>Finance Ops</span>
+              <strong>Rules and bank matching</strong>
+              <p>For organisations that want supplier automation, open banking connections and reconciliation support.</p>
+            </article>
+          </div>
+          <div className="section-actions">
+            <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Pricing%20request">Request Pricing</a>
+            <Link className="secondary-inline-link" to="/login">Open Workspace</Link>
+          </div>
+        </section>
+
+        <section className="company-band" id="company">
+          <div className="section-heading">
+            <div>
+              <p className="section-kicker">Company</p>
+              <h2>One evidence trail across mobile capture and the web workspace</h2>
+            </div>
+            <p>
+              Exdox is designed so the same organisation-scoped records stay visible across app and web,
+              with review state, tax edits and document actions remaining in sync.
+            </p>
+          </div>
+          <div className="company-grid">
+            <article className="company-card">
+              <strong>Secure operational model</strong>
+              <p>Organisation-scoped routes, authenticated sessions and protected receipt asset retrieval.</p>
+            </article>
+            <article className="company-card">
+              <strong>Review-ready audit trail</strong>
+              <p>Receipts, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
+            </article>
+            <article className="company-card">
+              <strong>Built for finance teams</strong>
+              <p>Business admins get the full control surface while employees can still submit directly through drop box flows.</p>
+            </article>
           </div>
         </section>
       </main>
@@ -1981,6 +2092,25 @@ function getDefaultRoute(session: SessionState) {
   }
 
   return isBusinessAdmin(session) ? "/overview" : "/dropbox";
+}
+
+function getAttentionRoute(session: SessionState, store: AppStore) {
+  if (!isBusinessAdmin(session)) {
+    return "/dropbox";
+  }
+  if (store.costs.some((receipt) => receipt.needsReview)) {
+    return "/costs";
+  }
+  if (store.sales.some((receipt) => receipt.needsReview)) {
+    return "/sales";
+  }
+  if (store.claims.some((claim) => claim.status === "pending")) {
+    return "/claims";
+  }
+  if (store.reconciliation.some((line) => line.status === "Open")) {
+    return "/reconciliation";
+  }
+  return getDefaultRoute(session);
 }
 
 function routeTitle(pathname: string) {
