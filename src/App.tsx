@@ -2623,6 +2623,7 @@ function RequisitionPage(props: {
   const [institutionId, setInstitutionId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   return (
     <section className="panel settings-panel">
@@ -2631,6 +2632,7 @@ function RequisitionPage(props: {
         <span>Read-only ledger connection</span>
       </div>
       {error ? <div className="error-banner">{error}</div> : null}
+      {feedback ? <div className="success-banner">{feedback}</div> : null}
       <div className="form-grid">
         <label>
           Provider
@@ -2653,6 +2655,7 @@ function RequisitionPage(props: {
           onClick={async () => {
             setBusy(true);
             setError(null);
+            setFeedback(null);
             try {
               const requisition = await props.onCreateRequisition({ provider, institutionId });
               window.location.href = requisition.redirectUrl;
@@ -2664,6 +2667,29 @@ function RequisitionPage(props: {
           }}
         >
           {busy ? "Starting..." : "Start bank OAuth"}
+        </button>
+        <button
+          className="secondary-action"
+          type="button"
+          onClick={() =>
+            downloadCsv(
+              `requisition-draft-${new Date().toISOString().slice(0, 10)}.csv`,
+              buildRequisitionDraftExportRows(provider, institutionId),
+            )
+          }
+        >
+          Export setup CSV
+        </button>
+        <button
+          className="secondary-action"
+          type="button"
+          onClick={async () => {
+            const copied = await copyText(institutionId.trim());
+            setFeedback(copied ? "Institution id copied." : "Could not copy the institution id.");
+          }}
+          disabled={!institutionId.trim()}
+        >
+          Copy institution id
         </button>
       </div>
     </section>
@@ -3929,6 +3955,13 @@ function buildInviteExportRows(invite: InviteResult) {
     delivery_method: invite.delivery?.method ?? "",
     delivered: invite.delivery?.delivered ? "yes" : "no",
     invite_link: toWebsiteInviteLink(invite.inviteLink),
+  }];
+}
+
+function buildRequisitionDraftExportRows(provider: string, institutionId: string) {
+  return [{
+    provider,
+    institution_id: institutionId.trim(),
   }];
 }
 
