@@ -952,6 +952,7 @@ function InboxPage({
   uploadBusy: boolean;
   onUpload: (files: File[]) => Promise<void>;
 }) {
+  const location = useLocation();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
   const [issueFilter, setIssueFilter] = useState<"All" | "Needs review" | "Unreadable" | "Possible duplicates" | "Low confidence" | "Processing">("All");
@@ -959,6 +960,29 @@ function InboxPage({
   const [documentTypeFilter, setDocumentTypeFilter] = useState<ReceiptRecord["documentType"] | "All">("All");
   const deferredQuery = useDeferredValue(query);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextSearch = params.get("search") ?? "";
+    const nextStatus = params.get("status");
+    const nextIssue = params.get("issue");
+    const nextSource = params.get("source");
+    const nextDocumentType = params.get("documentType");
+
+    setQuery(nextSearch);
+    setStatusFilter(nextStatus === "Processing" || nextStatus === "Review" || nextStatus === "Ready" || nextStatus === "Published" ? nextStatus : "All");
+    setIssueFilter(
+      nextIssue === "Needs review" ||
+      nextIssue === "Unreadable" ||
+      nextIssue === "Possible duplicates" ||
+      nextIssue === "Low confidence" ||
+      nextIssue === "Processing"
+        ? nextIssue
+        : "All",
+    );
+    setSourceFilter(nextSource === "mobile" || nextSource === "web_upload" || nextSource === "email" || nextSource === "bank_import" ? nextSource : "All");
+    setDocumentTypeFilter(nextDocumentType === "receipt" || nextDocumentType === "invoice" || nextDocumentType === "unknown" ? nextDocumentType : "All");
+  }, [location.search]);
 
   const search = deferredQuery.trim().toLowerCase();
   const isVaultInbox = basePath === "/vault";
@@ -2308,6 +2332,7 @@ function ReconciliationPage(props: {
   onCreateRequisition: (input: { provider?: string; institutionId?: string }) => Promise<{ redirectUrl: string }>;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReconciliationLine["status"] | "All">("All");
   const [candidateFilter, setCandidateFilter] = useState<"All" | "With candidates" | "No candidates">("All");
@@ -2315,6 +2340,20 @@ function ReconciliationPage(props: {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextSearch = params.get("search") ?? "";
+    const nextStatus = params.get("status");
+    const nextCandidates = params.get("candidates");
+
+    setQuery(nextSearch);
+    setStatusFilter(nextStatus === "Open" || nextStatus === "Audited" ? nextStatus : "All");
+    setCandidateFilter(
+      nextCandidates === "With candidates" || nextCandidates === "No candidates" ? nextCandidates : "All",
+    );
+  }, [location.search]);
+
   const search = deferredQuery.trim().toLowerCase();
   const filteredLines = props.lines.filter((line) => {
     const matchesSearch =
@@ -3510,7 +3549,7 @@ function buildWorkspaceHealthIssues(store: AppStore) {
     issues.push({
       label: `${unreadableCount} unreadable document${unreadableCount === 1 ? "" : "s"}`,
       detail: "These records likely need manual review, re-upload, or a manual entry fallback before publish.",
-      route: "/costs",
+      route: firstInboxRouteForIssue(store, (record) => looksUnreadable(record), "Unreadable"),
     });
   }
 
@@ -3518,7 +3557,7 @@ function buildWorkspaceHealthIssues(store: AppStore) {
     issues.push({
       label: `${processingCount} document${processingCount === 1 ? "" : "s"} still processing`,
       detail: "Keep an eye on uploads that have not settled into Review, Ready, or Published yet.",
-      route: store.costs.some((record) => record.status === "Processing") ? "/costs" : store.sales.some((record) => record.status === "Processing") ? "/sales" : "/vault",
+      route: firstInboxRouteForIssue(store, (record) => record.status === "Processing", "Processing"),
     });
   }
 
@@ -3526,7 +3565,7 @@ function buildWorkspaceHealthIssues(store: AppStore) {
     issues.push({
       label: `${duplicateGroups} duplicate candidate group${duplicateGroups === 1 ? "" : "s"}`,
       detail: "Likely repeat uploads are grouped from matching supplier or filename, amount, and date evidence.",
-      route: "/costs",
+      route: "/costs?issue=Possible+duplicates",
     });
   }
 
@@ -3534,7 +3573,7 @@ function buildWorkspaceHealthIssues(store: AppStore) {
     issues.push({
       label: `${lowConfidenceCount} low-confidence document${lowConfidenceCount === 1 ? "" : "s"}`,
       detail: "These records have weaker extraction confidence and should be checked before they are published onward.",
-      route: "/costs",
+      route: firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"),
     });
   }
 
@@ -3542,7 +3581,7 @@ function buildWorkspaceHealthIssues(store: AppStore) {
     issues.push({
       label: `${pendingReviewCount} document${pendingReviewCount === 1 ? "" : "s"} need review`,
       detail: "Review-required items are still waiting on tax, coding, claim, or publish decisions.",
-      route: store.costs.some((record) => record.needsReview) ? "/costs" : store.sales.some((record) => record.needsReview) ? "/sales" : "/vault",
+      route: firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"),
     });
   }
 
@@ -3596,6 +3635,23 @@ function looksUnreadable(record: ReceiptRecord) {
 
 function isLowConfidence(record: ReceiptRecord) {
   return typeof record.confidenceScore === "number" && record.confidenceScore > 0 && record.confidenceScore < 0.75;
+}
+
+function firstInboxRouteForIssue(
+  store: AppStore,
+  predicate: (record: ReceiptRecord) => boolean,
+  issue: "Unreadable" | "Processing" | "Low confidence" | "Needs review",
+) {
+  if (store.costs.some(predicate)) {
+    return `/costs?issue=${encodeURIComponent(issue)}`;
+  }
+  if (store.sales.some(predicate)) {
+    return `/sales?issue=${encodeURIComponent(issue)}`;
+  }
+  if (store.vault.some(predicate)) {
+    return `/vault?issue=${encodeURIComponent(issue)}`;
+  }
+  return `/costs?issue=${encodeURIComponent(issue)}`;
 }
 
 function buildInboxExportRows(records: ReceiptRecord[]) {
