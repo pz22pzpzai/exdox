@@ -931,6 +931,8 @@ function InboxPage({
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
   const [issueFilter, setIssueFilter] = useState<"All" | "Needs review" | "Unreadable" | "Possible duplicates" | "Low confidence" | "Processing">("All");
+  const [sourceFilter, setSourceFilter] = useState<ReceiptRecord["receiptSource"] | "All">("All");
+  const [documentTypeFilter, setDocumentTypeFilter] = useState<ReceiptRecord["documentType"] | "All">("All");
   const deferredQuery = useDeferredValue(query);
   const navigate = useNavigate();
 
@@ -940,8 +942,12 @@ function InboxPage({
   const filtered = records.filter((record) => {
     const matchesSearch =
       !search ||
-      `${record.vendorName ?? ""} ${record.category ?? ""} ${record.sourceFilename}`.toLowerCase().includes(search);
+      `${record.vendorName ?? ""} ${record.category ?? ""} ${record.sourceFilename} ${record.description ?? ""} ${record.customer ?? ""} ${record.rawTextSummary ?? ""}`
+        .toLowerCase()
+        .includes(search);
     const matchesStatus = statusFilter === "All" || record.status === statusFilter;
+    const matchesSource = sourceFilter === "All" || record.receiptSource === sourceFilter;
+    const matchesDocumentType = documentTypeFilter === "All" || (record.documentType ?? "unknown") === documentTypeFilter;
     const matchesIssue =
       issueFilter === "All"
         ? true
@@ -954,7 +960,7 @@ function InboxPage({
               : issueFilter === "Low confidence"
                 ? isLowConfidence(record)
               : record.status === "Processing";
-    return matchesSearch && matchesStatus && matchesIssue;
+    return matchesSearch && matchesStatus && matchesSource && matchesDocumentType && matchesIssue;
   });
 
   return (
@@ -995,6 +1001,19 @@ function InboxPage({
             <option value="Possible duplicates">Possible duplicates</option>
             <option value="Low confidence">Low confidence</option>
             <option value="Processing">Still processing</option>
+          </select>
+          <select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value as typeof sourceFilter)}>
+            <option value="All">All sources</option>
+            <option value="mobile">Mobile</option>
+            <option value="web_upload">Web</option>
+            <option value="email">Email</option>
+            <option value="bank_import">Bank</option>
+          </select>
+          <select value={documentTypeFilter} onChange={(event) => setDocumentTypeFilter(event.target.value as typeof documentTypeFilter)}>
+            <option value="All">All document types</option>
+            <option value="receipt">Receipt</option>
+            <option value="invoice">Invoice</option>
+            <option value="unknown">Unknown</option>
           </select>
         </div>
       </section>
@@ -1086,7 +1105,7 @@ function InboxPage({
           </table>
         ) : (
           <div className="empty-inline-state">
-            <strong>{search || statusFilter !== "All" ? "No documents match the current filters." : isVaultInbox ? "No vault files stored yet." : "No documents uploaded yet."}</strong>
+            <strong>{search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || documentTypeFilter !== "All" ? "No documents match the current filters." : isVaultInbox ? "No vault files stored yet." : "No documents uploaded yet."}</strong>
             <p>
               {isVaultInbox
                 ? "Upload reference files into the vault to keep archive-only evidence separate from costs and sales workflows."
