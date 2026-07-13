@@ -1559,6 +1559,9 @@ function ClaimsPage({
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<ClaimRecord["status"] | "all">("all");
+
+  const filteredClaims = claims.filter((claim) => statusFilter === "all" || claim.status === statusFilter);
 
   return (
     <div className="stack-page">
@@ -1570,6 +1573,28 @@ function ClaimsPage({
               ? "Create and track your own reimbursement claims while keeping company-wide finance controls hidden."
               : "Claim folders stay separate from purchase invoices and keep reimbursement approval in its own workflow."}
           </p>
+        </div>
+        <div className="filter-row">
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ClaimRecord["status"] | "all")}>
+            <option value="all">All claim statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="paid">Paid</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={!filteredClaims.length}
+            onClick={() =>
+              downloadCsv(
+                `claims-${new Date().toISOString().slice(0, 10)}.csv`,
+                buildClaimsListExportRows(filteredClaims),
+              )
+            }
+          >
+            Export claims CSV
+          </button>
         </div>
       </section>
       <section className="panel settings-panel">
@@ -1623,8 +1648,8 @@ function ClaimsPage({
         </div>
       </section>
       <section className="card-grid">
-        {claims.length ? (
-          claims.map((claim) => (
+        {filteredClaims.length ? (
+          filteredClaims.map((claim) => (
             <button className="claim-card" key={claim.id} type="button" onClick={() => navigate(`/claims/${claim.id}`)}>
               <strong>{claim.name}</strong>
               <span>Total value: {currency(claim.totalAmount)}</span>
@@ -1637,8 +1662,8 @@ function ClaimsPage({
           ))
         ) : (
           <div className="empty-inline-state card-span-2">
-            <strong>{employeeMode ? "No claims created yet." : "No expense claims in this organisation yet."}</strong>
-            <p>{employeeMode ? "Create your first claim above and attach personal-spend receipts from the review workspace." : "Create a claim above to start the reimbursement approval workflow."}</p>
+            <strong>{statusFilter === "all" ? employeeMode ? "No claims created yet." : "No expense claims in this organisation yet." : "No claims match the current status filter."}</strong>
+            <p>{statusFilter === "all" ? employeeMode ? "Create your first claim above and attach personal-spend receipts from the review workspace." : "Create a claim above to start the reimbursement approval workflow." : "Change the claim-status filter or create a new claim."}</p>
           </div>
         )}
       </section>
@@ -1652,6 +1677,19 @@ function EmployeeDropboxPage(props: {
   uploadBusy: boolean;
 }) {
   const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
+  const deferredQuery = useDeferredValue(query);
+  const search = deferredQuery.trim().toLowerCase();
+  const filteredReceipts = props.receipts.filter((receipt) => {
+    const matchesSearch =
+      !search ||
+      `${receipt.vendorName ?? ""} ${receipt.sourceFilename} ${receipt.category ?? ""} ${receipt.rawTextSummary ?? ""}`
+        .toLowerCase()
+        .includes(search);
+    const matchesStatus = statusFilter === "All" || receipt.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="stack-page">
@@ -1663,6 +1701,40 @@ function EmployeeDropboxPage(props: {
             Company-wide metrics, bank transactions, settings, and peer uploads remain admin-only.
           </p>
         </div>
+        <div className="filter-row">
+          <input
+            className="search-input"
+            type="search"
+            placeholder="Search supplier, filename, or notes"
+            value={query}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              startTransition(() => {
+                setQuery(nextValue);
+              });
+            }}
+          />
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as InboxStatus | "All")}>
+            <option value="All">All statuses</option>
+            <option value="Processing">Processing</option>
+            <option value="Review">Review</option>
+            <option value="Ready">Ready</option>
+            <option value="Published">Published</option>
+          </select>
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={!filteredReceipts.length}
+            onClick={() =>
+              downloadCsv(
+                `employee-dropbox-${new Date().toISOString().slice(0, 10)}.csv`,
+                buildInboxExportRows(filteredReceipts),
+              )
+            }
+          >
+            Export CSV
+          </button>
+        </div>
       </section>
       <UploadDropZone
         title="Drop receipts into your employee queue"
@@ -1671,30 +1743,37 @@ function EmployeeDropboxPage(props: {
         onFiles={(files) => props.onUpload("cost", files)}
       />
       <section className="panel table-panel">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Upload Date</th>
-              <th>Supplier</th>
-              <th>Net</th>
-              <th>VAT</th>
-              <th>Gross</th>
-            </tr>
-          </thead>
-          <tbody>
-            {props.receipts.map((receipt) => (
-              <tr key={receipt.id} onClick={() => navigate(`/dropbox/${receipt.id}`)}>
-                <td><StatusPill status={receipt.status} /></td>
-                <td>{receipt.createdAt.slice(0, 10)}</td>
-                <td>{receipt.vendorName ?? receipt.sourceFilename}</td>
-                <td>{currency(receipt.netAmount)}</td>
-                <td>{currency(receipt.vatAmount)}</td>
-                <td>{currency(receipt.totalAmount)}</td>
+        {filteredReceipts.length ? (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Upload Date</th>
+                <th>Supplier</th>
+                <th>Net</th>
+                <th>VAT</th>
+                <th>Gross</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredReceipts.map((receipt) => (
+                <tr key={receipt.id} onClick={() => navigate(`/dropbox/${receipt.id}`)}>
+                  <td><StatusPill status={receipt.status} /></td>
+                  <td>{receipt.createdAt.slice(0, 10)}</td>
+                  <td>{receipt.vendorName ?? receipt.sourceFilename}</td>
+                  <td>{currency(receipt.netAmount)}</td>
+                  <td>{currency(receipt.vatAmount)}</td>
+                  <td>{currency(receipt.totalAmount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="empty-inline-state">
+            <strong>{query.trim() || statusFilter !== "All" ? "No employee receipts match the current filters." : "No employee receipts uploaded yet."}</strong>
+            <p>{query.trim() || statusFilter !== "All" ? "Change the search or status filter to see more uploaded receipts." : "Use the upload area above to submit the first employee receipt into the synced drop box."}</p>
+          </div>
+        )}
       </section>
     </div>
   );
@@ -3271,6 +3350,21 @@ function buildClaimExportRows(claim: ClaimRecord, receipts: ReceiptRecord[]) {
     source: sourceLabel(receipt.receiptSource),
     document_type: documentTypeLabel(receipt.documentType),
     created_at: receipt.createdAt,
+  }));
+}
+
+function buildClaimsListExportRows(claims: ClaimRecord[]) {
+  return claims.map((claim) => ({
+    claim_id: String(claim.id),
+    claim_name: claim.name,
+    status: claimStatusLabel(claim.status),
+    total_amount: formatExportNumber(claim.totalAmount),
+    currency: claim.currency,
+    document_count: String(claim.documentCount),
+    claiming_employee: claimEmployeeLabel(claim),
+    description: claim.description ?? "",
+    created_at: claim.createdAt,
+    updated_at: claim.updatedAt,
   }));
 }
 
