@@ -849,6 +849,7 @@ function InboxPage({
   const navigate = useNavigate();
 
   const search = deferredQuery.trim().toLowerCase();
+  const isVaultInbox = basePath === "/vault";
   const filtered = records.filter((record) => {
     const matchesSearch =
       !search ||
@@ -909,28 +910,52 @@ function InboxPage({
       <section className="panel table-panel">
         <table className="data-table">
           <thead>
-            <tr>
-              <th>Status</th>
-              <th>Receipt Date</th>
-              <th>Supplier Name</th>
-              <th>Category</th>
-              <th>Net Amount</th>
-              <th>VAT Amount</th>
-              <th>Gross Total</th>
-              <th>Source</th>
-            </tr>
+            {isVaultInbox ? (
+              <tr>
+                <th>Status</th>
+                <th>Stored</th>
+                <th>Filename</th>
+                <th>Document Type</th>
+                <th>Source</th>
+                <th>Description</th>
+              </tr>
+            ) : (
+              <tr>
+                <th>Status</th>
+                <th>Receipt Date</th>
+                <th>Supplier Name</th>
+                <th>Category</th>
+                <th>Net Amount</th>
+                <th>VAT Amount</th>
+                <th>Gross Total</th>
+                <th>Source</th>
+              </tr>
+            )}
           </thead>
           <tbody>
             {filtered.map((record) => (
               <tr key={record.id} onClick={() => navigate(`${basePath}/${record.id}`)}>
-                <td><StatusPill status={record.status} /></td>
-                <td>{record.invoiceDate ?? "Pending"}</td>
-                <td>{record.vendorName ?? "Unknown supplier"}</td>
-                <td>{record.category ?? "Uncategorised"}</td>
-                <td>{currency(record.netAmount)}</td>
-                <td>{currency(record.vatAmount)}</td>
-                <td>{currency(record.totalAmount)}</td>
-                <td>{sourceLabel(record.receiptSource)}</td>
+                {isVaultInbox ? (
+                  <>
+                    <td><StatusPill status={record.status} /></td>
+                    <td>{record.createdAt.slice(0, 10)}</td>
+                    <td>{record.sourceFilename}</td>
+                    <td>{documentTypeLabel(record.documentType)}</td>
+                    <td>{sourceLabel(record.receiptSource)}</td>
+                    <td>{record.description ?? "Stored vault document"}</td>
+                  </>
+                ) : (
+                  <>
+                    <td><StatusPill status={record.status} /></td>
+                    <td>{record.invoiceDate ?? "Pending"}</td>
+                    <td>{record.vendorName ?? "Unknown supplier"}</td>
+                    <td>{record.category ?? "Uncategorised"}</td>
+                    <td>{currency(record.netAmount)}</td>
+                    <td>{currency(record.vatAmount)}</td>
+                    <td>{currency(record.totalAmount)}</td>
+                    <td>{sourceLabel(record.receiptSource)}</td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>
@@ -987,6 +1012,7 @@ function DocumentWorkspacePage(props: {
   const lineItems = receipt.lineItems ?? [];
   const taxBreakdown = receipt.taxBreakdown ?? [];
   const notes = receipt.notes ?? [];
+  const isVaultRecord = props.mode === "vault";
 
   return (
     <div className="workspace-split">
@@ -1019,17 +1045,19 @@ function DocumentWorkspacePage(props: {
             Supplier Name
             <input value={receipt.vendorName ?? ""} onChange={(event) => setReceipt({ ...receipt, vendorName: event.target.value })} />
           </label>
-          <label>
-            Category
-            <select value={receipt.category ?? ""} onChange={(event) => setReceipt({ ...receipt, category: event.target.value })}>
-              <option value="">Select category</option>
-              {categoryOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!isVaultRecord ? (
+            <label>
+              Category
+              <select value={receipt.category ?? ""} onChange={(event) => setReceipt({ ...receipt, category: event.target.value })}>
+                <option value="">Select category</option>
+                {categoryOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label>
             Customer
             <input value={receipt.customer ?? ""} onChange={(event) => setReceipt({ ...receipt, customer: event.target.value })} />
@@ -1055,37 +1083,46 @@ function DocumentWorkspacePage(props: {
               <option value="Published">Published</option>
             </select>
           </label>
-          <label>
-            Net Amount
-            <input type="number" value={receipt.netAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, netAmount: Number(event.target.value) })} />
-          </label>
-          <label>
-            VAT Amount
-            <input type="number" value={receipt.vatAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, vatAmount: Number(event.target.value) })} />
-          </label>
-          <label>
-            Gross Total
-            <input type="number" value={receipt.totalAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, totalAmount: Number(event.target.value) })} />
-          </label>
-          <label>
-            HMRC Tax Tier
-            <select value={receipt.taxRateApplied ?? "No VAT"} onChange={(event) => setReceipt({ ...receipt, taxRateApplied: event.target.value })}>
-              {taxRates.map((rate) => (
-                <option key={rate} value={rate}>
-                  {rate}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Payment Method
-            <select value={receipt.paymentMethod} onChange={(event) => setReceipt({ ...receipt, paymentMethod: event.target.value as ReceiptRecord["paymentMethod"] })}>
-              <option value="business_card">Business card</option>
-              <option value="cash_personal">Personal spend</option>
-              <option value="bank_transfer">Bank transfer</option>
-              <option value="not_applicable">Not applicable</option>
-            </select>
-          </label>
+          {!isVaultRecord ? (
+            <>
+              <label>
+                Net Amount
+                <input type="number" value={receipt.netAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, netAmount: Number(event.target.value) })} />
+              </label>
+              <label>
+                VAT Amount
+                <input type="number" value={receipt.vatAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, vatAmount: Number(event.target.value) })} />
+              </label>
+              <label>
+                Gross Total
+                <input type="number" value={receipt.totalAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, totalAmount: Number(event.target.value) })} />
+              </label>
+              <label>
+                HMRC Tax Tier
+                <select value={receipt.taxRateApplied ?? "No VAT"} onChange={(event) => setReceipt({ ...receipt, taxRateApplied: event.target.value })}>
+                  {taxRates.map((rate) => (
+                    <option key={rate} value={rate}>
+                      {rate}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Payment Method
+                <select value={receipt.paymentMethod} onChange={(event) => setReceipt({ ...receipt, paymentMethod: event.target.value as ReceiptRecord["paymentMethod"] })}>
+                  <option value="business_card">Business card</option>
+                  <option value="cash_personal">Personal spend</option>
+                  <option value="bank_transfer">Bank transfer</option>
+                  <option value="not_applicable">Not applicable</option>
+                </select>
+              </label>
+            </>
+          ) : (
+            <label>
+              Archive status
+              <input value="Vault document stored without expense coding" readOnly />
+            </label>
+          )}
           <label>
             Source Channel
             <input value={sourceLabel(receipt.receiptSource)} readOnly />
