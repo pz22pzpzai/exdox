@@ -2296,6 +2296,7 @@ function ReconciliationPage(props: {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReconciliationLine["status"] | "All">("All");
+  const [candidateFilter, setCandidateFilter] = useState<"All" | "With candidates" | "No candidates">("All");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -2304,11 +2305,17 @@ function ReconciliationPage(props: {
   const filteredLines = props.lines.filter((line) => {
     const matchesSearch =
       !search ||
-      `${line.description ?? ""} ${line.remittanceInformation} ${line.statementDate ?? line.bookingDate}`
+      `${line.description ?? ""} ${line.remittanceInformation} ${line.statementDate ?? line.bookingDate} ${line.candidates.map((candidate) => candidate.vendorName ?? "").join(" ")}`
         .toLowerCase()
         .includes(search);
     const matchesStatus = statusFilter === "All" || line.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesCandidateFilter =
+      candidateFilter === "All"
+        ? true
+        : candidateFilter === "With candidates"
+          ? line.candidates.length > 0
+          : line.candidates.length === 0;
+    return matchesSearch && matchesStatus && matchesCandidateFilter;
   });
 
   return (
@@ -2335,6 +2342,11 @@ function ReconciliationPage(props: {
             <option value="All">All bank lines</option>
             <option value="Open">Open only</option>
             <option value="Audited">Audited only</option>
+          </select>
+          <select value={candidateFilter} onChange={(event) => setCandidateFilter(event.target.value as typeof candidateFilter)}>
+            <option value="All">All candidate states</option>
+            <option value="With candidates">With candidates</option>
+            <option value="No candidates">No candidates</option>
           </select>
           <button
             className="secondary-action"
@@ -2488,8 +2500,8 @@ function ReconciliationPage(props: {
             ))
           ) : (
             <div className="empty-inline-state">
-              <strong>{query.trim() || statusFilter !== "All" ? "No bank lines match the current filters." : "No bank statement lines imported yet."}</strong>
-              <p>{query.trim() || statusFilter !== "All" ? "Change the search or bank-line status filter to inspect more reconciliation work." : "Connect a bank feed above to bring statement lines into reconciliation."}</p>
+              <strong>{query.trim() || statusFilter !== "All" || candidateFilter !== "All" ? "No bank lines match the current filters." : "No bank statement lines imported yet."}</strong>
+              <p>{query.trim() || statusFilter !== "All" || candidateFilter !== "All" ? "Change the search, bank-line status filter, or candidate filter to inspect more reconciliation work." : "Connect a bank feed above to bring statement lines into reconciliation."}</p>
             </div>
           )}
         </div>
