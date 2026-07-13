@@ -367,19 +367,27 @@ export function App() {
             }}
             onInviteEmployee={async (payload) => sendInvite(session.token, payload)}
             onActiveOrganisationChange={async (organisationId) => {
+              const nextSession =
+                session.activeOrganisationId === organisationId
+                  ? session
+                  : {
+                      ...session,
+                      activeOrganisationId: organisationId,
+                    };
+
               setSession((current) => {
                 if (!current || current.activeOrganisationId === organisationId) {
                   return current;
                 }
 
-                const nextSession = {
+                const updatedSession = {
                   ...current,
                   activeOrganisationId: organisationId,
                 };
-                saveStoredSession(nextSession);
-                return nextSession;
+                saveStoredSession(updatedSession);
+                return updatedSession;
               });
-              await loadWorkspace(session.token, session);
+              await loadWorkspace(session.token, nextSession);
             }}
             onSignOut={() => {
               clearStoredSession();
@@ -444,6 +452,10 @@ function DashboardShell(props: {
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
+  const activeOrganisation =
+    props.session.organisations.find((organisation) => organisation.id === props.session.activeOrganisationId) ??
+    props.session.organisations[0] ??
+    null;
   const notificationCount =
     props.store.costs.filter((receipt) => receipt.needsReview).length +
     props.store.sales.filter((receipt) => receipt.needsReview).length +
@@ -489,7 +501,7 @@ function DashboardShell(props: {
       <main className="workspace">
         <header className="topbar">
           <div>
-            <p className="topbar-kicker">{props.session.organisations[0]?.name ?? "Active workspace"}</p>
+            <p className="topbar-kicker">{activeOrganisation?.name ?? "Active workspace"}</p>
             <h1>{businessAdmin ? routeTitle(location.pathname) : "Employee Drop Box"}</h1>
           </div>
           <div className="topbar-actions">
