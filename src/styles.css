@@ -429,6 +429,22 @@ input {
   border-bottom: 1px solid var(--line);
 }
 
+.summary-action-row {
+  display: grid;
+  width: 100%;
+  gap: 4px;
+  padding: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.summary-action-row:hover strong {
+  color: var(--blue);
+}
+
 .page-hero {
   display: flex;
   justify-content: space-between;

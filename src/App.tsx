@@ -778,6 +778,7 @@ function DashboardShell(props: {
 }
 
 function OverviewPage({ store }: { store: AppStore }) {
+  const navigate = useNavigate();
   const totalCosts = sumGross(store.costs);
   const totalSales = sumGross(store.sales);
   const vaultDocuments = store.vault.length;
@@ -860,10 +861,12 @@ function OverviewPage({ store }: { store: AppStore }) {
             {recentVaultDocuments.length ? (
               recentVaultDocuments.map((document) => (
                 <li key={document.id}>
-                  <strong>{document.sourceFilename}</strong>
-                  <span>
-                    {documentTypeLabel(document.documentType)} | {sourceLabel(document.receiptSource)} | {document.createdAt.slice(0, 10)}
-                  </span>
+                  <button className="summary-action-row" type="button" onClick={() => navigate(`/vault/${document.id}`)}>
+                    <strong>{document.sourceFilename}</strong>
+                    <span>
+                      {documentTypeLabel(document.documentType)} | {sourceLabel(document.receiptSource)} | {document.createdAt.slice(0, 10)}
+                    </span>
+                  </button>
                 </li>
               ))
             ) : (
@@ -884,12 +887,18 @@ function OverviewPage({ store }: { store: AppStore }) {
             {duplicateInsights.groups.length ? (
               duplicateInsights.groups.slice(0, 4).map((group) => (
                 <li key={group.key}>
-                  <strong>
-                    {group.vendorLabel} | {currency(group.grossAmount)}
-                  </strong>
-                  <span>
-                    {group.documentDate} | {group.workspaceLabel} | {group.records.length} matching uploads
-                  </span>
+                  <button
+                    className="summary-action-row"
+                    type="button"
+                    onClick={() => navigate(group.workspaceLabel === "Sales" ? `/sales/${group.records[0]!.id}` : `/costs/${group.records[0]!.id}`)}
+                  >
+                    <strong>
+                      {group.vendorLabel} | {currency(group.grossAmount)}
+                    </strong>
+                    <span>
+                      {group.documentDate} | {group.workspaceLabel} | {group.records.length} matching uploads
+                    </span>
+                  </button>
                 </li>
               ))
             ) : (
@@ -910,8 +919,10 @@ function OverviewPage({ store }: { store: AppStore }) {
             {healthIssues.length ? (
               healthIssues.map((issue) => (
                 <li key={issue.label}>
-                  <strong>{issue.label}</strong>
-                  <span>{issue.detail}</span>
+                  <button className="summary-action-row" type="button" onClick={() => navigate(issue.route)}>
+                    <strong>{issue.label}</strong>
+                    <span>{issue.detail}</span>
+                  </button>
                 </li>
               ))
             ) : (
@@ -3482,12 +3493,13 @@ function buildWorkspaceHealthIssues(store: AppStore) {
   const duplicateGroups = buildDuplicateInsights([...store.costs, ...store.sales]).groups.length;
   const pendingReviewCount = allRecords.filter((record) => record.needsReview).length;
   const lowConfidenceCount = allRecords.filter((record) => isLowConfidence(record)).length;
-  const issues: Array<{ label: string; detail: string }> = [];
+  const issues: Array<{ label: string; detail: string; route: string }> = [];
 
   if (unreadableCount) {
     issues.push({
       label: `${unreadableCount} unreadable document${unreadableCount === 1 ? "" : "s"}`,
       detail: "These records likely need manual review, re-upload, or a manual entry fallback before publish.",
+      route: "/costs",
     });
   }
 
@@ -3495,6 +3507,7 @@ function buildWorkspaceHealthIssues(store: AppStore) {
     issues.push({
       label: `${processingCount} document${processingCount === 1 ? "" : "s"} still processing`,
       detail: "Keep an eye on uploads that have not settled into Review, Ready, or Published yet.",
+      route: store.costs.some((record) => record.status === "Processing") ? "/costs" : store.sales.some((record) => record.status === "Processing") ? "/sales" : "/vault",
     });
   }
 
@@ -3502,6 +3515,7 @@ function buildWorkspaceHealthIssues(store: AppStore) {
     issues.push({
       label: `${duplicateGroups} duplicate candidate group${duplicateGroups === 1 ? "" : "s"}`,
       detail: "Likely repeat uploads are grouped from matching supplier or filename, amount, and date evidence.",
+      route: "/costs",
     });
   }
 
@@ -3509,6 +3523,7 @@ function buildWorkspaceHealthIssues(store: AppStore) {
     issues.push({
       label: `${lowConfidenceCount} low-confidence document${lowConfidenceCount === 1 ? "" : "s"}`,
       detail: "These records have weaker extraction confidence and should be checked before they are published onward.",
+      route: "/costs",
     });
   }
 
@@ -3516,6 +3531,7 @@ function buildWorkspaceHealthIssues(store: AppStore) {
     issues.push({
       label: `${pendingReviewCount} document${pendingReviewCount === 1 ? "" : "s"} need review`,
       detail: "Review-required items are still waiting on tax, coding, claim, or publish decisions.",
+      route: store.costs.some((record) => record.needsReview) ? "/costs" : store.sales.some((record) => record.needsReview) ? "/sales" : "/vault",
     });
   }
 
