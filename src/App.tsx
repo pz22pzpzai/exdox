@@ -1191,7 +1191,19 @@ function DocumentWorkspacePage(props: {
       <section className="panel viewer-panel">
         <div className="panel-heading">
           <h2>Source document</h2>
-          <span>{receipt.sourceFilename}</span>
+          <div className="toolbar">
+            <span>{receipt.sourceFilename}</span>
+            {assetUrl ? (
+              <>
+                <a className="secondary-action link-action" href={assetUrl} target="_blank" rel="noreferrer">
+                  Open source file
+                </a>
+                <a className="secondary-action link-action" href={assetUrl} download={receipt.sourceFilename}>
+                  Download file
+                </a>
+              </>
+            ) : null}
+          </div>
         </div>
         {assetUrl ? (
           <iframe className="document-frame" src={assetUrl} title={receipt.sourceFilename} />

@@ -973,6 +973,10 @@ input {
   font-weight: 600;
 }
 
+.link-action {
+  text-decoration: none;
+}
+
 .icon-button {
   position: relative;
   min-width: 42px;
