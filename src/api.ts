@@ -1,6 +1,7 @@
 import type {
   BankRequisition,
   ClaimRecord,
+  InviteResult,
   OrganisationSettings,
   ReceiptRecord,
   ReconciliationLine,
@@ -275,6 +276,17 @@ export async function saveSettings(
     body: JSON.stringify(payload),
   });
   return response.settings;
+}
+
+export async function sendInvite(
+  token: string,
+  payload: { email: string; fullName?: string },
+): Promise<InviteResult> {
+  const response = await apiFetch<{ invite: InviteResult }>("/invite", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return response.invite;
 }
 
 export async function uploadDocuments(

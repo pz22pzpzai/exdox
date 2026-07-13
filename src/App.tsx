@@ -34,12 +34,14 @@ import {
   saveReceipt,
   saveRule,
   saveSettings,
+  sendInvite,
   updateClaimStatus,
   uploadDocuments,
 } from "./api";
 import type {
   ClaimRecord,
   InboxStatus,
+  InviteResult,
   OrganisationSettings,
   ReceiptRecord,
   ReconciliationLine,
@@ -330,6 +332,7 @@ export function App() {
                 settings: saved,
               }));
             }}
+            onInviteEmployee={async (payload) => sendInvite(session.token, payload)}
             onActiveOrganisationChange={async (organisationId) => {
               setSession((current) => {
                 if (!current || current.activeOrganisationId === organisationId) {
@@ -397,6 +400,7 @@ function DashboardShell(props: {
     consentId?: string | null;
   }) => Promise<{ linked: boolean; state: string; externalRequisitionId: string | null }>;
   onSettingsSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
+  onInviteEmployee: (payload: { email: string; fullName?: string }) => Promise<InviteResult>;
   onActiveOrganisationChange: (organisationId: number) => Promise<void>;
   onSignOut: () => void;
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null }>;
@@ -619,7 +623,11 @@ function DashboardShell(props: {
                 <Route
                   path="/settings"
                   element={
-                    <SettingsPage settings={props.store.settings} onSave={props.onSettingsSave} />
+                    <SettingsPage
+                      settings={props.store.settings}
+                      onSave={props.onSettingsSave}
+                      onInviteEmployee={props.onInviteEmployee}
+                    />
                   }
                 />
               ) : null}
@@ -1832,11 +1840,18 @@ function BankCallbackPage(props: {
 function SettingsPage(props: {
   settings: OrganisationSettings | null;
   onSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
+  onInviteEmployee: (payload: { email: string; fullName?: string }) => Promise<InviteResult>;
 }) {
   const [draft, setDraft] = useState<OrganisationSettings | null>(props.settings);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteFeedback, setInviteFeedback] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [lastInvite, setLastInvite] = useState<InviteResult | null>(null);
 
   useEffect(() => {
     setDraft(props.settings);
@@ -1924,6 +1939,90 @@ function SettingsPage(props: {
           {saving ? "Saving..." : "Save settings"}
         </button>
       </div>
+      <div className="panel-divider" />
+      <div className="panel-heading">
+        <h2>Invite an employee</h2>
+        <span>Standard employee access</span>
+      </div>
+      {inviteError ? <div className="error-banner">{inviteError}</div> : null}
+      {inviteFeedback ? <div className="success-banner">{inviteFeedback}</div> : null}
+      <div className="form-grid">
+        <label>
+          Employee name
+          <input
+            value={inviteName}
+            disabled={inviteBusy}
+            onChange={(event) => setInviteName(event.target.value)}
+            placeholder="Optional full name"
+          />
+        </label>
+        <label>
+          Employee email
+          <input
+            type="email"
+            value={inviteEmail}
+            disabled={inviteBusy}
+            onChange={(event) => setInviteEmail(event.target.value)}
+            placeholder="employee@company.co.uk"
+          />
+        </label>
+      </div>
+      <p>
+        Send a standard employee invite so staff can submit receipts into the synced Exdox workspace from
+        mobile and web.
+      </p>
+      <div className="toolbar">
+        <button
+          className="primary-action"
+          type="button"
+          disabled={inviteBusy || !inviteEmail.trim()}
+          onClick={async () => {
+            setInviteBusy(true);
+            setInviteError(null);
+            setInviteFeedback(null);
+            try {
+              const invite = await props.onInviteEmployee({
+                email: inviteEmail.trim(),
+                fullName: inviteName.trim() || undefined,
+              });
+              setLastInvite(invite);
+              setInviteFeedback(`Invite created for ${invite.email}.`);
+              setInviteName("");
+              setInviteEmail("");
+            } catch (saveError) {
+              setInviteError(saveError instanceof Error ? saveError.message : "Could not create the invite.");
+            } finally {
+              setInviteBusy(false);
+            }
+          }}
+        >
+          {inviteBusy ? "Sending..." : "Send invite"}
+        </button>
+      </div>
+      {lastInvite ? (
+        <div className="summary-list">
+          <div>
+            <strong>Latest invite</strong>
+            <span>{lastInvite.email}</span>
+          </div>
+          <div>
+            <strong>Delivery</strong>
+            <span>{lastInvite.delivery?.delivered ? `Sent by ${lastInvite.delivery.method}` : "Invite created"}</span>
+          </div>
+          <div>
+            <strong>Status</strong>
+            <span>{lastInvite.status}</span>
+          </div>
+          <div>
+            <strong>Invite link</strong>
+            <span>
+              <a href={lastInvite.inviteLink} target="_blank" rel="noreferrer">
+                Open invite link
+              </a>
+            </span>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

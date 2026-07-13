@@ -106,6 +106,20 @@ export type OrganisationSettings = {
   defaultTaxRate: string;
 };
 
+export type InviteResult = {
+  userId: number;
+  email: string;
+  fullName: string | null;
+  role: "Business_Admin" | "Standard_Employee";
+  status: "pending_invite" | "active";
+  organisationId: number;
+  inviteLink: string;
+  delivery?: {
+    delivered: boolean;
+    method: string;
+  };
+};
+
 export type SessionUser = {
   id: number;
   organisationId: number;

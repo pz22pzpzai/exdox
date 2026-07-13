@@ -418,6 +418,12 @@ input {
   gap: 14px;
 }
 
+.panel-divider {
+  height: 1px;
+  margin: 28px 0;
+  background: var(--line);
+}
+
 .summary-list li {
   padding-bottom: 14px;
   border-bottom: 1px solid var(--line);
