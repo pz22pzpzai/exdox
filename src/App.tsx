@@ -1639,7 +1639,11 @@ function ClaimDetailPage(props: {
                 <td>
                   <div className="table-action-cell">
                     <StatusPill status={receipt.status} />
-                    <button className="secondary-action" type="button" onClick={() => navigate(`/costs/${receipt.id}`)}>
+                    <button
+                      className="secondary-action"
+                      type="button"
+                      onClick={() => navigate(props.employeeMode ? `/dropbox/${receipt.id}` : `/costs/${receipt.id}`)}
+                    >
                       Open receipt
                     </button>
                   </div>
