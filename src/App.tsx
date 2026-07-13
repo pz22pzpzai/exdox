@@ -1937,6 +1937,8 @@ function RulesPage(props: {
   ) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
 }) {
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [draft, setDraft] = useState({
     id: undefined as number | undefined,
     supplierMatchText: "",
@@ -1948,6 +1950,16 @@ function RulesPage(props: {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const deferredQuery = useDeferredValue(query);
+  const search = deferredQuery.trim().toLowerCase();
+  const filteredRules = props.rules.filter((rule) => {
+    const matchesSearch =
+      !search ||
+      `${rule.supplierMatchText} ${rule.category} ${rule.taxRate} ${rule.paymentMethod}`.toLowerCase().includes(search);
+    const matchesStatus =
+      statusFilter === "all" ? true : statusFilter === "active" ? rule.isActive : !rule.isActive;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="stack-page rules-layout">
@@ -2063,9 +2075,41 @@ function RulesPage(props: {
           <h2>Current rules</h2>
           <span>{props.rules.length} live automations</span>
         </div>
+        <div className="filter-row">
+          <input
+            className="search-input"
+            type="search"
+            placeholder="Search supplier, category, tax, or payment method"
+            value={query}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              startTransition(() => {
+                setQuery(nextValue);
+              });
+            }}
+          />
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}>
+            <option value="all">All rules</option>
+            <option value="active">Active only</option>
+            <option value="inactive">Inactive only</option>
+          </select>
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={!filteredRules.length}
+            onClick={() =>
+              downloadCsv(
+                `supplier-rules-${new Date().toISOString().slice(0, 10)}.csv`,
+                buildRuleExportRows(filteredRules),
+              )
+            }
+          >
+            Export rules CSV
+          </button>
+        </div>
         <div className="rules-list">
-          {props.rules.length ? (
-            props.rules.map((rule) => (
+          {filteredRules.length ? (
+            filteredRules.map((rule) => (
               <article className="rule-row" key={rule.id}>
                 <div>
                   <strong>IF supplier contains "{rule.supplierMatchText}"</strong>
@@ -2126,8 +2170,8 @@ function RulesPage(props: {
             ))
           ) : (
             <div className="empty-inline-state">
-              <strong>No supplier rules created yet.</strong>
-              <p>Build automation for recurring suppliers by setting category, tax rate, and payment defaults above.</p>
+              <strong>{query.trim() || statusFilter !== "all" ? "No supplier rules match the current filters." : "No supplier rules created yet."}</strong>
+              <p>{query.trim() || statusFilter !== "all" ? "Change the search or rule-status filter to see more automation rules." : "Build automation for recurring suppliers by setting category, tax rate, and payment defaults above."}</p>
             </div>
           )}
         </div>
@@ -3365,6 +3409,17 @@ function buildClaimsListExportRows(claims: ClaimRecord[]) {
     description: claim.description ?? "",
     created_at: claim.createdAt,
     updated_at: claim.updatedAt,
+  }));
+}
+
+function buildRuleExportRows(rules: SupplierRule[]) {
+  return rules.map((rule) => ({
+    rule_id: String(rule.id),
+    supplier_match_text: rule.supplierMatchText,
+    category: rule.category,
+    tax_rate: rule.taxRate,
+    payment_method: rule.paymentMethod,
+    is_active: rule.isActive ? "yes" : "no",
   }));
 }
 
