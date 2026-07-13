@@ -130,7 +130,7 @@ export function App() {
     const [costs, sales, claims, rules, reconciliation, settings] = await Promise.all([
       listReceipts(token, "cost"),
       businessAdmin ? listReceipts(token, "sales") : Promise.resolve([]),
-      businessAdmin ? listClaims(token) : Promise.resolve([]),
+      listClaims(token).catch(() => []),
       businessAdmin ? listRules(token).catch(() => []) : Promise.resolve([]),
       businessAdmin ? listReconciliation(token).catch(() => []) : Promise.resolve([]),
       businessAdmin ? getSettings(token).catch(() => null) : Promise.resolve(null),
@@ -442,7 +442,10 @@ function DashboardShell(props: {
     props.store.reconciliation.filter((line) => line.status === "Open").length;
   const visibleNavItems = businessAdmin
     ? navItems.filter((item) => isRouteAllowed(props.session, item.to))
-    : [{ to: "/dropbox", label: "My Drop Box", icon: "costs" }];
+    : [
+        { to: "/dropbox", label: "My Drop Box", icon: "costs" },
+        { to: "/claims", label: "My Claims", icon: "claims" },
+      ];
   const defaultRoute = getDefaultRoute(props.session);
 
   return (
@@ -678,6 +681,14 @@ function DashboardShell(props: {
                     uploadBusy={uploadBusy}
                   />
                 }
+              />
+              <Route
+                path="/claims"
+                element={<ClaimsPage claims={props.store.claims} onCreateClaim={props.onClaimCreate} employeeMode />}
+              />
+              <Route
+                path="/claims/:id"
+                element={<ClaimDetailPage loadClaim={props.loadClaim} onStatusChange={props.onClaimStatusChange} employeeMode />}
               />
               <Route
                 path="/dropbox/:id"
@@ -1245,9 +1256,11 @@ function DocumentWorkspacePage(props: {
 function ClaimsPage({
   claims,
   onCreateClaim,
+  employeeMode,
 }: {
   claims: ClaimRecord[];
   onCreateClaim: (payload: { name?: string; description?: string; currency?: string }) => Promise<ClaimRecord>;
+  employeeMode?: boolean;
 }) {
   const navigate = useNavigate();
   const [draft, setDraft] = useState({
@@ -1263,8 +1276,12 @@ function ClaimsPage({
     <div className="stack-page">
       <section className="page-hero">
         <div>
-          <h2>Expense claims</h2>
-          <p>Claim folders stay separate from purchase invoices and keep reimbursement approval in its own workflow.</p>
+          <h2>{employeeMode ? "My expense claims" : "Expense claims"}</h2>
+          <p>
+            {employeeMode
+              ? "Create and track your own reimbursement claims while keeping company-wide finance controls hidden."
+              : "Claim folders stay separate from purchase invoices and keep reimbursement approval in its own workflow."}
+          </p>
         </div>
       </section>
       <section className="panel settings-panel">
@@ -1391,6 +1408,7 @@ function EmployeeDropboxPage(props: {
 function ClaimDetailPage(props: {
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
   onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
+  employeeMode?: boolean;
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1442,32 +1460,34 @@ function ClaimDetailPage(props: {
           <h2>{claim.name}</h2>
           <p>{claim.description ?? "Employee reimbursement folder"}</p>
         </div>
-        <div className="filter-row">
-          <button
-            className="secondary-action"
-            type="button"
-            disabled={savingStatus !== null}
-            onClick={() => void updateStatus("approved")}
-          >
-            Approve claim
-          </button>
-          <button
-            className="secondary-action"
-            type="button"
-            disabled={savingStatus !== null}
-            onClick={() => void updateStatus("paid")}
-          >
-            Mark paid
-          </button>
-          <button
-            className="danger-action"
-            type="button"
-            disabled={savingStatus !== null}
-            onClick={() => void updateStatus("rejected")}
-          >
-            Reject claim
-          </button>
-        </div>
+        {!props.employeeMode ? (
+          <div className="filter-row">
+            <button
+              className="secondary-action"
+              type="button"
+              disabled={savingStatus !== null}
+              onClick={() => void updateStatus("approved")}
+            >
+              Approve claim
+            </button>
+            <button
+              className="secondary-action"
+              type="button"
+              disabled={savingStatus !== null}
+              onClick={() => void updateStatus("paid")}
+            >
+              Mark paid
+            </button>
+            <button
+              className="danger-action"
+              type="button"
+              disabled={savingStatus !== null}
+              onClick={() => void updateStatus("rejected")}
+            >
+              Reject claim
+            </button>
+          </div>
+        ) : null}
       </section>
       {error ? <div className="error-banner">{error}</div> : null}
       {feedback ? <div className="success-banner">{feedback}</div> : null}
