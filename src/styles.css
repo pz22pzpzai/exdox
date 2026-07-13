@@ -378,6 +378,13 @@ input {
   font-family: "Space Grotesk", sans-serif;
 }
 
+.metric-card-button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
 .overview-panels,
 .rules-layout,
 .reconciliation-layout {

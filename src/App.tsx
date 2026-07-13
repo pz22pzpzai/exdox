@@ -791,11 +791,11 @@ function OverviewPage({ store }: { store: AppStore }) {
   return (
     <div className="stack-page">
       <section className="metrics-grid">
-        <MetricCard label="Costs in review" value={currency(totalCosts)} detail={`${store.costs.length} documents`} />
-        <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${store.sales.length} invoices`} />
-        <MetricCard label="Vault archive" value={String(vaultDocuments)} detail="Stored reference files" />
-        <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Approval workload" />
-        <MetricCard label="Open bank matches" value={String(openMatches)} detail="Awaiting audit pairing" />
+        <MetricCard label="Costs in review" value={currency(totalCosts)} detail={`${store.costs.length} documents`} onClick={() => navigate("/costs")} />
+        <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${store.sales.length} invoices`} onClick={() => navigate("/sales")} />
+        <MetricCard label="Vault archive" value={String(vaultDocuments)} detail="Stored reference files" onClick={() => navigate("/vault")} />
+        <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Approval workload" onClick={() => navigate("/claims")} />
+        <MetricCard label="Open bank matches" value={String(openMatches)} detail="Awaiting audit pairing" onClick={() => navigate("/reconciliation")} />
         <MetricCard
           label="Duplicate review"
           value={String(duplicateInsights.groups.length)}
@@ -804,6 +804,7 @@ function OverviewPage({ store }: { store: AppStore }) {
               ? `${duplicateInsights.receiptIds.size} receipts need a duplicate check`
               : "No likely duplicate uploads detected"
           }
+          onClick={() => navigate("/costs")}
         />
       </section>
 
@@ -2989,12 +2990,22 @@ function UploadDropZone(props: {
   );
 }
 
-function MetricCard(props: { label: string; value: string; detail: string }) {
-  return (
-    <article className="metric-card">
+function MetricCard(props: { label: string; value: string; detail: string; onClick?: () => void }) {
+  const content = (
+    <>
       <span>{props.label}</span>
       <strong>{props.value}</strong>
       <p>{props.detail}</p>
+    </>
+  );
+
+  return props.onClick ? (
+    <button className="metric-card metric-card-button" type="button" onClick={props.onClick}>
+      {content}
+    </button>
+  ) : (
+    <article className="metric-card">
+      {content}
     </article>
   );
 }
