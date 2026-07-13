@@ -2576,6 +2576,7 @@ function BankCallbackPage(props: {
 }) {
   const { onComplete } = props;
   const location = useLocation();
+  const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
   const [status, setStatus] = useState<"loading" | "linked" | "failed">("loading");
   const [message, setMessage] = useState("Completing the bank callback handshake...");
@@ -2631,6 +2632,32 @@ function BankCallbackPage(props: {
         </div>
       </div>
       <p>{message}</p>
+      <div className="toolbar">
+        <button
+          className="secondary-action"
+          type="button"
+          onClick={() => navigate("/requisitions")}
+        >
+          Open Banking Setup
+        </button>
+        {status === "linked" ? (
+          <button
+            className="primary-action"
+            type="button"
+            onClick={() => navigate("/reconciliation")}
+          >
+            Go to Reconciliation
+          </button>
+        ) : status === "failed" ? (
+          <button
+            className="primary-action"
+            type="button"
+            onClick={() => navigate("/requisitions")}
+          >
+            Try Another Connection
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }
