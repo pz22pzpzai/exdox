@@ -541,6 +541,18 @@ function DashboardShell(props: {
                     }
                   }}
                 />
+                <UploadButton
+                  busy={uploadBusy}
+                  label="Upload Vault"
+                  onFiles={async (files) => {
+                    setUploadBusy(true);
+                    try {
+                      await props.onUpload("vault", files);
+                    } finally {
+                      setUploadBusy(false);
+                    }
+                  }}
+                />
               </>
             ) : (
               <UploadButton
@@ -755,6 +767,7 @@ function DashboardShell(props: {
 function OverviewPage({ store }: { store: AppStore }) {
   const totalCosts = sumGross(store.costs);
   const totalSales = sumGross(store.sales);
+  const vaultDocuments = store.vault.length;
   const pendingClaims = store.claims.filter((claim) => claim.status === "pending").length;
   const openMatches = store.reconciliation.filter((line) => line.status === "Open").length;
 
@@ -763,6 +776,7 @@ function OverviewPage({ store }: { store: AppStore }) {
       <section className="metrics-grid">
         <MetricCard label="Costs in review" value={currency(totalCosts)} detail={`${store.costs.length} documents`} />
         <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${store.sales.length} invoices`} />
+        <MetricCard label="Vault archive" value={String(vaultDocuments)} detail="Stored reference files" />
         <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Approval workload" />
         <MetricCard label="Open bank matches" value={String(openMatches)} detail="Awaiting audit pairing" />
       </section>
@@ -2587,7 +2601,7 @@ function PublicHome() {
             <h1>Capture, review and publish business spend without chasing paper.</h1>
             <p>
               exdox gives your team the same synced workspace across mobile and web for receipt capture,
-              invoice review, expense claims, supplier rules and bank-led reconciliation.
+              invoice review, document vault storage, expense claims, supplier rules and bank-led reconciliation.
             </p>
             <Link className="public-primary" to="/register">Start Your Free Trial</Link>
             <span>No credit card required.</span>
@@ -2601,6 +2615,7 @@ function PublicHome() {
             <article><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></article>
             <article><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent coding and tax defaults</span></article>
             <article><NavIcon name="claims" /><strong>Expense Claims</strong><span>Review, approve and publish faster</span></article>
+            <article><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive reference files separately</span></article>
             <article><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match evidence back to spend</span></article>
           </div>
         </section>
@@ -2638,6 +2653,7 @@ function PublicHome() {
             <article className="workflow-card">
               <strong>Close the loop with finance controls</strong>
               <ul>
+                <li>Dedicated vault workspace for archived evidence</li>
                 <li>Open banking requisitions and callback handling</li>
                 <li>Reconciliation matching against imported bank lines</li>
                 <li>Organisation-level VAT settings and tax defaults</li>
@@ -2687,7 +2703,7 @@ function PublicHome() {
             <article className="pricing-card">
               <span>Finance Ops</span>
               <strong>Rules and bank matching</strong>
-              <p>For organisations that want supplier automation, open banking connections and reconciliation support.</p>
+              <p>For organisations that want supplier automation, vault storage, open banking connections and reconciliation support.</p>
             </article>
           </div>
           <div className="section-actions">
@@ -2714,7 +2730,7 @@ function PublicHome() {
             </article>
             <article className="company-card">
               <strong>Review-ready audit trail</strong>
-              <p>Receipts, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
+              <p>Receipts, vault files, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
             </article>
             <article className="company-card">
               <strong>Built for finance teams</strong>
