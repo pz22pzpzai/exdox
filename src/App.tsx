@@ -2913,6 +2913,9 @@ function getDefaultRoute(session: SessionState) {
 
 function getAttentionRoute(session: SessionState, store: AppStore) {
   if (!isBusinessAdmin(session)) {
+    if (store.claims.some((claim) => claim.status === "pending")) {
+      return "/claims";
+    }
     return "/dropbox";
   }
   if (store.costs.some((receipt) => receipt.needsReview)) {
