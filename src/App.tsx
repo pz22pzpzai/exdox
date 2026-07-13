@@ -2375,6 +2375,7 @@ function ReconciliationPage(props: {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReconciliationLine["status"] | "All">("All");
   const [candidateFilter, setCandidateFilter] = useState<"All" | "With candidates" | "No candidates">("All");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_amount" | "lowest_amount">("newest");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -2385,11 +2386,17 @@ function ReconciliationPage(props: {
     const nextSearch = params.get("search") ?? "";
     const nextStatus = params.get("status");
     const nextCandidates = params.get("candidates");
+    const nextSort = params.get("sort");
 
     setQuery(nextSearch);
     setStatusFilter(nextStatus === "Open" || nextStatus === "Audited" ? nextStatus : "All");
     setCandidateFilter(
       nextCandidates === "With candidates" || nextCandidates === "No candidates" ? nextCandidates : "All",
+    );
+    setSortOrder(
+      nextSort === "oldest" || nextSort === "highest_amount" || nextSort === "lowest_amount"
+        ? nextSort
+        : "newest",
     );
   }, [location.search]);
 
@@ -2408,7 +2415,7 @@ function ReconciliationPage(props: {
           ? line.candidates.length > 0
           : line.candidates.length === 0;
     return matchesSearch && matchesStatus && matchesCandidateFilter;
-  });
+  }).sort((left, right) => compareReconciliationLines(left, right, sortOrder));
 
   return (
     <div className="stack-page">
@@ -2439,6 +2446,12 @@ function ReconciliationPage(props: {
             <option value="All">All candidate states</option>
             <option value="With candidates">With candidates</option>
             <option value="No candidates">No candidates</option>
+          </select>
+          <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="highest_amount">Highest amount</option>
+            <option value="lowest_amount">Lowest amount</option>
           </select>
           <button
             className="secondary-action"
@@ -3746,6 +3759,25 @@ function compareSupplierRules(
     return Number(right.isActive) - Number(left.isActive) || left.supplierMatchText.localeCompare(right.supplierMatchText);
   }
   return left.supplierMatchText.localeCompare(right.supplierMatchText);
+}
+
+function compareReconciliationLines(
+  left: ReconciliationLine,
+  right: ReconciliationLine,
+  sortOrder: "newest" | "oldest" | "highest_amount" | "lowest_amount",
+) {
+  const leftDate = left.statementDate ?? left.bookingDate;
+  const rightDate = right.statementDate ?? right.bookingDate;
+  if (sortOrder === "oldest") {
+    return compareIsoDate(leftDate, rightDate);
+  }
+  if (sortOrder === "highest_amount") {
+    return (right.amountSpent ?? right.transactionAmount) - (left.amountSpent ?? left.transactionAmount) || compareIsoDate(rightDate, leftDate);
+  }
+  if (sortOrder === "lowest_amount") {
+    return (left.amountSpent ?? left.transactionAmount) - (right.amountSpent ?? right.transactionAmount) || compareIsoDate(rightDate, leftDate);
+  }
+  return compareIsoDate(rightDate, leftDate);
 }
 
 function buildInboxExportRows(records: ReceiptRecord[]) {
