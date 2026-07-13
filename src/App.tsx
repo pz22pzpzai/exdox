@@ -1350,7 +1350,21 @@ function DocumentWorkspacePage(props: {
         <section className="workspace-detail-section">
           <div className="panel-heading">
             <h2>Extraction detail</h2>
-            <span>{documentTypeLabel(receipt.documentType)} document</span>
+            <div className="toolbar">
+              <span>{documentTypeLabel(receipt.documentType)} document</span>
+              <button
+                className="secondary-action"
+                type="button"
+                onClick={() =>
+                  downloadCsv(
+                    `document-${receipt.id}-summary-${new Date().toISOString().slice(0, 10)}.csv`,
+                    buildReceiptSummaryExportRows(receipt),
+                  )
+                }
+              >
+                Export summary CSV
+              </button>
+            </div>
           </div>
           <div className="summary-list">
             <div>
@@ -1376,7 +1390,21 @@ function DocumentWorkspacePage(props: {
           <section className="workspace-detail-section">
             <div className="panel-heading">
               <h2>Line items</h2>
-              <span>{lineItems.length} extracted</span>
+              <div className="toolbar">
+                <span>{lineItems.length} extracted</span>
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={() =>
+                    downloadCsv(
+                      `document-${receipt.id}-line-items-${new Date().toISOString().slice(0, 10)}.csv`,
+                      buildLineItemExportRows(receipt),
+                    )
+                  }
+                >
+                  Export line items CSV
+                </button>
+              </div>
             </div>
             <div className="table-panel compact-table-panel">
               <table className="data-table compact-data-table">
@@ -1409,7 +1437,21 @@ function DocumentWorkspacePage(props: {
           <section className="workspace-detail-section">
             <div className="panel-heading">
               <h2>Tax breakdown</h2>
-              <span>{taxBreakdown.length} lines</span>
+              <div className="toolbar">
+                <span>{taxBreakdown.length} lines</span>
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={() =>
+                    downloadCsv(
+                      `document-${receipt.id}-tax-breakdown-${new Date().toISOString().slice(0, 10)}.csv`,
+                      buildTaxBreakdownExportRows(receipt),
+                    )
+                  }
+                >
+                  Export tax CSV
+                </button>
+              </div>
             </div>
             <div className="table-panel compact-table-panel">
               <table className="data-table compact-data-table">
@@ -1479,7 +1521,7 @@ function DocumentWorkspacePage(props: {
               setError(null);
               try {
                 await props.onDelete(receipt.id);
-                navigate(props.mode === "cost" ? "/costs" : "/sales");
+                navigate(props.mode === "cost" ? "/costs" : props.mode === "sales" ? "/sales" : "/vault");
               } catch (deleteError) {
                 setError(deleteError instanceof Error ? deleteError.message : "Could not delete this receipt.");
               } finally {
@@ -3445,6 +3487,60 @@ function buildInboxExportRows(records: ReceiptRecord[]) {
     notes: record.rawTextSummary ?? "",
     created_at: record.createdAt,
     updated_at: record.updatedAt,
+  }));
+}
+
+function buildReceiptSummaryExportRows(receipt: ReceiptRecord) {
+  return [{
+    receipt_id: String(receipt.id),
+    workspace: receipt.workspaceContext,
+    status: receipt.status,
+    source: sourceLabel(receipt.receiptSource),
+    document_type: documentTypeLabel(receipt.documentType),
+    supplier: receipt.vendorName ?? "",
+    category: receipt.category ?? "",
+    customer: receipt.customer ?? "",
+    invoice_date: receipt.invoiceDate ?? "",
+    due_date: receipt.dueDate ?? "",
+    invoice_number: receipt.invoiceNumber ?? "",
+    net_amount: formatExportNumber(receipt.netAmount),
+    vat_amount: formatExportNumber(receipt.vatAmount),
+    total_amount: formatExportNumber(receipt.totalAmount),
+    subtotal_amount: formatExportNumber(receipt.subtotalAmount ?? null),
+    total_tax_amount: formatExportNumber(receipt.totalTaxAmount ?? null),
+    tax_rate: receipt.taxRateApplied ?? "",
+    payment_method: receipt.paymentMethod,
+    confidence_score: receipt.confidenceScore == null ? "" : String(receipt.confidenceScore),
+    confidence_source: receipt.confidenceSource ?? "",
+    extraction_provider: receipt.extractionProvider ?? "",
+    extraction_model: receipt.extractionModel ?? "",
+    needs_review: receipt.needsReview ? "yes" : "no",
+    description: receipt.description ?? "",
+    notes: receipt.rawTextSummary ?? "",
+    created_at: receipt.createdAt,
+    updated_at: receipt.updatedAt,
+  }];
+}
+
+function buildLineItemExportRows(receipt: ReceiptRecord) {
+  return (receipt.lineItems ?? []).map((item, index) => ({
+    receipt_id: String(receipt.id),
+    line_index: String(index + 1),
+    description: item.description ?? "",
+    quantity: item.quantity == null ? "" : String(item.quantity),
+    unit_price: formatExportNumber(item.unitPrice),
+    tax_amount: formatExportNumber(item.taxAmount),
+    total: formatExportNumber(item.total),
+  }));
+}
+
+function buildTaxBreakdownExportRows(receipt: ReceiptRecord) {
+  return (receipt.taxBreakdown ?? []).map((item, index) => ({
+    receipt_id: String(receipt.id),
+    tax_line_index: String(index + 1),
+    label: item.label ?? "",
+    rate: item.rate == null ? "" : String(item.rate),
+    amount: formatExportNumber(item.amount),
   }));
 }
 
