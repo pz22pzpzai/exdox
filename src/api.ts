@@ -134,7 +134,7 @@ export async function fetchSession(token: string): Promise<SessionState> {
 
 export async function listReceipts(
   token: string,
-  workspaceContext: "cost" | "sales",
+  workspaceContext: "cost" | "sales" | "vault",
 ): Promise<ReceiptRecord[]> {
   const response = await apiFetch<{ receipts: ReceiptRecord[] }>(
     `/receipts?workspace_context=${workspaceContext}&limit=200`,
@@ -323,7 +323,7 @@ export async function sendInvite(
 
 export async function uploadDocuments(
   token: string,
-  workspaceContext: "cost" | "sales",
+  workspaceContext: "cost" | "sales" | "vault",
   files: File[],
 ): Promise<void> {
   await Promise.all(
@@ -331,8 +331,17 @@ export async function uploadDocuments(
       const formData = new FormData();
       formData.set("file", file);
       formData.set("workspace_context", workspaceContext);
-      formData.set("document_type", workspaceContext === "sales" ? "invoice" : "receipt");
-      formData.set("payment_method", workspaceContext === "sales" ? "bank_transfer" : "business_card");
+      formData.set(
+        "document_type",
+        workspaceContext === "sales" ? "invoice" : workspaceContext === "vault" ? "unknown" : "receipt",
+      );
+      formData.set(
+        "payment_method",
+        workspaceContext === "sales" ? "bank_transfer" : workspaceContext === "vault" ? "not_applicable" : "business_card",
+      );
+      if (workspaceContext === "vault") {
+        formData.set("skip_processing", "true");
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/v1/expenses/process`, {
         method: "POST",
@@ -396,7 +405,7 @@ export function buildFallbackSession(token: string, user: SessionUser): SessionS
     activeOrganisationId: user.organisationId,
     allowedWebRoutes:
       user.role === "Business_Admin"
-        ? ["/overview", "/costs", "/sales", "/claims", "/rules", "/reconciliation", "/settings", "/requisitions", "/bank-callback"]
+        ? ["/overview", "/costs", "/sales", "/vault", "/claims", "/rules", "/reconciliation", "/settings", "/requisitions", "/bank-callback"]
         : ["/dropbox"],
   };
 }

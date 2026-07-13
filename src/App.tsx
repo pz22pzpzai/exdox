@@ -84,6 +84,7 @@ const navItems = [
   { to: "/overview", label: "Overview", icon: "overview" },
   { to: "/costs", label: "Costs Inbox", icon: "costs" },
   { to: "/sales", label: "Sales Inbox", icon: "sales" },
+  { to: "/vault", label: "Vault", icon: "claims" },
   { to: "/claims", label: "Expense Claims", icon: "claims" },
   { to: "/rules", label: "Supplier Rules", icon: "rules" },
   { to: "/reconciliation", label: "Bank Reconciliation", icon: "bank" },
@@ -97,6 +98,7 @@ const brandMarkSrc = "/branding/exdox-mark.png";
 type AppStore = {
   costs: ReceiptRecord[];
   sales: ReceiptRecord[];
+  vault: ReceiptRecord[];
   claims: ClaimRecord[];
   rules: SupplierRule[];
   reconciliation: ReconciliationLine[];
@@ -109,6 +111,7 @@ export function App() {
   const [store, setStore] = useState<AppStore>({
     costs: [],
     sales: [],
+    vault: [],
     claims: [],
     rules: [],
     reconciliation: [],
@@ -127,9 +130,10 @@ export function App() {
       throw error;
     });
     const businessAdmin = isBusinessAdmin(nextSession);
-    const [costs, sales, claims, rules, reconciliation, settings] = await Promise.all([
+    const [costs, sales, vault, claims, rules, reconciliation, settings] = await Promise.all([
       listReceipts(token, "cost"),
       businessAdmin ? listReceipts(token, "sales") : Promise.resolve([]),
+      businessAdmin ? listReceipts(token, "vault").catch(() => []) : Promise.resolve([]),
       listClaims(token).catch(() => []),
       businessAdmin ? listRules(token).catch(() => []) : Promise.resolve([]),
       businessAdmin ? listReconciliation(token).catch(() => []) : Promise.resolve([]),
@@ -140,6 +144,7 @@ export function App() {
     setStore({
       costs,
       sales,
+      vault,
       claims,
       rules,
       reconciliation,
@@ -249,7 +254,8 @@ export function App() {
             error={error}
             onUpload={async (workspaceContext, files) => {
               const pendingReceipts = buildPendingReceipts(session, workspaceContext, files);
-              const targetKey = workspaceContext === "cost" ? "costs" : "sales";
+              const targetKey =
+                workspaceContext === "cost" ? "costs" : workspaceContext === "sales" ? "sales" : "vault";
               setError(null);
               setStore((current) => ({
                 ...current,
@@ -280,6 +286,7 @@ export function App() {
                 ...current,
                 costs: current.costs.map((item) => (item.id === id ? saved : item)),
                 sales: current.sales.map((item) => (item.id === id ? saved : item)),
+                vault: current.vault.map((item) => (item.id === id ? saved : item)),
               }));
             }}
             onReceiptDelete={async (id) => {
@@ -288,6 +295,7 @@ export function App() {
                 ...current,
                 costs: current.costs.filter((item) => item.id !== id),
                 sales: current.sales.filter((item) => item.id !== id),
+                vault: current.vault.filter((item) => item.id !== id),
               }));
             }}
             onAttachReceiptToClaim={async (receiptId, claimId) => {
@@ -379,6 +387,7 @@ export function App() {
               setStore({
                 costs: [],
                 sales: [],
+                vault: [],
                 claims: [],
                 rules: [],
                 reconciliation: [],
@@ -406,7 +415,7 @@ function DashboardShell(props: {
   session: SessionState;
   store: AppStore;
   error: string | null;
-  onUpload: (workspaceContext: "cost" | "sales", files: File[]) => Promise<void>;
+  onUpload: (workspaceContext: "cost" | "sales" | "vault", files: File[]) => Promise<void>;
   onReceiptSave: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
   onReceiptDelete: (id: number) => Promise<void>;
   onAttachReceiptToClaim: (receiptId: number, claimId: number) => Promise<ReceiptRecord>;
@@ -618,6 +627,36 @@ function DashboardShell(props: {
                   }
                 />
               ) : null}
+              {isRouteAllowed(props.session, "/vault") ? (
+                <Route
+                  path="/vault"
+                  element={
+                    <InboxPage
+                      title="Document Vault"
+                      records={props.store.vault}
+                      basePath="/vault"
+                      uploadBusy={uploadBusy}
+                      onUpload={(files) => props.onUpload("vault", files)}
+                    />
+                  }
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/vault") ? (
+                <Route
+                  path="/vault/:id"
+                  element={
+                    <DocumentWorkspacePage
+                      mode="vault"
+                      fallbackRecords={props.store.vault}
+                      claims={props.store.claims}
+                      onSave={props.onReceiptSave}
+                      onDelete={props.onReceiptDelete}
+                      onAttachToClaim={props.onAttachReceiptToClaim}
+                      loadReceipt={props.loadReceipt}
+                    />
+                  }
+                />
+              ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route path="/claims" element={<ClaimsPage claims={props.store.claims} onCreateClaim={props.onClaimCreate} />} />
               ) : null}
@@ -786,7 +825,7 @@ function InboxPage({
 }: {
   title: string;
   records: ReceiptRecord[];
-  basePath: "/costs" | "/sales";
+  basePath: "/costs" | "/sales" | "/vault";
   uploadBusy: boolean;
   onUpload: (files: File[]) => Promise<void>;
 }) {
@@ -835,11 +874,19 @@ function InboxPage({
       </section>
 
       <UploadDropZone
-        title={basePath === "/costs" ? "Drop supplier bills, receipts, and invoices" : "Drop outward sales invoices and revenue evidence"}
+        title={
+          basePath === "/costs"
+            ? "Drop supplier bills, receipts, and invoices"
+            : basePath === "/sales"
+              ? "Drop outward sales invoices and revenue evidence"
+              : "Drop documents into the vault"
+        }
         subtitle={
           basePath === "/costs"
             ? "Files upload straight into secure processing and land in the costs inbox with a Processing status."
-            : "Bulk sales files route into the sales ledger workspace without mixing into expense review."
+            : basePath === "/sales"
+              ? "Bulk sales files route into the sales ledger workspace without mixing into expense review."
+              : "Store reference files in a separate archive workspace without forcing them into costs or sales coding."
         }
         busy={uploadBusy}
         onFiles={onUpload}
@@ -880,7 +927,7 @@ function InboxPage({
 }
 
 function DocumentWorkspacePage(props: {
-  mode: "cost" | "sales";
+  mode: "cost" | "sales" | "vault";
   fallbackRecords: ReceiptRecord[];
   claims: ClaimRecord[];
   onSave: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
@@ -920,7 +967,8 @@ function DocumentWorkspacePage(props: {
     return <div className="empty-state">{error ?? "Receipt workspace unavailable."}</div>;
   }
 
-  const categoryOptions = props.mode === "cost" ? costCategoryOptions : salesCategoryOptions;
+  const categoryOptions =
+    props.mode === "sales" ? salesCategoryOptions : props.mode === "vault" ? [] : costCategoryOptions;
   const eligibleClaims = props.claims.filter((claim) => claim.status === "pending" || claim.status === "approved");
   const lineItems = receipt.lineItems ?? [];
   const taxBreakdown = receipt.taxBreakdown ?? [];
@@ -946,7 +994,7 @@ function DocumentWorkspacePage(props: {
 
       <section className="panel editor-panel">
         <div className="panel-heading">
-          <h2>{props.mode === "cost" ? "Cost coding" : "Sales ledger coding"}</h2>
+          <h2>{props.mode === "cost" ? "Cost coding" : props.mode === "sales" ? "Sales ledger coding" : "Vault record"}</h2>
           <span>Organisation #{receipt.organisationId}</span>
         </div>
         {error ? <div className="error-banner">{error}</div> : null}
@@ -1353,7 +1401,7 @@ function ClaimsPage({
 
 function EmployeeDropboxPage(props: {
   receipts: ReceiptRecord[];
-  onUpload: (workspaceContext: "cost" | "sales", files: File[]) => Promise<void>;
+  onUpload: (workspaceContext: "cost" | "sales" | "vault", files: File[]) => Promise<void>;
   uploadBusy: boolean;
 }) {
   const navigate = useNavigate();
@@ -2707,7 +2755,7 @@ function sumGross(records: ReceiptRecord[]) {
 
 function buildPendingReceipts(
   session: SessionState,
-  workspaceContext: "cost" | "sales",
+  workspaceContext: "cost" | "sales" | "vault",
   files: File[],
 ): ReceiptRecord[] {
   const now = new Date().toISOString();
@@ -2717,10 +2765,12 @@ function buildPendingReceipts(
     id: -(baseId + index),
     organisationId: session.activeOrganisationId,
     workspaceContext,
-    paymentMethod: workspaceContext === "sales" ? "bank_transfer" : "business_card",
+    paymentMethod:
+      workspaceContext === "sales" ? "bank_transfer" : workspaceContext === "vault" ? "not_applicable" : "business_card",
     claimId: null,
     status: "Processing",
-    category: workspaceContext === "sales" ? "Accounts receivable" : "Uncategorised",
+    category:
+      workspaceContext === "sales" ? "Accounts receivable" : workspaceContext === "vault" ? "Vault" : "Uncategorised",
     description: null,
     customer: null,
     receiptSource: "web_upload",
@@ -2779,7 +2829,11 @@ function isBusinessAdmin(session: SessionState) {
 function isRouteAllowed(session: SessionState, pathname: string) {
   const allowedRoutes = session.allowedWebRoutes;
   if (!allowedRoutes?.length) {
-    return isBusinessAdmin(session) ? pathname !== "/dropbox" : pathname === "/dropbox";
+    return isBusinessAdmin(session) ? pathname !== "/dropbox" : pathname === "/dropbox" || pathname.startsWith("/claims");
+  }
+
+  if (isBusinessAdmin(session) && pathname.startsWith("/vault")) {
+    return true;
   }
 
   return allowedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
