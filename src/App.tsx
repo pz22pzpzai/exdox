@@ -930,7 +930,7 @@ function InboxPage({
 }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
-  const [issueFilter, setIssueFilter] = useState<"All" | "Needs review" | "Unreadable" | "Possible duplicates" | "Processing">("All");
+  const [issueFilter, setIssueFilter] = useState<"All" | "Needs review" | "Unreadable" | "Possible duplicates" | "Low confidence" | "Processing">("All");
   const deferredQuery = useDeferredValue(query);
   const navigate = useNavigate();
 
@@ -951,6 +951,8 @@ function InboxPage({
             ? looksUnreadable(record)
             : issueFilter === "Possible duplicates"
               ? duplicateInsights.byReceiptId.has(record.id)
+              : issueFilter === "Low confidence"
+                ? isLowConfidence(record)
               : record.status === "Processing";
     return matchesSearch && matchesStatus && matchesIssue;
   });
@@ -991,6 +993,7 @@ function InboxPage({
             <option value="Needs review">Needs review</option>
             <option value="Unreadable">Unreadable</option>
             <option value="Possible duplicates">Possible duplicates</option>
+            <option value="Low confidence">Low confidence</option>
             <option value="Processing">Still processing</option>
           </select>
         </div>
@@ -1050,6 +1053,7 @@ function InboxPage({
                         <div className="stacked-cell">
                           <StatusPill status={record.status} />
                           {duplicateInsights.byReceiptId.has(record.id) ? <SignalPill tone="warning">Possible duplicate</SignalPill> : null}
+                          {isLowConfidence(record) ? <SignalPill tone="info">Low confidence</SignalPill> : null}
                         </div>
                       </td>
                       <td>{record.createdAt.slice(0, 10)}</td>
@@ -1064,6 +1068,7 @@ function InboxPage({
                         <div className="stacked-cell">
                           <StatusPill status={record.status} />
                           {duplicateInsights.byReceiptId.has(record.id) ? <SignalPill tone="warning">Possible duplicate</SignalPill> : null}
+                          {isLowConfidence(record) ? <SignalPill tone="info">Low confidence</SignalPill> : null}
                         </div>
                       </td>
                       <td>{record.invoiceDate ?? "Pending"}</td>
@@ -1180,6 +1185,14 @@ function DocumentWorkspacePage(props: {
             <span>
               This document matches {duplicateGroup.records.length - 1} other {duplicateGroup.workspaceLabel.toLowerCase()} upload
               {duplicateGroup.records.length - 1 === 1 ? "" : "s"} with the same supplier, gross amount, and date.
+            </span>
+          </section>
+        ) : null}
+        {isLowConfidence(receipt) ? (
+          <section className="signal-banner info">
+            <strong>Low extraction confidence.</strong>
+            <span>
+              This document scored below the normal confidence threshold, so totals, tax, and coding fields should be checked before publish.
             </span>
           </section>
         ) : null}
@@ -2587,7 +2600,7 @@ function StatusPill({ status }: { status: "pending" | "approved" | "paid" | "rej
   return <span className={`status-pill status-${normalized.toLowerCase()}`}>{status}</span>;
 }
 
-function SignalPill({ tone, children }: { tone: "warning"; children: string }) {
+function SignalPill({ tone, children }: { tone: "warning" | "info"; children: string }) {
   return <span className={`signal-pill ${tone}`}>{children}</span>;
 }
 
@@ -3062,6 +3075,7 @@ function buildWorkspaceHealthIssues(store: AppStore) {
   const processingCount = allRecords.filter((record) => record.status === "Processing").length;
   const duplicateGroups = buildDuplicateInsights([...store.costs, ...store.sales]).groups.length;
   const pendingReviewCount = allRecords.filter((record) => record.needsReview).length;
+  const lowConfidenceCount = allRecords.filter((record) => isLowConfidence(record)).length;
   const issues: Array<{ label: string; detail: string }> = [];
 
   if (unreadableCount) {
@@ -3082,6 +3096,13 @@ function buildWorkspaceHealthIssues(store: AppStore) {
     issues.push({
       label: `${duplicateGroups} duplicate candidate group${duplicateGroups === 1 ? "" : "s"}`,
       detail: "Likely repeat uploads are grouped from matching supplier or filename, amount, and date evidence.",
+    });
+  }
+
+  if (lowConfidenceCount) {
+    issues.push({
+      label: `${lowConfidenceCount} low-confidence document${lowConfidenceCount === 1 ? "" : "s"}`,
+      detail: "These records have weaker extraction confidence and should be checked before they are published onward.",
     });
   }
 
@@ -3138,6 +3159,10 @@ function looksUnreadable(record: ReceiptRecord) {
     summary.includes("unable to read") ||
     (record.needsReview && !record.vendorName && (record.totalAmount === null || record.totalAmount === 0))
   );
+}
+
+function isLowConfidence(record: ReceiptRecord) {
+  return typeof record.confidenceScore === "number" && record.confidenceScore > 0 && record.confidenceScore < 0.75;
 }
 
 function buildPendingReceipts(

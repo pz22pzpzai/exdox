@@ -1196,6 +1196,11 @@ input {
   background: #fff4d7;
 }
 
+.signal-pill.info {
+  color: #155e82;
+  background: #e5f4fb;
+}
+
 .status-ready,
 .status-approved {
   background: #d8f0df;
@@ -1226,6 +1231,12 @@ input {
   border: 1px solid #f2d797;
   color: #6e4c12;
   background: #fff8e7;
+}
+
+.signal-banner.info {
+  border: 1px solid #b9def0;
+  color: #144f6e;
+  background: #eef8fd;
 }
 
 .workspace-split {
