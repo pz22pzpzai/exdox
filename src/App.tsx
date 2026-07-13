@@ -2186,9 +2186,22 @@ function ReconciliationPage(props: {
   onCreateRequisition: (input: { provider?: string; institutionId?: string }) => Promise<{ redirectUrl: string }>;
 }) {
   const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ReconciliationLine["status"] | "All">("All");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const deferredQuery = useDeferredValue(query);
+  const search = deferredQuery.trim().toLowerCase();
+  const filteredLines = props.lines.filter((line) => {
+    const matchesSearch =
+      !search ||
+      `${line.description ?? ""} ${line.remittanceInformation} ${line.statementDate ?? line.bookingDate}`
+        .toLowerCase()
+        .includes(search);
+    const matchesStatus = statusFilter === "All" || line.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="stack-page">
@@ -2197,15 +2210,32 @@ function ReconciliationPage(props: {
           <h2>Bank reconciliation</h2>
           <p>Cross-reference imported statement lines against processed receipts and lock audited matches.</p>
         </div>
-        <div className="toolbar">
+        <div className="filter-row">
+          <input
+            className="search-input"
+            type="search"
+            placeholder="Search bank description or date"
+            value={query}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              startTransition(() => {
+                setQuery(nextValue);
+              });
+            }}
+          />
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ReconciliationLine["status"] | "All")}>
+            <option value="All">All bank lines</option>
+            <option value="Open">Open only</option>
+            <option value="Audited">Audited only</option>
+          </select>
           <button
             className="secondary-action"
             type="button"
-            disabled={!props.lines.length}
+            disabled={!filteredLines.length}
             onClick={() =>
               downloadCsv(
                 `reconciliation-${new Date().toISOString().slice(0, 10)}.csv`,
-                buildReconciliationExportRows(props.lines),
+                buildReconciliationExportRows(filteredLines),
               )
             }
           >
@@ -2253,7 +2283,7 @@ function ReconciliationPage(props: {
               </tr>
             </thead>
             <tbody>
-              {props.lines.map((line) => (
+              {filteredLines.map((line) => (
                 <tr key={line.id}>
                   <td>{line.statementDate ?? line.bookingDate}</td>
                   <td>{line.description ?? line.remittanceInformation}</td>
@@ -2271,11 +2301,11 @@ function ReconciliationPage(props: {
       <section className="panel">
         <div className="panel-heading">
           <h2>Candidate matches</h2>
-          <span>Closest date and amount proximity</span>
+          <span>{filteredLines.length} bank line{filteredLines.length === 1 ? "" : "s"} in view</span>
         </div>
         <div className="candidate-groups">
-          {props.lines.length ? (
-            props.lines.map((line) => (
+          {filteredLines.length ? (
+            filteredLines.map((line) => (
               <article className="candidate-group" key={line.id}>
                 <div className="candidate-group-header">
                   <strong>{line.remittanceInformation}</strong>
@@ -2350,8 +2380,8 @@ function ReconciliationPage(props: {
             ))
           ) : (
             <div className="empty-inline-state">
-              <strong>No bank statement lines imported yet.</strong>
-              <p>Connect a bank feed above to bring statement lines into reconciliation.</p>
+              <strong>{query.trim() || statusFilter !== "All" ? "No bank lines match the current filters." : "No bank statement lines imported yet."}</strong>
+              <p>{query.trim() || statusFilter !== "All" ? "Change the search or bank-line status filter to inspect more reconciliation work." : "Connect a bank feed above to bring statement lines into reconciliation."}</p>
             </div>
           )}
         </div>
