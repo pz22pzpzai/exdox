@@ -2624,6 +2624,7 @@ function SettingsPage(props: {
   const [inviteFeedback, setInviteFeedback] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [lastInvite, setLastInvite] = useState<InviteResult | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(props.settings);
@@ -2659,6 +2660,7 @@ function SettingsPage(props: {
           <span>Saved changes feed both the desktop dashboard and the mobile extraction workflow.</span>
         </div>
       </div>
+      {copyFeedback ? <div className="success-banner">{copyFeedback}</div> : null}
       <div className="form-grid">
         <label className="toggle-field">
           Company is VAT Registered
@@ -2709,6 +2711,18 @@ function SettingsPage(props: {
           }}
         >
           {saving ? "Saving..." : "Save settings"}
+        </button>
+        <button
+          className="secondary-action"
+          type="button"
+          onClick={() =>
+            downloadCsv(
+              `organisation-settings-${new Date().toISOString().slice(0, 10)}.csv`,
+              buildOrganisationSettingsExportRows(draft),
+            )
+          }
+        >
+          Export settings CSV
         </button>
       </div>
       <div className="panel-divider" />
@@ -2793,6 +2807,32 @@ function SettingsPage(props: {
               </a>
             </span>
           </div>
+        </div>
+      ) : null}
+      {lastInvite ? (
+        <div className="toolbar">
+          <button
+            className="secondary-action"
+            type="button"
+            onClick={async () => {
+              const copied = await copyText(toWebsiteInviteLink(lastInvite.inviteLink));
+              setCopyFeedback(copied ? "Invite link copied." : "Could not copy the invite link.");
+            }}
+          >
+            Copy invite link
+          </button>
+          <button
+            className="secondary-action"
+            type="button"
+            onClick={() =>
+              downloadCsv(
+                `latest-invite-${new Date().toISOString().slice(0, 10)}.csv`,
+                buildInviteExportRows(lastInvite),
+              )
+            }
+          >
+            Export invite CSV
+          </button>
         </div>
       ) : null}
     </section>
@@ -3603,6 +3643,29 @@ function buildRuleExportRows(rules: SupplierRule[]) {
   }));
 }
 
+function buildOrganisationSettingsExportRows(settings: OrganisationSettings) {
+  return [{
+    organisation_id: String(settings.organisationId),
+    organisation_name: settings.organisationName,
+    is_vat_registered: settings.isVatRegistered ? "yes" : "no",
+    default_tax_rate: settings.defaultTaxRate,
+  }];
+}
+
+function buildInviteExportRows(invite: InviteResult) {
+  return [{
+    user_id: String(invite.userId),
+    email: invite.email,
+    full_name: invite.fullName ?? "",
+    role: invite.role,
+    status: invite.status,
+    organisation_id: String(invite.organisationId),
+    delivery_method: invite.delivery?.method ?? "",
+    delivered: invite.delivery?.delivered ? "yes" : "no",
+    invite_link: toWebsiteInviteLink(invite.inviteLink),
+  }];
+}
+
 function buildReconciliationExportRows(lines: ReconciliationLine[]) {
   return lines.flatMap((line) =>
     (line.candidates.length ? line.candidates : [null]).map((candidate) => ({
@@ -3651,6 +3714,19 @@ function downloadCsv(fileName: string, rows: Array<Record<string, string>>) {
 function escapeCsvValue(value: string) {
   const normalized = value.replace(/\r?\n/g, " ").replace(/"/g, "\"\"");
   return /[",]/.test(normalized) ? `"${normalized}"` : normalized;
+}
+
+async function copyText(value: string) {
+  if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+    return false;
+  }
+
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function buildPendingReceipts(
