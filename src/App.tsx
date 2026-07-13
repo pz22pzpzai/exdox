@@ -773,6 +773,7 @@ function OverviewPage({ store }: { store: AppStore }) {
   const openMatches = store.reconciliation.filter((line) => line.status === "Open").length;
   const recentVaultDocuments = store.vault.slice(0, 4);
   const duplicateInsights = buildDuplicateInsights([...store.costs, ...store.sales]);
+  const healthIssues = buildWorkspaceHealthIssues(store);
 
   return (
     <div className="stack-page">
@@ -887,6 +888,28 @@ function OverviewPage({ store }: { store: AppStore }) {
             )}
           </ul>
         </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Workspace health</h2>
+            <span>Review pressure points</span>
+          </div>
+          <ul className="summary-list">
+            {healthIssues.length ? (
+              healthIssues.map((issue) => (
+                <li key={issue.label}>
+                  <strong>{issue.label}</strong>
+                  <span>{issue.detail}</span>
+                </li>
+              ))
+            ) : (
+              <li>
+                <strong>No review blockers detected</strong>
+                <span>There are no unreadable documents, stalled uploads, or duplicate candidates right now.</span>
+              </li>
+            )}
+          </ul>
+        </article>
       </section>
     </div>
   );
@@ -907,6 +930,7 @@ function InboxPage({
 }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
+  const [issueFilter, setIssueFilter] = useState<"All" | "Needs review" | "Unreadable" | "Possible duplicates" | "Processing">("All");
   const deferredQuery = useDeferredValue(query);
   const navigate = useNavigate();
 
@@ -918,7 +942,17 @@ function InboxPage({
       !search ||
       `${record.vendorName ?? ""} ${record.category ?? ""} ${record.sourceFilename}`.toLowerCase().includes(search);
     const matchesStatus = statusFilter === "All" || record.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesIssue =
+      issueFilter === "All"
+        ? true
+        : issueFilter === "Needs review"
+          ? record.needsReview
+          : issueFilter === "Unreadable"
+            ? looksUnreadable(record)
+            : issueFilter === "Possible duplicates"
+              ? duplicateInsights.byReceiptId.has(record.id)
+              : record.status === "Processing";
+    return matchesSearch && matchesStatus && matchesIssue;
   });
 
   return (
@@ -951,6 +985,13 @@ function InboxPage({
             <option value="Review">Review</option>
             <option value="Ready">Ready</option>
             <option value="Published">Published</option>
+          </select>
+          <select value={issueFilter} onChange={(event) => setIssueFilter(event.target.value as typeof issueFilter)}>
+            <option value="All">All issues</option>
+            <option value="Needs review">Needs review</option>
+            <option value="Unreadable">Unreadable</option>
+            <option value="Possible duplicates">Possible duplicates</option>
+            <option value="Processing">Still processing</option>
           </select>
         </div>
       </section>
@@ -3015,6 +3056,45 @@ function buildDuplicateInsights(records: ReceiptRecord[]) {
   };
 }
 
+function buildWorkspaceHealthIssues(store: AppStore) {
+  const allRecords = [...store.costs, ...store.sales, ...store.vault];
+  const unreadableCount = allRecords.filter((record) => looksUnreadable(record)).length;
+  const processingCount = allRecords.filter((record) => record.status === "Processing").length;
+  const duplicateGroups = buildDuplicateInsights([...store.costs, ...store.sales]).groups.length;
+  const pendingReviewCount = allRecords.filter((record) => record.needsReview).length;
+  const issues: Array<{ label: string; detail: string }> = [];
+
+  if (unreadableCount) {
+    issues.push({
+      label: `${unreadableCount} unreadable document${unreadableCount === 1 ? "" : "s"}`,
+      detail: "These records likely need manual review, re-upload, or a manual entry fallback before publish.",
+    });
+  }
+
+  if (processingCount) {
+    issues.push({
+      label: `${processingCount} document${processingCount === 1 ? "" : "s"} still processing`,
+      detail: "Keep an eye on uploads that have not settled into Review, Ready, or Published yet.",
+    });
+  }
+
+  if (duplicateGroups) {
+    issues.push({
+      label: `${duplicateGroups} duplicate candidate group${duplicateGroups === 1 ? "" : "s"}`,
+      detail: "Likely repeat uploads are grouped from matching supplier or filename, amount, and date evidence.",
+    });
+  }
+
+  if (pendingReviewCount) {
+    issues.push({
+      label: `${pendingReviewCount} document${pendingReviewCount === 1 ? "" : "s"} need review`,
+      detail: "Review-required items are still waiting on tax, coding, claim, or publish decisions.",
+    });
+  }
+
+  return issues.slice(0, 4);
+}
+
 function duplicateCandidateKeys(record: ReceiptRecord) {
   const amount = duplicateCandidateAmount(record);
   if (amount === null) {
@@ -3049,6 +3129,15 @@ function duplicateCandidateDate(record: ReceiptRecord) {
 
 function normalizeDuplicateText(value: string | null | undefined) {
   return value?.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() ?? "";
+}
+
+function looksUnreadable(record: ReceiptRecord) {
+  const summary = record.rawTextSummary?.toLowerCase() ?? "";
+  return (
+    summary.includes("could not read") ||
+    summary.includes("unable to read") ||
+    (record.needsReview && !record.vendorName && (record.totalAmount === null || record.totalAmount === 0))
+  );
 }
 
 function buildPendingReceipts(
