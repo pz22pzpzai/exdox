@@ -679,6 +679,20 @@ function DashboardShell(props: {
                   />
                 }
               />
+              <Route
+                path="/dropbox/:id"
+                element={
+                  <DocumentWorkspacePage
+                    mode="cost"
+                    fallbackRecords={props.store.costs}
+                    claims={props.store.claims}
+                    onSave={props.onReceiptSave}
+                    onDelete={props.onReceiptDelete}
+                    onAttachToClaim={props.onAttachReceiptToClaim}
+                    loadReceipt={props.loadReceipt}
+                  />
+                }
+              />
               <Route path="*" element={<Navigate to={defaultRoute} replace />} />
             </>
           )}
@@ -1325,6 +1339,8 @@ function EmployeeDropboxPage(props: {
   onUpload: (workspaceContext: "cost" | "sales", files: File[]) => Promise<void>;
   uploadBusy: boolean;
 }) {
+  const navigate = useNavigate();
+
   return (
     <div className="stack-page">
       <section className="page-hero">
@@ -1356,7 +1372,7 @@ function EmployeeDropboxPage(props: {
           </thead>
           <tbody>
             {props.receipts.map((receipt) => (
-              <tr key={receipt.id}>
+              <tr key={receipt.id} onClick={() => navigate(`/dropbox/${receipt.id}`)}>
                 <td><StatusPill status={receipt.status} /></td>
                 <td>{receipt.createdAt.slice(0, 10)}</td>
                 <td>{receipt.vendorName ?? receipt.sourceFilename}</td>
