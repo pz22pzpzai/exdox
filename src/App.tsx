@@ -3217,7 +3217,8 @@ function PublicHome() {
             <article><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent coding and tax defaults</span></article>
             <article><NavIcon name="claims" /><strong>Expense Claims</strong><span>Review, approve and publish faster</span></article>
             <article><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive reference files separately</span></article>
-            <article><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match evidence back to spend</span></article>
+            <article><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></article>
+            <article><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></article>
           </div>
         </section>
 
@@ -3239,6 +3240,7 @@ function PublicHome() {
                 <li>Mobile receipt capture in the app</li>
                 <li>Drag-and-drop uploads in costs and sales inboxes</li>
                 <li>Dedicated employee drop box for non-admin users</li>
+                <li>Bank-line review against imported statement activity</li>
                 <li>Separate workspaces for purchase and sales documents</li>
               </ul>
             </article>
@@ -3258,6 +3260,7 @@ function PublicHome() {
                 <li>Dedicated vault workspace for archived evidence</li>
                 <li>Open banking requisitions and callback handling</li>
                 <li>Reconciliation matching against imported bank lines</li>
+                <li>Filtered CSV exports across queues and document views</li>
                 <li>Organisation-level VAT settings and tax defaults</li>
                 <li>Live sync with the same receipt records used in mobile</li>
               </ul>
@@ -3270,7 +3273,8 @@ function PublicHome() {
             <h2>Simple Integration</h2>
             <p>
               Keep capture, review and accounting data moving together across your finance stack with
-              synced web and mobile workflows, organisation switching, and bank-linked reconciliation.
+              synced web and mobile workflows, organisation switching, bank-linked reconciliation, and
+              export-ready audit handoff from the same workspace.
             </p>
           </div>
           <div className="integration-names" aria-label="Compatible accounting platforms">
@@ -3336,7 +3340,7 @@ function PublicHome() {
             </article>
             <article className="company-card">
               <strong>Built for finance teams</strong>
-              <p>Business admins get the full control surface while employees can still submit directly through drop box flows.</p>
+              <p>Business admins get the full control surface, employees can still submit directly, and the active organisation context stays visible across the workspace.</p>
             </article>
           </div>
         </section>
