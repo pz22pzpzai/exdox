@@ -1755,8 +1755,22 @@ function ClaimDetailPage(props: {
           <h2>{claim.name}</h2>
           <p>{claim.description ?? "Employee reimbursement folder"}</p>
         </div>
+        <div className="filter-row">
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={!receipts.length}
+            onClick={() =>
+              downloadCsv(
+                `claim-${claim.id}-${new Date().toISOString().slice(0, 10)}.csv`,
+                buildClaimExportRows(claim, receipts),
+              )
+            }
+          >
+            Export claim CSV
+          </button>
         {!props.employeeMode ? (
-          <div className="filter-row">
+          <>
             <button
               className="secondary-action"
               type="button"
@@ -1781,8 +1795,9 @@ function ClaimDetailPage(props: {
             >
               Reject claim
             </button>
-          </div>
+          </>
         ) : null}
+        </div>
       </section>
       {error ? <div className="error-banner">{error}</div> : null}
       {feedback ? <div className="success-banner">{feedback}</div> : null}
@@ -2060,6 +2075,19 @@ function ReconciliationPage(props: {
           <p>Cross-reference imported statement lines against processed receipts and lock audited matches.</p>
         </div>
         <div className="toolbar">
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={!props.lines.length}
+            onClick={() =>
+              downloadCsv(
+                `reconciliation-${new Date().toISOString().slice(0, 10)}.csv`,
+                buildReconciliationExportRows(props.lines),
+              )
+            }
+          >
+            Export CSV
+          </button>
           <button
             className="secondary-action"
             type="button"
@@ -3223,6 +3251,47 @@ function buildInboxExportRows(records: ReceiptRecord[]) {
     created_at: record.createdAt,
     updated_at: record.updatedAt,
   }));
+}
+
+function buildClaimExportRows(claim: ClaimRecord, receipts: ReceiptRecord[]) {
+  return receipts.map((receipt) => ({
+    claim_id: String(claim.id),
+    claim_name: claim.name,
+    claim_status: claimStatusLabel(claim.status),
+    claim_total: formatExportNumber(claim.totalAmount),
+    receipt_id: String(receipt.id),
+    supplier: receipt.vendorName ?? "",
+    source_filename: receipt.sourceFilename,
+    receipt_status: receipt.status,
+    category: receipt.category ?? "",
+    invoice_date: receipt.invoiceDate ?? "",
+    total_amount: formatExportNumber(receipt.totalAmount),
+    net_amount: formatExportNumber(receipt.netAmount),
+    vat_amount: formatExportNumber(receipt.vatAmount),
+    source: sourceLabel(receipt.receiptSource),
+    document_type: documentTypeLabel(receipt.documentType),
+    created_at: receipt.createdAt,
+  }));
+}
+
+function buildReconciliationExportRows(lines: ReconciliationLine[]) {
+  return lines.flatMap((line) =>
+    (line.candidates.length ? line.candidates : [null]).map((candidate) => ({
+      bank_line_id: String(line.id),
+      bank_status: line.status,
+      booking_date: line.statementDate ?? line.bookingDate,
+      description: line.description ?? line.remittanceInformation,
+      amount_spent: formatExportNumber(line.amountSpent ?? line.transactionAmount),
+      matched_receipt_id: line.matchedReceiptId == null ? "" : String(line.matchedReceiptId),
+      candidate_receipt_id: candidate ? String(candidate.id) : "",
+      candidate_supplier: candidate?.vendorName ?? "",
+      candidate_invoice_date: candidate?.invoiceDate ?? "",
+      candidate_total_amount: formatExportNumber(candidate?.totalAmount ?? null),
+      candidate_source: candidate ? sourceLabel(candidate.receiptSource) : "",
+      candidate_status: candidate?.status ?? "",
+      candidate_match_score: candidate ? candidate.matchScore.toFixed(2) : "",
+    })),
+  );
 }
 
 function formatExportNumber(value: number | null) {
