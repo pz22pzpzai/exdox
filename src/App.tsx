@@ -908,58 +908,69 @@ function InboxPage({
       />
 
       <section className="panel table-panel">
-        <table className="data-table">
-          <thead>
-            {isVaultInbox ? (
-              <tr>
-                <th>Status</th>
-                <th>Stored</th>
-                <th>Filename</th>
-                <th>Document Type</th>
-                <th>Source</th>
-                <th>Description</th>
-              </tr>
-            ) : (
-              <tr>
-                <th>Status</th>
-                <th>Receipt Date</th>
-                <th>Supplier Name</th>
-                <th>Category</th>
-                <th>Net Amount</th>
-                <th>VAT Amount</th>
-                <th>Gross Total</th>
-                <th>Source</th>
-              </tr>
-            )}
-          </thead>
-          <tbody>
-            {filtered.map((record) => (
-              <tr key={record.id} onClick={() => navigate(`${basePath}/${record.id}`)}>
-                {isVaultInbox ? (
-                  <>
-                    <td><StatusPill status={record.status} /></td>
-                    <td>{record.createdAt.slice(0, 10)}</td>
-                    <td>{record.sourceFilename}</td>
-                    <td>{documentTypeLabel(record.documentType)}</td>
-                    <td>{sourceLabel(record.receiptSource)}</td>
-                    <td>{record.description ?? "Stored vault document"}</td>
-                  </>
-                ) : (
-                  <>
-                    <td><StatusPill status={record.status} /></td>
-                    <td>{record.invoiceDate ?? "Pending"}</td>
-                    <td>{record.vendorName ?? "Unknown supplier"}</td>
-                    <td>{record.category ?? "Uncategorised"}</td>
-                    <td>{currency(record.netAmount)}</td>
-                    <td>{currency(record.vatAmount)}</td>
-                    <td>{currency(record.totalAmount)}</td>
-                    <td>{sourceLabel(record.receiptSource)}</td>
-                  </>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {filtered.length ? (
+          <table className="data-table">
+            <thead>
+              {isVaultInbox ? (
+                <tr>
+                  <th>Status</th>
+                  <th>Stored</th>
+                  <th>Filename</th>
+                  <th>Document Type</th>
+                  <th>Source</th>
+                  <th>Description</th>
+                </tr>
+              ) : (
+                <tr>
+                  <th>Status</th>
+                  <th>Receipt Date</th>
+                  <th>Supplier Name</th>
+                  <th>Category</th>
+                  <th>Net Amount</th>
+                  <th>VAT Amount</th>
+                  <th>Gross Total</th>
+                  <th>Source</th>
+                </tr>
+              )}
+            </thead>
+            <tbody>
+              {filtered.map((record) => (
+                <tr key={record.id} onClick={() => navigate(`${basePath}/${record.id}`)}>
+                  {isVaultInbox ? (
+                    <>
+                      <td><StatusPill status={record.status} /></td>
+                      <td>{record.createdAt.slice(0, 10)}</td>
+                      <td>{record.sourceFilename}</td>
+                      <td>{documentTypeLabel(record.documentType)}</td>
+                      <td>{sourceLabel(record.receiptSource)}</td>
+                      <td>{record.description ?? "Stored vault document"}</td>
+                    </>
+                  ) : (
+                    <>
+                      <td><StatusPill status={record.status} /></td>
+                      <td>{record.invoiceDate ?? "Pending"}</td>
+                      <td>{record.vendorName ?? "Unknown supplier"}</td>
+                      <td>{record.category ?? "Uncategorised"}</td>
+                      <td>{currency(record.netAmount)}</td>
+                      <td>{currency(record.vatAmount)}</td>
+                      <td>{currency(record.totalAmount)}</td>
+                      <td>{sourceLabel(record.receiptSource)}</td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="empty-inline-state">
+            <strong>{search || statusFilter !== "All" ? "No documents match the current filters." : isVaultInbox ? "No vault files stored yet." : "No documents uploaded yet."}</strong>
+            <p>
+              {isVaultInbox
+                ? "Upload reference files into the vault to keep archive-only evidence separate from costs and sales workflows."
+                : "Use the upload area above to add receipts or invoices into this workspace."}
+            </p>
+          </div>
+        )}
       </section>
     </div>
   );
@@ -1434,17 +1445,24 @@ function ClaimsPage({
         </div>
       </section>
       <section className="card-grid">
-        {claims.map((claim) => (
-          <button className="claim-card" key={claim.id} type="button" onClick={() => navigate(`/claims/${claim.id}`)}>
-            <strong>{claim.name}</strong>
-            <span>Total value: {currency(claim.totalAmount)}</span>
-            <span>Claiming employee: {claimEmployeeLabel(claim)}</span>
-            <span>Submission date: {claim.createdAt.slice(0, 10)}</span>
-            <span>Approval status: {claimStatusLabel(claim.status)}</span>
-            <span>{claim.documentCount} receipt lines</span>
-            <StatusPill status={claimStatusToPill(claim.status)} />
-          </button>
-        ))}
+        {claims.length ? (
+          claims.map((claim) => (
+            <button className="claim-card" key={claim.id} type="button" onClick={() => navigate(`/claims/${claim.id}`)}>
+              <strong>{claim.name}</strong>
+              <span>Total value: {currency(claim.totalAmount)}</span>
+              <span>Claiming employee: {claimEmployeeLabel(claim)}</span>
+              <span>Submission date: {claim.createdAt.slice(0, 10)}</span>
+              <span>Approval status: {claimStatusLabel(claim.status)}</span>
+              <span>{claim.documentCount} receipt lines</span>
+              <StatusPill status={claimStatusToPill(claim.status)} />
+            </button>
+          ))
+        ) : (
+          <div className="empty-inline-state card-span-2">
+            <strong>{employeeMode ? "No claims created yet." : "No expense claims in this organisation yet."}</strong>
+            <p>{employeeMode ? "Create your first claim above and attach personal-spend receipts from the review workspace." : "Create a claim above to start the reimbursement approval workflow."}</p>
+          </div>
+        )}
       </section>
     </div>
   );
@@ -1770,65 +1788,72 @@ function RulesPage(props: {
           <span>{props.rules.length} live automations</span>
         </div>
         <div className="rules-list">
-          {props.rules.map((rule) => (
-            <article className="rule-row" key={rule.id}>
-              <div>
-                <strong>IF supplier contains "{rule.supplierMatchText}"</strong>
-                <p>
-                  Category = {rule.category} | Tax Rate = {rule.taxRate} | Payment Method = {rule.paymentMethod} | {rule.isActive ? "Active" : "Inactive"}
-                </p>
-              </div>
-              <div className="toolbar">
-                <button
-                  className="secondary-action"
-                  type="button"
-                  disabled={saving}
-                  onClick={() =>
-                    setDraft({
-                      id: rule.id,
-                      supplierMatchText: rule.supplierMatchText,
-                      category: rule.category,
-                      taxRate: rule.taxRate,
-                      paymentMethod: rule.paymentMethod,
-                      isActive: rule.isActive,
-                    })
-                  }
-                >
-                  Edit
-                </button>
-                <button
-                  className="danger-action"
-                  type="button"
-                  disabled={saving}
-                  onClick={async () => {
-                    setSaving(true);
-                    setError(null);
-                    setFeedback(null);
-                    try {
-                      await props.onDelete(rule.id);
-                      setFeedback("Rule deleted.");
-                      if (draft.id === rule.id) {
-                        setDraft({
-                          id: undefined,
-                          supplierMatchText: "",
-                          category: "",
-                          taxRate: "20% Standard",
-                          paymentMethod: "business_card",
-                          isActive: true,
-                        });
-                      }
-                    } catch (deleteError) {
-                      setError(deleteError instanceof Error ? deleteError.message : "Could not delete this rule.");
-                    } finally {
-                      setSaving(false);
+          {props.rules.length ? (
+            props.rules.map((rule) => (
+              <article className="rule-row" key={rule.id}>
+                <div>
+                  <strong>IF supplier contains "{rule.supplierMatchText}"</strong>
+                  <p>
+                    Category = {rule.category} | Tax Rate = {rule.taxRate} | Payment Method = {rule.paymentMethod} | {rule.isActive ? "Active" : "Inactive"}
+                  </p>
+                </div>
+                <div className="toolbar">
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    disabled={saving}
+                    onClick={() =>
+                      setDraft({
+                        id: rule.id,
+                        supplierMatchText: rule.supplierMatchText,
+                        category: rule.category,
+                        taxRate: rule.taxRate,
+                        paymentMethod: rule.paymentMethod,
+                        isActive: rule.isActive,
+                      })
                     }
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </article>
-          ))}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="danger-action"
+                    type="button"
+                    disabled={saving}
+                    onClick={async () => {
+                      setSaving(true);
+                      setError(null);
+                      setFeedback(null);
+                      try {
+                        await props.onDelete(rule.id);
+                        setFeedback("Rule deleted.");
+                        if (draft.id === rule.id) {
+                          setDraft({
+                            id: undefined,
+                            supplierMatchText: "",
+                            category: "",
+                            taxRate: "20% Standard",
+                            paymentMethod: "business_card",
+                            isActive: true,
+                          });
+                        }
+                      } catch (deleteError) {
+                        setError(deleteError instanceof Error ? deleteError.message : "Could not delete this rule.");
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </article>
+            ))
+          ) : (
+            <div className="empty-inline-state">
+              <strong>No supplier rules created yet.</strong>
+              <p>Build automation for recurring suppliers by setting category, tax rate, and payment defaults above.</p>
+            </div>
+          )}
         </div>
       </section>
     </div>
@@ -1916,72 +1941,86 @@ function ReconciliationPage(props: {
           <span>Closest date and amount proximity</span>
         </div>
         <div className="candidate-groups">
-          {props.lines.map((line) => (
-            <article className="candidate-group" key={line.id}>
-              <div className="candidate-group-header">
-                <strong>{line.remittanceInformation}</strong>
-                <span>
-                  {line.statementDate ?? line.bookingDate} | {currency(line.amountSpent ?? line.transactionAmount)}
-                </span>
-              </div>
-              <div className="table-panel">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Supplier</th>
-                      <th>Receipt Date</th>
-                      <th>Gross Total</th>
-                      <th>Source</th>
-                      <th>Match Score</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {line.candidates.map((candidate) => (
-                      <tr key={candidate.id}>
-                        <td>{candidate.vendorName ?? "Unknown supplier"}</td>
-                        <td>{candidate.invoiceDate ?? "Pending"}</td>
-                        <td>{currency(candidate.totalAmount)}</td>
-                        <td>{sourceLabel(candidate.receiptSource)}</td>
-                        <td>{candidate.matchScore.toFixed(2)}</td>
-                        <td>
-                          <div className="table-action-cell">
-                            <button
-                              className="secondary-action"
-                              type="button"
-                              onClick={() => navigate(`/costs/${candidate.id}`)}
-                            >
-                              Open receipt
-                            </button>
-                            <button
-                              className="primary-action"
-                              type="button"
-                              disabled={line.status === "Audited" || busy}
-                              onClick={async () => {
-                                setBusy(true);
-                                setError(null);
-                                setFeedback(null);
-                                try {
-                                  await props.onMatch(line.id, candidate.id);
-                                  setFeedback("Statement line matched and cleared.");
-                                } catch (matchError) {
-                                  setError(matchError instanceof Error ? matchError.message : "Could not match this statement line.");
-                                } finally {
-                                  setBusy(false);
-                                }
-                              }}
-                            >
-                              Match & Clear
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </article>
-          ))}
+          {props.lines.length ? (
+            props.lines.map((line) => (
+              <article className="candidate-group" key={line.id}>
+                <div className="candidate-group-header">
+                  <strong>{line.remittanceInformation}</strong>
+                  <span>
+                    {line.statementDate ?? line.bookingDate} | {currency(line.amountSpent ?? line.transactionAmount)}
+                  </span>
+                </div>
+                {line.candidates.length ? (
+                  <div className="table-panel">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Supplier</th>
+                          <th>Receipt Date</th>
+                          <th>Gross Total</th>
+                          <th>Source</th>
+                          <th>Match Score</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {line.candidates.map((candidate) => (
+                          <tr key={candidate.id}>
+                            <td>{candidate.vendorName ?? "Unknown supplier"}</td>
+                            <td>{candidate.invoiceDate ?? "Pending"}</td>
+                            <td>{currency(candidate.totalAmount)}</td>
+                            <td>{sourceLabel(candidate.receiptSource)}</td>
+                            <td>{candidate.matchScore.toFixed(2)}</td>
+                            <td>
+                              <div className="table-action-cell">
+                                <button
+                                  className="secondary-action"
+                                  type="button"
+                                  onClick={() => navigate(`/costs/${candidate.id}`)}
+                                >
+                                  Open receipt
+                                </button>
+                                <button
+                                  className="primary-action"
+                                  type="button"
+                                  disabled={line.status === "Audited" || busy}
+                                  onClick={async () => {
+                                    setBusy(true);
+                                    setError(null);
+                                    setFeedback(null);
+                                    try {
+                                      await props.onMatch(line.id, candidate.id);
+                                      setFeedback("Statement line matched and cleared.");
+                                    } catch (matchError) {
+                                      setError(matchError instanceof Error ? matchError.message : "Could not match this statement line.");
+                                    } finally {
+                                      setBusy(false);
+                                    }
+                                  }}
+                                >
+                                  Match & Clear
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty-inline-state">
+                    <strong>No candidate receipts found for this bank line.</strong>
+                    <p>Upload or review more cost documents to improve matching options for this transaction.</p>
+                  </div>
+                )}
+              </article>
+            ))
+          ) : (
+            <div className="empty-inline-state">
+              <strong>No bank statement lines imported yet.</strong>
+              <p>Connect a bank feed above to bring statement lines into reconciliation.</p>
+            </div>
+          )}
         </div>
       </section>
     </div>
