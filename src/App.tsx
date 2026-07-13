@@ -958,6 +958,7 @@ function InboxPage({
   const [issueFilter, setIssueFilter] = useState<"All" | "Needs review" | "Unreadable" | "Possible duplicates" | "Low confidence" | "Processing">("All");
   const [sourceFilter, setSourceFilter] = useState<ReceiptRecord["receiptSource"] | "All">("All");
   const [documentTypeFilter, setDocumentTypeFilter] = useState<ReceiptRecord["documentType"] | "All">("All");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total" | "lowest_confidence">("newest");
   const deferredQuery = useDeferredValue(query);
   const navigate = useNavigate();
 
@@ -968,6 +969,7 @@ function InboxPage({
     const nextIssue = params.get("issue");
     const nextSource = params.get("source");
     const nextDocumentType = params.get("documentType");
+    const nextSort = params.get("sort");
 
     setQuery(nextSearch);
     setStatusFilter(nextStatus === "Processing" || nextStatus === "Review" || nextStatus === "Ready" || nextStatus === "Published" ? nextStatus : "All");
@@ -982,6 +984,14 @@ function InboxPage({
     );
     setSourceFilter(nextSource === "mobile" || nextSource === "web_upload" || nextSource === "email" || nextSource === "bank_import" ? nextSource : "All");
     setDocumentTypeFilter(nextDocumentType === "receipt" || nextDocumentType === "invoice" || nextDocumentType === "unknown" ? nextDocumentType : "All");
+    setSortOrder(
+      nextSort === "oldest" ||
+      nextSort === "highest_total" ||
+      nextSort === "lowest_total" ||
+      nextSort === "lowest_confidence"
+        ? nextSort
+        : "newest",
+    );
   }, [location.search]);
 
   const search = deferredQuery.trim().toLowerCase();
@@ -1009,7 +1019,7 @@ function InboxPage({
                 ? isLowConfidence(record)
               : record.status === "Processing";
     return matchesSearch && matchesStatus && matchesSource && matchesDocumentType && matchesIssue;
-  });
+  }).sort((left, right) => compareInboxRecords(left, right, sortOrder));
 
   return (
     <div className="stack-page">
@@ -1062,6 +1072,13 @@ function InboxPage({
             <option value="receipt">Receipt</option>
             <option value="invoice">Invoice</option>
             <option value="unknown">Unknown</option>
+          </select>
+          <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="highest_total">Highest total</option>
+            <option value="lowest_total">Lowest total</option>
+            <option value="lowest_confidence">Lowest confidence</option>
           </select>
           <button
             className="secondary-action"
@@ -3652,6 +3669,30 @@ function firstInboxRouteForIssue(
     return `/vault?issue=${encodeURIComponent(issue)}`;
   }
   return `/costs?issue=${encodeURIComponent(issue)}`;
+}
+
+function compareInboxRecords(
+  left: ReceiptRecord,
+  right: ReceiptRecord,
+  sortOrder: "newest" | "oldest" | "highest_total" | "lowest_total" | "lowest_confidence",
+) {
+  if (sortOrder === "oldest") {
+    return compareIsoDate(left.createdAt, right.createdAt);
+  }
+  if (sortOrder === "highest_total") {
+    return (right.totalAmount ?? -1) - (left.totalAmount ?? -1) || compareIsoDate(right.createdAt, left.createdAt);
+  }
+  if (sortOrder === "lowest_total") {
+    return (left.totalAmount ?? Number.MAX_SAFE_INTEGER) - (right.totalAmount ?? Number.MAX_SAFE_INTEGER) || compareIsoDate(right.createdAt, left.createdAt);
+  }
+  if (sortOrder === "lowest_confidence") {
+    return (left.confidenceScore ?? Number.MAX_SAFE_INTEGER) - (right.confidenceScore ?? Number.MAX_SAFE_INTEGER) || compareIsoDate(right.createdAt, left.createdAt);
+  }
+  return compareIsoDate(right.createdAt, left.createdAt);
+}
+
+function compareIsoDate(left: string, right: string) {
+  return new Date(left).getTime() - new Date(right).getTime();
 }
 
 function buildInboxExportRows(records: ReceiptRecord[]) {
