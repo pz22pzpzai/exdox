@@ -1840,6 +1840,7 @@ function ReconciliationPage(props: {
   onMatch: (statementLineId: number, receiptId: number) => Promise<void>;
   onCreateRequisition: (input: { provider?: string; institutionId?: string }) => Promise<{ redirectUrl: string }>;
 }) {
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1944,26 +1945,35 @@ function ReconciliationPage(props: {
                         <td>{sourceLabel(candidate.receiptSource)}</td>
                         <td>{candidate.matchScore.toFixed(2)}</td>
                         <td>
-                          <button
-                            className="primary-action"
-                            type="button"
-                            disabled={line.status === "Audited" || busy}
-                            onClick={async () => {
-                              setBusy(true);
-                              setError(null);
-                              setFeedback(null);
-                              try {
-                                await props.onMatch(line.id, candidate.id);
-                                setFeedback("Statement line matched and cleared.");
-                              } catch (matchError) {
-                                setError(matchError instanceof Error ? matchError.message : "Could not match this statement line.");
-                              } finally {
-                                setBusy(false);
-                              }
-                            }}
-                          >
-                            Match & Clear
-                          </button>
+                          <div className="table-action-cell">
+                            <button
+                              className="secondary-action"
+                              type="button"
+                              onClick={() => navigate(`/costs/${candidate.id}`)}
+                            >
+                              Open receipt
+                            </button>
+                            <button
+                              className="primary-action"
+                              type="button"
+                              disabled={line.status === "Audited" || busy}
+                              onClick={async () => {
+                                setBusy(true);
+                                setError(null);
+                                setFeedback(null);
+                                try {
+                                  await props.onMatch(line.id, candidate.id);
+                                  setFeedback("Statement line matched and cleared.");
+                                } catch (matchError) {
+                                  setError(matchError instanceof Error ? matchError.message : "Could not match this statement line.");
+                                } finally {
+                                  setBusy(false);
+                                }
+                              }}
+                            >
+                              Match & Clear
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
