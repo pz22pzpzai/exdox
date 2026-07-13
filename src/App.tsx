@@ -1015,6 +1015,19 @@ function InboxPage({
             <option value="invoice">Invoice</option>
             <option value="unknown">Unknown</option>
           </select>
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={!filtered.length}
+            onClick={() => {
+              downloadCsv(
+                `${basePath.replace("/", "") || "inbox"}-${new Date().toISOString().slice(0, 10)}.csv`,
+                buildInboxExportRows(filtered),
+              );
+            }}
+          >
+            Export CSV
+          </button>
         </div>
       </section>
 
@@ -3182,6 +3195,64 @@ function looksUnreadable(record: ReceiptRecord) {
 
 function isLowConfidence(record: ReceiptRecord) {
   return typeof record.confidenceScore === "number" && record.confidenceScore > 0 && record.confidenceScore < 0.75;
+}
+
+function buildInboxExportRows(records: ReceiptRecord[]) {
+  return records.map((record) => ({
+    id: String(record.id),
+    workspace: record.workspaceContext,
+    status: record.status,
+    source: sourceLabel(record.receiptSource),
+    document_type: documentTypeLabel(record.documentType),
+    supplier: record.vendorName ?? "",
+    category: record.category ?? "",
+    customer: record.customer ?? "",
+    invoice_date: record.invoiceDate ?? "",
+    due_date: record.dueDate ?? "",
+    invoice_number: record.invoiceNumber ?? "",
+    net_amount: formatExportNumber(record.netAmount),
+    vat_amount: formatExportNumber(record.vatAmount),
+    total_amount: formatExportNumber(record.totalAmount),
+    subtotal_amount: formatExportNumber(record.subtotalAmount ?? null),
+    total_tax_amount: formatExportNumber(record.totalTaxAmount ?? null),
+    tax_rate: record.taxRateApplied ?? "",
+    confidence_score: record.confidenceScore == null ? "" : String(record.confidenceScore),
+    needs_review: record.needsReview ? "yes" : "no",
+    description: record.description ?? "",
+    notes: record.rawTextSummary ?? "",
+    created_at: record.createdAt,
+    updated_at: record.updatedAt,
+  }));
+}
+
+function formatExportNumber(value: number | null) {
+  return value == null ? "" : value.toFixed(2);
+}
+
+function downloadCsv(fileName: string, rows: Array<Record<string, string>>) {
+  if (!rows.length || typeof window === "undefined") {
+    return;
+  }
+
+  const headers = Object.keys(rows[0]!);
+  const csvLines = [
+    headers.join(","),
+    ...rows.map((row) => headers.map((header) => escapeCsvValue(row[header] ?? "")).join(",")),
+  ];
+  const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+function escapeCsvValue(value: string) {
+  const normalized = value.replace(/\r?\n/g, " ").replace(/"/g, "\"\"");
+  return /[",]/.test(normalized) ? `"${normalized}"` : normalized;
 }
 
 function buildPendingReceipts(
