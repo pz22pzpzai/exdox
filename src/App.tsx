@@ -1681,8 +1681,11 @@ function ClaimsPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ClaimRecord["status"] | "all">("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
 
-  const filteredClaims = claims.filter((claim) => statusFilter === "all" || claim.status === statusFilter);
+  const filteredClaims = claims
+    .filter((claim) => statusFilter === "all" || claim.status === statusFilter)
+    .sort((left, right) => compareClaimRecords(left, right, sortOrder));
 
   return (
     <div className="stack-page">
@@ -1702,6 +1705,12 @@ function ClaimsPage({
             <option value="approved">Approved</option>
             <option value="paid">Paid</option>
             <option value="rejected">Rejected</option>
+          </select>
+          <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="highest_total">Highest total</option>
+            <option value="lowest_total">Lowest total</option>
           </select>
           <button
             className="secondary-action"
@@ -1800,6 +1809,7 @@ function EmployeeDropboxPage(props: {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
   const deferredQuery = useDeferredValue(query);
   const search = deferredQuery.trim().toLowerCase();
   const filteredReceipts = props.receipts.filter((receipt) => {
@@ -1810,7 +1820,7 @@ function EmployeeDropboxPage(props: {
         .includes(search);
     const matchesStatus = statusFilter === "All" || receipt.status === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+  }).sort((left, right) => compareInboxRecords(left, right, sortOrder === "highest_total" ? "highest_total" : sortOrder === "lowest_total" ? "lowest_total" : sortOrder));
 
   return (
     <div className="stack-page">
@@ -1841,6 +1851,12 @@ function EmployeeDropboxPage(props: {
             <option value="Review">Review</option>
             <option value="Ready">Ready</option>
             <option value="Published">Published</option>
+          </select>
+          <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="highest_total">Highest total</option>
+            <option value="lowest_total">Lowest total</option>
           </select>
           <button
             className="secondary-action"
@@ -2102,6 +2118,7 @@ function RulesPage(props: {
 }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [sortOrder, setSortOrder] = useState<"a_z" | "z_a" | "active_first">("a_z");
   const [draft, setDraft] = useState({
     id: undefined as number | undefined,
     supplierMatchText: "",
@@ -2122,7 +2139,7 @@ function RulesPage(props: {
     const matchesStatus =
       statusFilter === "all" ? true : statusFilter === "active" ? rule.isActive : !rule.isActive;
     return matchesSearch && matchesStatus;
-  });
+  }).sort((left, right) => compareSupplierRules(left, right, sortOrder));
 
   return (
     <div className="stack-page rules-layout">
@@ -2255,6 +2272,11 @@ function RulesPage(props: {
             <option value="all">All rules</option>
             <option value="active">Active only</option>
             <option value="inactive">Inactive only</option>
+          </select>
+          <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
+            <option value="a_z">Supplier A-Z</option>
+            <option value="z_a">Supplier Z-A</option>
+            <option value="active_first">Active first</option>
           </select>
           <button
             className="secondary-action"
@@ -3693,6 +3715,37 @@ function compareInboxRecords(
 
 function compareIsoDate(left: string, right: string) {
   return new Date(left).getTime() - new Date(right).getTime();
+}
+
+function compareClaimRecords(
+  left: ClaimRecord,
+  right: ClaimRecord,
+  sortOrder: "newest" | "oldest" | "highest_total" | "lowest_total",
+) {
+  if (sortOrder === "oldest") {
+    return compareIsoDate(left.createdAt, right.createdAt);
+  }
+  if (sortOrder === "highest_total") {
+    return right.totalAmount - left.totalAmount || compareIsoDate(right.createdAt, left.createdAt);
+  }
+  if (sortOrder === "lowest_total") {
+    return left.totalAmount - right.totalAmount || compareIsoDate(right.createdAt, left.createdAt);
+  }
+  return compareIsoDate(right.createdAt, left.createdAt);
+}
+
+function compareSupplierRules(
+  left: SupplierRule,
+  right: SupplierRule,
+  sortOrder: "a_z" | "z_a" | "active_first",
+) {
+  if (sortOrder === "z_a") {
+    return right.supplierMatchText.localeCompare(left.supplierMatchText);
+  }
+  if (sortOrder === "active_first") {
+    return Number(right.isActive) - Number(left.isActive) || left.supplierMatchText.localeCompare(right.supplierMatchText);
+  }
+  return left.supplierMatchText.localeCompare(right.supplierMatchText);
 }
 
 function buildInboxExportRows(records: ReceiptRecord[]) {
