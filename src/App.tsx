@@ -770,6 +770,7 @@ function OverviewPage({ store }: { store: AppStore }) {
   const vaultDocuments = store.vault.length;
   const pendingClaims = store.claims.filter((claim) => claim.status === "pending").length;
   const openMatches = store.reconciliation.filter((line) => line.status === "Open").length;
+  const recentVaultDocuments = store.vault.slice(0, 4);
 
   return (
     <div className="stack-page">
@@ -825,6 +826,30 @@ function OverviewPage({ store }: { store: AppStore }) {
             )}
           </ul>
         </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Vault snapshot</h2>
+            <span>Recent archive files</span>
+          </div>
+          <ul className="summary-list">
+            {recentVaultDocuments.length ? (
+              recentVaultDocuments.map((document) => (
+                <li key={document.id}>
+                  <strong>{document.sourceFilename}</strong>
+                  <span>
+                    {documentTypeLabel(document.documentType)} | {sourceLabel(document.receiptSource)} | {document.createdAt.slice(0, 10)}
+                  </span>
+                </li>
+              ))
+            ) : (
+              <li>
+                <strong>No vault files yet</strong>
+                <span>Archived reference documents will appear here after the first vault upload.</span>
+              </li>
+            )}
+          </ul>
+        </article>
       </section>
     </div>
   );
@@ -863,13 +888,17 @@ function InboxPage({
       <section className="page-hero">
         <div>
           <h2>{title}</h2>
-          <p>Bulk ingestion, organisation-scoped review, and ledger-safe editing in a dedicated workspace.</p>
+          <p>
+            {isVaultInbox
+              ? "Store archive-only evidence in a separate workspace so reference documents do not clutter expense or sales review."
+              : "Bulk ingestion, organisation-scoped review, and ledger-safe editing in a dedicated workspace."}
+          </p>
         </div>
         <div className="filter-row">
           <input
             className="search-input"
             type="search"
-            placeholder="Search supplier, category, or filename"
+            placeholder={isVaultInbox ? "Search filename, description, or source" : "Search supplier, category, or filename"}
             value={query}
             onChange={(event) => {
               const nextValue = event.target.value;
