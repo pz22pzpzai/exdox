@@ -663,6 +663,13 @@ input {
   border-bottom: 1px solid var(--line);
 }
 
+.table-action-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .settings-panel {
   max-width: 820px;
 }

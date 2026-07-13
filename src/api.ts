@@ -143,6 +143,17 @@ export async function listClaims(token: string): Promise<ClaimRecord[]> {
   return response.claims;
 }
 
+export async function createClaim(
+  token: string,
+  payload: { name?: string; description?: string; currency?: string },
+): Promise<ClaimRecord> {
+  const response = await apiFetch<{ claim: ClaimRecord }>("/claims", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return response.claim;
+}
+
 export async function getClaim(token: string, id: number): Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }> {
   return apiFetch(`/claims/${id}`, token);
 }
@@ -157,6 +168,17 @@ export async function updateClaimStatus(
     body: JSON.stringify({ status }),
   });
   return response.claim;
+}
+
+export async function attachReceiptToClaim(
+  token: string,
+  payload: { receiptId: number; claimId: number },
+): Promise<ReceiptRecord> {
+  const response = await apiFetch<{ receipt: ReceiptRecord }>("/claims/attach", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return response.receipt;
 }
 
 export async function listRules(token: string): Promise<SupplierRule[]> {

@@ -11,8 +11,10 @@ import {
 } from "react-router-dom";
 
 import {
+  attachReceiptToClaim,
   clearStoredSession,
   completeBankCallback,
+  createClaim,
   createRequisition,
   deleteReceipt,
   fetchSession,
@@ -261,6 +263,30 @@ export function App() {
                 sales: current.sales.filter((item) => item.id !== id),
               }));
             }}
+            onAttachReceiptToClaim={async (receiptId, claimId) => {
+              const savedReceipt = await attachReceiptToClaim(session.token, { receiptId, claimId });
+              const [claims, costs] = await Promise.all([
+                listClaims(session.token),
+                listReceipts(session.token, "cost"),
+              ]);
+              setStore((current) => ({
+                ...current,
+                claims,
+                costs: costs.map((item) => (item.id === savedReceipt.id ? savedReceipt : item)),
+              }));
+              return savedReceipt;
+            }}
+            onClaimCreate={async (payload) => {
+              const claim = await createClaim(session.token, payload);
+              const refreshedClaims = await listClaims(session.token);
+              setStore((current) => ({
+                ...current,
+                claims: refreshedClaims.some((item) => item.id === claim.id)
+                  ? refreshedClaims
+                  : [claim, ...refreshedClaims],
+              }));
+              return claim;
+            }}
             onClaimStatusChange={async (id, status) => {
               const saved = await updateClaimStatus(session.token, id, status);
               setStore((current) => ({
@@ -355,6 +381,8 @@ function DashboardShell(props: {
   onUpload: (workspaceContext: "cost" | "sales", files: File[]) => Promise<void>;
   onReceiptSave: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
   onReceiptDelete: (id: number) => Promise<void>;
+  onAttachReceiptToClaim: (receiptId: number, claimId: number) => Promise<ReceiptRecord>;
+  onClaimCreate: (payload: { name?: string; description?: string; currency?: string }) => Promise<ClaimRecord>;
   onClaimStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
   onRuleSave: (
     payload: Partial<SupplierRule> &
@@ -519,8 +547,10 @@ function DashboardShell(props: {
                     <DocumentWorkspacePage
                       mode="cost"
                       fallbackRecords={props.store.costs}
+                      claims={props.store.claims}
                       onSave={props.onReceiptSave}
                       onDelete={props.onReceiptDelete}
+                      onAttachToClaim={props.onAttachReceiptToClaim}
                       loadReceipt={props.loadReceipt}
                     />
                   }
@@ -547,15 +577,17 @@ function DashboardShell(props: {
                     <DocumentWorkspacePage
                       mode="sales"
                       fallbackRecords={props.store.sales}
+                      claims={props.store.claims}
                       onSave={props.onReceiptSave}
                       onDelete={props.onReceiptDelete}
+                      onAttachToClaim={props.onAttachReceiptToClaim}
                       loadReceipt={props.loadReceipt}
                     />
                   }
                 />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
-                <Route path="/claims" element={<ClaimsPage claims={props.store.claims} />} />
+                <Route path="/claims" element={<ClaimsPage claims={props.store.claims} onCreateClaim={props.onClaimCreate} />} />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route
@@ -792,8 +824,10 @@ function InboxPage({
 function DocumentWorkspacePage(props: {
   mode: "cost" | "sales";
   fallbackRecords: ReceiptRecord[];
+  claims: ClaimRecord[];
   onSave: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
+  onAttachToClaim: (receiptId: number, claimId: number) => Promise<ReceiptRecord>;
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null }>;
 }) {
   const { id } = useParams();
@@ -805,6 +839,7 @@ function DocumentWorkspacePage(props: {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedClaimId, setSelectedClaimId] = useState("");
 
   useEffect(() => {
     if (!id) {
@@ -815,6 +850,7 @@ function DocumentWorkspacePage(props: {
       .then((payload) => {
         setReceipt(payload.receipt);
         setAssetUrl(payload.assetUrl);
+        setSelectedClaimId(payload.receipt.claimId ? String(payload.receipt.claimId) : "");
         setError(null);
       })
       .catch((loadError: Error) => {
@@ -827,6 +863,7 @@ function DocumentWorkspacePage(props: {
   }
 
   const categoryOptions = props.mode === "cost" ? costCategoryOptions : salesCategoryOptions;
+  const eligibleClaims = props.claims.filter((claim) => claim.status === "pending" || claim.status === "approved");
 
   return (
     <div className="workspace-split">
@@ -946,6 +983,19 @@ function DocumentWorkspacePage(props: {
               onChange={(event) => setReceipt({ ...receipt, rawTextSummary: event.target.value })}
             />
           </label>
+          {props.mode === "cost" ? (
+            <label className="form-span-2">
+              Expense Claim
+              <select value={selectedClaimId} onChange={(event) => setSelectedClaimId(event.target.value)}>
+                <option value="">Select claim</option>
+                {eligibleClaims.map((claim) => (
+                  <option key={claim.id} value={claim.id}>
+                    {claim.name} ({claimStatusLabel(claim.status)})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
         </div>
 
         <div className="toolbar">
@@ -1011,14 +1061,52 @@ function DocumentWorkspacePage(props: {
           >
             Publish to Accounting Tool
           </button>
+          {props.mode === "cost" ? (
+            <button
+              className="secondary-action"
+              type="button"
+              disabled={saving || !selectedClaimId}
+              onClick={async () => {
+                setSaving(true);
+                setFeedback(null);
+                setError(null);
+                try {
+                  const updatedReceipt = await props.onAttachToClaim(receipt.id, Number(selectedClaimId));
+                  setReceipt(updatedReceipt);
+                  setSelectedClaimId(updatedReceipt.claimId ? String(updatedReceipt.claimId) : selectedClaimId);
+                  setFeedback("Receipt attached to the selected claim.");
+                } catch (attachError) {
+                  setError(attachError instanceof Error ? attachError.message : "Could not attach this receipt to a claim.");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              Attach to Claim
+            </button>
+          ) : null}
         </div>
       </section>
     </div>
   );
 }
 
-function ClaimsPage({ claims }: { claims: ClaimRecord[] }) {
+function ClaimsPage({
+  claims,
+  onCreateClaim,
+}: {
+  claims: ClaimRecord[];
+  onCreateClaim: (payload: { name?: string; description?: string; currency?: string }) => Promise<ClaimRecord>;
+}) {
   const navigate = useNavigate();
+  const [draft, setDraft] = useState({
+    name: "",
+    description: "",
+    currency: "GBP",
+  });
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="stack-page">
@@ -1026,6 +1114,56 @@ function ClaimsPage({ claims }: { claims: ClaimRecord[] }) {
         <div>
           <h2>Expense claims</h2>
           <p>Claim folders stay separate from purchase invoices and keep reimbursement approval in its own workflow.</p>
+        </div>
+      </section>
+      <section className="panel settings-panel">
+        <div className="panel-heading">
+          <h2>Create claim</h2>
+          <span>Reimbursement workflow</span>
+        </div>
+        {error ? <div className="error-banner">{error}</div> : null}
+        {feedback ? <div className="success-banner">{feedback}</div> : null}
+        <div className="form-grid">
+          <label>
+            Claim name
+            <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+          </label>
+          <label>
+            Currency
+            <input value={draft.currency} onChange={(event) => setDraft({ ...draft, currency: event.target.value.toUpperCase() })} maxLength={3} />
+          </label>
+          <label className="form-span-2">
+            Description
+            <textarea rows={3} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} />
+          </label>
+        </div>
+        <div className="toolbar">
+          <button
+            className="primary-action"
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              setFeedback(null);
+              try {
+                const claim = await onCreateClaim({
+                  name: draft.name.trim() || undefined,
+                  description: draft.description.trim() || undefined,
+                  currency: draft.currency.trim() || "GBP",
+                });
+                setDraft({ name: "", description: "", currency: "GBP" });
+                setFeedback("Expense claim created.");
+                navigate(`/claims/${claim.id}`);
+              } catch (createError) {
+                setError(createError instanceof Error ? createError.message : "Could not create this claim.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? "Creating..." : "Create claim"}
+          </button>
         </div>
       </section>
       <section className="card-grid">
@@ -1102,6 +1240,7 @@ function ClaimDetailPage(props: {
   onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
 }) {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [claim, setClaim] = useState<ClaimRecord | null>(null);
   const [receipts, setReceipts] = useState<ReceiptRecord[]>([]);
   const [savingStatus, setSavingStatus] = useState<ClaimRecord["status"] | null>(null);
@@ -1207,7 +1346,14 @@ function ClaimDetailPage(props: {
                 <td>{receipt.invoiceDate ?? "Pending"}</td>
                 <td>{receipt.category ?? "Uncategorised"}</td>
                 <td>{currency(receipt.totalAmount)}</td>
-                <td><StatusPill status={receipt.status} /></td>
+                <td>
+                  <div className="table-action-cell">
+                    <StatusPill status={receipt.status} />
+                    <button className="secondary-action" type="button" onClick={() => navigate(`/costs/${receipt.id}`)}>
+                      Open receipt
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
