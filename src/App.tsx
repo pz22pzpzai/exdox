@@ -53,6 +53,27 @@ const taxRates: TaxRate[] = [
   "Exempt",
   "No VAT",
 ];
+const costCategoryOptions = [
+  "Staff Welfare",
+  "1 - Taxi",
+  "2 - Bus/ Tram",
+  "3 - Car Wash",
+  "4 - Fuel",
+  "5 - Train",
+  "6 - Toll Road",
+  "7 - Motor Expenses",
+  "8 - Other",
+  "9 - Uniform",
+  "10 - EV Charging",
+];
+const salesCategoryOptions = [
+  "Accounts Receivable",
+  "Consulting Income",
+  "Product Sales",
+  "Subscription Income",
+  "Travel Recharge",
+  "Other Income",
+];
 
 const navItems = [
   { to: "/overview", label: "Overview", icon: "overview" },
@@ -796,6 +817,8 @@ function DocumentWorkspacePage(props: {
     return <div className="empty-state">Receipt workspace unavailable.</div>;
   }
 
+  const categoryOptions = props.mode === "cost" ? costCategoryOptions : salesCategoryOptions;
+
   return (
     <div className="workspace-split">
       <section className="panel viewer-panel">
@@ -827,7 +850,18 @@ function DocumentWorkspacePage(props: {
           </label>
           <label>
             Category
-            <input value={receipt.category ?? ""} onChange={(event) => setReceipt({ ...receipt, category: event.target.value })} />
+            <select value={receipt.category ?? ""} onChange={(event) => setReceipt({ ...receipt, category: event.target.value })}>
+              <option value="">Select category</option>
+              {categoryOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Customer
+            <input value={receipt.customer ?? ""} onChange={(event) => setReceipt({ ...receipt, customer: event.target.value })} />
           </label>
           <label>
             Receipt Date
@@ -884,6 +918,14 @@ function DocumentWorkspacePage(props: {
           <label>
             Source Channel
             <input value={sourceLabel(receipt.receiptSource)} readOnly />
+          </label>
+          <label className="form-span-2">
+            Description
+            <textarea
+              rows={3}
+              value={receipt.description ?? ""}
+              onChange={(event) => setReceipt({ ...receipt, description: event.target.value })}
+            />
           </label>
           <label className="form-span-2">
             Extraction Notes
@@ -1868,6 +1910,8 @@ function buildPendingReceipts(
     claimId: null,
     status: "Processing",
     category: workspaceContext === "sales" ? "Accounts receivable" : "Uncategorised",
+    description: null,
+    customer: null,
     receiptSource: "web_upload",
     sourceFilename: file.name,
     sourceMimeType: file.type || "application/octet-stream",

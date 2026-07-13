@@ -19,6 +19,8 @@ export type ReceiptRecord = {
   claimId: number | null;
   status: InboxStatus;
   category: string | null;
+  description: string | null;
+  customer: string | null;
   receiptSource: "mobile" | "email" | "web_upload" | "bank_import";
   sourceFilename: string;
   sourceMimeType: string;
