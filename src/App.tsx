@@ -1791,6 +1791,9 @@ function ClaimDetailPage(props: {
   const [savingStatus, setSavingStatus] = useState<ClaimRecord["status"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [receiptStatusFilter, setReceiptStatusFilter] = useState<InboxStatus | "All">("All");
+  const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
     if (!id) {
@@ -1811,6 +1814,17 @@ function ClaimDetailPage(props: {
   if (!claim) {
     return <div className="empty-state">{error ?? "Claim detail unavailable."}</div>;
   }
+
+  const search = deferredQuery.trim().toLowerCase();
+  const filteredReceipts = receipts.filter((receipt) => {
+    const matchesSearch =
+      !search ||
+      `${receipt.sourceFilename} ${receipt.vendorName ?? ""} ${receipt.category ?? ""} ${receipt.rawTextSummary ?? ""}`
+        .toLowerCase()
+        .includes(search);
+    const matchesStatus = receiptStatusFilter === "All" || receipt.status === receiptStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const updateStatus = async (status: ClaimRecord["status"]) => {
     setSavingStatus(status);
@@ -1838,11 +1852,11 @@ function ClaimDetailPage(props: {
           <button
             className="secondary-action"
             type="button"
-            disabled={!receipts.length}
+            disabled={!filteredReceipts.length}
             onClick={() =>
               downloadCsv(
                 `claim-${claim.id}-${new Date().toISOString().slice(0, 10)}.csv`,
-                buildClaimExportRows(claim, receipts),
+                buildClaimExportRows(claim, filteredReceipts),
               )
             }
           >
@@ -1889,41 +1903,69 @@ function ClaimDetailPage(props: {
       </section>
 
       <section className="panel table-panel">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Receipt</th>
-              <th>Supplier</th>
-              <th>Date</th>
-              <th>Category</th>
-              <th>Total</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {receipts.map((receipt) => (
-              <tr key={receipt.id}>
-                <td>{receipt.sourceFilename}</td>
-                <td>{receipt.vendorName ?? "Unknown supplier"}</td>
-                <td>{receipt.invoiceDate ?? "Pending"}</td>
-                <td>{receipt.category ?? "Uncategorised"}</td>
-                <td>{currency(receipt.totalAmount)}</td>
-                <td>
-                  <div className="table-action-cell">
-                    <StatusPill status={receipt.status} />
-                    <button
-                      className="secondary-action"
-                      type="button"
-                      onClick={() => navigate(props.employeeMode ? `/dropbox/${receipt.id}` : `/costs/${receipt.id}`)}
-                    >
-                      Open receipt
-                    </button>
-                  </div>
-                </td>
+        <div className="filter-row">
+          <input
+            className="search-input"
+            type="search"
+            placeholder="Search receipt, supplier, category, or notes"
+            value={query}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              startTransition(() => {
+                setQuery(nextValue);
+              });
+            }}
+          />
+          <select value={receiptStatusFilter} onChange={(event) => setReceiptStatusFilter(event.target.value as InboxStatus | "All")}>
+            <option value="All">All receipt statuses</option>
+            <option value="Processing">Processing</option>
+            <option value="Review">Review</option>
+            <option value="Ready">Ready</option>
+            <option value="Published">Published</option>
+          </select>
+        </div>
+        {filteredReceipts.length ? (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Receipt</th>
+                <th>Supplier</th>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Total</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredReceipts.map((receipt) => (
+                <tr key={receipt.id}>
+                  <td>{receipt.sourceFilename}</td>
+                  <td>{receipt.vendorName ?? "Unknown supplier"}</td>
+                  <td>{receipt.invoiceDate ?? "Pending"}</td>
+                  <td>{receipt.category ?? "Uncategorised"}</td>
+                  <td>{currency(receipt.totalAmount)}</td>
+                  <td>
+                    <div className="table-action-cell">
+                      <StatusPill status={receipt.status} />
+                      <button
+                        className="secondary-action"
+                        type="button"
+                        onClick={() => navigate(props.employeeMode ? `/dropbox/${receipt.id}` : `/costs/${receipt.id}`)}
+                      >
+                        Open receipt
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="empty-inline-state">
+            <strong>{query.trim() || receiptStatusFilter !== "All" ? "No claim receipts match the current filters." : "No receipts linked to this claim yet."}</strong>
+            <p>{query.trim() || receiptStatusFilter !== "All" ? "Change the search or receipt-status filter to inspect more linked claim receipts." : "Attach receipts to this claim from the cost workspace to review them here."}</p>
+          </div>
+        )}
       </section>
     </div>
   );
