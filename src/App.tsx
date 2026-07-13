@@ -28,6 +28,7 @@ import {
   listRules,
   loginWithEmail,
   loadStoredSession,
+  registerWithEmail,
   matchReconciliation,
   removeRule,
   saveStoredSession,
@@ -181,6 +182,30 @@ export function App() {
   }
 
   if (!session && location.pathname !== "/login") {
+    if (location.pathname === "/register") {
+      return (
+        <RegisterState
+          busy={authBusy}
+          error={authError ?? error}
+          initialEmail={new URLSearchParams(location.search).get("email") ?? ""}
+          inviteToken={new URLSearchParams(location.search).get("inviteToken") ?? ""}
+          onRegister={async (input) => {
+            setAuthBusy(true);
+            setAuthError(null);
+            setError(null);
+            try {
+              const nextSession = await registerWithEmail(input);
+              await loadWorkspace(nextSession.token, nextSession);
+            } catch (registerError) {
+              setSession(null);
+              setAuthError(registerError instanceof Error ? registerError.message : "Registration failed.");
+            } finally {
+              setAuthBusy(false);
+            }
+          }}
+        />
+      );
+    }
     return <PublicHome />;
   }
 
@@ -2016,7 +2041,7 @@ function SettingsPage(props: {
           <div>
             <strong>Invite link</strong>
             <span>
-              <a href={lastInvite.inviteLink} target="_blank" rel="noreferrer">
+              <a href={toWebsiteInviteLink(lastInvite.inviteLink)} target="_blank" rel="noreferrer">
                 Open invite link
               </a>
             </span>
@@ -2205,7 +2230,140 @@ function LoginState(props: {
           </div>
         </main>
         <footer className="login-footer">
-          <span>Legal &nbsp; | &nbsp; Privacy</span>
+          <span>
+            <Link to="/#company">Company</Link>
+            {" | "}
+            <a href="mailto:hello@exdox.co.uk?subject=Privacy%20request">Privacy</a>
+          </span>
+          <span>Compatible with Xero, QuickBooks and Sage</span>
+          <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function RegisterState(props: {
+  busy: boolean;
+  error: string | null;
+  initialEmail: string;
+  inviteToken: string;
+  onRegister: (input: {
+    email: string;
+    password: string;
+    fullName?: string;
+    organisationName?: string;
+    inviteToken?: string;
+  }) => Promise<void>;
+}) {
+  const [fullName, setFullName] = useState("");
+  const [organisationName, setOrganisationName] = useState("");
+  const [email, setEmail] = useState(props.initialEmail);
+  const [password, setPassword] = useState("");
+  const invitedFlow = Boolean(props.inviteToken);
+
+  useEffect(() => {
+    setEmail(props.initialEmail);
+  }, [props.initialEmail]);
+
+  return (
+    <div className="login-state">
+      <div className="login-shell">
+        <header className="login-header">
+          <div className="login-brand">
+            <img src={brandMarkSrc} alt="" />
+            <strong>exdox</strong>
+          </div>
+        </header>
+        <main className="login-main">
+          <section className="login-visual" aria-label="Receipt capture and finance review">
+            <img src="/branding/exdox-platform-hero.png" alt="Exdox finance workspace with synced receipt controls" />
+            <span className="login-callout callout-snap">Invite &amp; Onboard</span>
+            <span className="login-callout callout-hmrc">Web + Mobile Sync</span>
+            <span className="login-callout callout-total">Receipt Review Ready</span>
+          </section>
+          <div className="login-panel">
+            <h1>{invitedFlow ? "Activate your exdox account" : "Create your exdox workspace"}</h1>
+            <p>
+              {invitedFlow
+                ? "Finish setting your password so your invited workspace is ready on web and mobile."
+                : "Start a business-admin workspace that uses the same live API and data model as the mobile app."}
+            </p>
+            <form
+              className="login-form"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                await props.onRegister({
+                  email,
+                  password,
+                  fullName: fullName || undefined,
+                  organisationName: invitedFlow ? undefined : organisationName || undefined,
+                  inviteToken: props.inviteToken || undefined,
+                });
+              }}
+            >
+              <label>
+                Full name
+                <input
+                  type="text"
+                  autoComplete="name"
+                  value={fullName}
+                  onChange={(event) => setFullName(event.target.value)}
+                  placeholder="Your full name"
+                />
+              </label>
+              {!invitedFlow ? (
+                <label>
+                  Organisation name
+                  <input
+                    type="text"
+                    autoComplete="organization"
+                    value={organisationName}
+                    onChange={(event) => setOrganisationName(event.target.value)}
+                    placeholder="Your business or organisation"
+                  />
+                </label>
+              ) : null}
+              <label>
+                Registered Email
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="your.name@company.co.uk"
+                  required
+                />
+              </label>
+              <label>
+                Password
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="At least 8 characters"
+                  minLength={8}
+                  required
+                />
+              </label>
+              {props.error ? <div className="error-banner">{props.error}</div> : null}
+              <button className="primary-action login-submit" type="submit" disabled={props.busy}>
+                {props.busy ? "Creating access..." : invitedFlow ? "Activate account" : "Create workspace"}
+              </button>
+            </form>
+            <div className="login-links">
+              <Link to="/login">Already have an account? Log in</Link>
+              <a href="mailto:hello@exdox.co.uk?subject=Exdox%20support%20request">Need help activating?</a>
+            </div>
+          </div>
+        </main>
+        <footer className="login-footer">
+          <span>
+            <Link to="/#pricing">Pricing</Link>
+            {" | "}
+            <a href="mailto:hello@exdox.co.uk?subject=Security%20request">Security</a>
+          </span>
           <span>Compatible with Xero, QuickBooks and Sage</span>
           <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
         </footer>
@@ -2243,7 +2401,7 @@ function PublicHome() {
               exdox gives your team the same synced workspace across mobile and web for receipt capture,
               invoice review, expense claims, supplier rules and bank-led reconciliation.
             </p>
-            <Link className="public-primary" to="/login">Start Your Free Trial</Link>
+            <Link className="public-primary" to="/register">Start Your Free Trial</Link>
             <span>No credit card required.</span>
           </div>
           <img src="/branding/exdox-platform-hero.png" alt="Connected exdox accounting workspace" />
@@ -2346,7 +2504,7 @@ function PublicHome() {
           </div>
           <div className="section-actions">
             <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Pricing%20request">Request Pricing</a>
-            <Link className="secondary-inline-link" to="/login">Open Workspace</Link>
+            <Link className="secondary-inline-link" to="/register">Start Free Trial</Link>
           </div>
         </section>
 
@@ -2534,5 +2692,23 @@ function routeTitle(pathname: string) {
 
   const matched = navItems.find((item) => pathname.startsWith(item.to));
   return matched?.label ?? "Overview";
+}
+
+function toWebsiteInviteLink(inviteLink: string) {
+  if (typeof window === "undefined") {
+    return inviteLink;
+  }
+
+  try {
+    const queryStart = inviteLink.indexOf("?");
+    const query = queryStart >= 0 ? inviteLink.slice(queryStart + 1) : "";
+    const params = new URLSearchParams(query);
+    if (!params.get("inviteToken")) {
+      return inviteLink;
+    }
+    return `${window.location.origin}/register?${params.toString()}`;
+  } catch {
+    return inviteLink;
+  }
 }
 

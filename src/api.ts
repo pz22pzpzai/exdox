@@ -83,6 +83,38 @@ export async function loginWithEmail(input: { email: string; password: string })
   return hydrated;
 }
 
+export async function registerWithEmail(input: {
+  email: string;
+  password: string;
+  fullName?: string;
+  organisationName?: string;
+  inviteToken?: string;
+}): Promise<SessionState> {
+  const response = await fetch(`${API_BASE_URL}/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  const payload = (await response.json()) as AuthResponse;
+  if (!response.ok || !payload.success) {
+    throw new Error(("message" in payload && payload.message) || "Registration failed.");
+  }
+
+  let hydrated: SessionState;
+  try {
+    const session = await fetchSession(payload.token);
+    hydrated = { ...session, token: payload.token };
+  } catch {
+    hydrated = buildFallbackSession(payload.token, payload.user);
+  }
+
+  saveStoredSession(hydrated);
+  return hydrated;
+}
+
 export async function fetchSession(token: string): Promise<SessionState> {
   const response = await apiFetch<{
     user: SessionState["user"];
