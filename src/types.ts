@@ -26,6 +26,8 @@ export type ReceiptRecord = {
   sourceMimeType: string;
   s3Bucket: string;
   s3Key: string;
+  locale?: string;
+  documentType?: "receipt" | "invoice" | "unknown";
   vendorName: string | null;
   invoiceDate: string | null;
   dueDate: string | null;
@@ -35,7 +37,26 @@ export type ReceiptRecord = {
   netAmount: number | null;
   vatAmount: number | null;
   taxRateApplied: string | null;
+  subtotalAmount?: number | null;
+  totalTaxAmount?: number | null;
+  confidenceScore?: number | null;
+  confidenceSource?: "model_self_assessment" | "unavailable";
   needsReview: boolean;
+  extractionProvider?: string;
+  extractionModel?: string;
+  lineItems?: Array<{
+    description: string;
+    quantity: number | null;
+    unitPrice: number | null;
+    total: number | null;
+    taxAmount: number | null;
+  }>;
+  taxBreakdown?: Array<{
+    label: string;
+    rate: number | null;
+    amount: number | null;
+  }>;
+  notes?: string[];
   rawTextSummary: string | null;
   createdAt: string;
   updatedAt: string;

@@ -897,6 +897,9 @@ function DocumentWorkspacePage(props: {
 
   const categoryOptions = props.mode === "cost" ? costCategoryOptions : salesCategoryOptions;
   const eligibleClaims = props.claims.filter((claim) => claim.status === "pending" || claim.status === "approved");
+  const lineItems = receipt.lineItems ?? [];
+  const taxBreakdown = receipt.taxBreakdown ?? [];
+  const notes = receipt.notes ?? [];
 
   return (
     <div className="workspace-split">
@@ -1030,6 +1033,107 @@ function DocumentWorkspacePage(props: {
             </label>
           ) : null}
         </div>
+
+        <section className="workspace-detail-section">
+          <div className="panel-heading">
+            <h2>Extraction detail</h2>
+            <span>{documentTypeLabel(receipt.documentType)} document</span>
+          </div>
+          <div className="summary-list">
+            <div>
+              <strong>Confidence</strong>
+              <span>{formatConfidence(receipt.confidenceScore, receipt.confidenceSource)}</span>
+            </div>
+            <div>
+              <strong>Subtotal</strong>
+              <span>{currency(receipt.subtotalAmount ?? receipt.netAmount ?? 0)}</span>
+            </div>
+            <div>
+              <strong>Total tax</strong>
+              <span>{currency(receipt.totalTaxAmount ?? receipt.vatAmount ?? 0)}</span>
+            </div>
+            <div>
+              <strong>Extractor</strong>
+              <span>{receipt.extractionProvider && receipt.extractionModel ? `${receipt.extractionProvider} / ${receipt.extractionModel}` : "Not available"}</span>
+            </div>
+          </div>
+        </section>
+
+        {lineItems.length ? (
+          <section className="workspace-detail-section">
+            <div className="panel-heading">
+              <h2>Line items</h2>
+              <span>{lineItems.length} extracted</span>
+            </div>
+            <div className="table-panel compact-table-panel">
+              <table className="data-table compact-data-table">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Unit</th>
+                    <th>Tax</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lineItems.map((item, index) => (
+                    <tr key={`${item.description}-${index}`}>
+                      <td>{item.description || "Line item"}</td>
+                      <td>{item.quantity ?? "-"}</td>
+                      <td>{item.unitPrice === null ? "-" : currency(item.unitPrice)}</td>
+                      <td>{item.taxAmount === null ? "-" : currency(item.taxAmount)}</td>
+                      <td>{item.total === null ? "-" : currency(item.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
+        {taxBreakdown.length ? (
+          <section className="workspace-detail-section">
+            <div className="panel-heading">
+              <h2>Tax breakdown</h2>
+              <span>{taxBreakdown.length} lines</span>
+            </div>
+            <div className="table-panel compact-table-panel">
+              <table className="data-table compact-data-table">
+                <thead>
+                  <tr>
+                    <th>Label</th>
+                    <th>Rate</th>
+                    <th>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {taxBreakdown.map((item, index) => (
+                    <tr key={`${item.label}-${index}`}>
+                      <td>{item.label || "Tax line"}</td>
+                      <td>{item.rate === null ? "-" : `${item.rate}%`}</td>
+                      <td>{item.amount === null ? "-" : currency(item.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
+        {notes.length ? (
+          <section className="workspace-detail-section">
+            <div className="panel-heading">
+              <h2>Model notes</h2>
+              <span>{notes.length} checks</span>
+            </div>
+            <ul className="note-list">
+              {notes.map((note, index) => (
+                <li key={`${note}-${index}`}>{note}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <div className="toolbar">
           <button
@@ -2692,6 +2796,28 @@ function routeTitle(pathname: string) {
 
   const matched = navItems.find((item) => pathname.startsWith(item.to));
   return matched?.label ?? "Overview";
+}
+
+function documentTypeLabel(documentType: ReceiptRecord["documentType"]) {
+  if (documentType === "invoice") {
+    return "Invoice";
+  }
+  if (documentType === "receipt") {
+    return "Receipt";
+  }
+  return "Unknown";
+}
+
+function formatConfidence(
+  confidenceScore: ReceiptRecord["confidenceScore"],
+  confidenceSource: ReceiptRecord["confidenceSource"],
+) {
+  if (confidenceScore === null || confidenceScore === undefined) {
+    return "Not available";
+  }
+
+  const percentage = `${Math.round(confidenceScore * 100)}%`;
+  return confidenceSource && confidenceSource !== "unavailable" ? `${percentage} (${confidenceSource})` : percentage;
 }
 
 function toWebsiteInviteLink(inviteLink: string) {
