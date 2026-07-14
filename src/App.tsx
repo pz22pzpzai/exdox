@@ -814,8 +814,8 @@ function OverviewPage({ store }: { store: AppStore }) {
         <MetricCard label="Costs in review" value={currency(totalCosts)} detail={`${store.costs.length} documents`} onClick={() => navigate("/costs")} />
         <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${store.sales.length} invoices`} onClick={() => navigate("/sales")} />
         <MetricCard label="Vault archive" value={String(vaultDocuments)} detail="Stored reference files" onClick={() => navigate("/vault")} />
-        <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Approval workload" onClick={() => navigate("/claims")} />
-        <MetricCard label="Open bank matches" value={String(openMatches)} detail="Awaiting audit pairing" onClick={() => navigate("/reconciliation")} />
+        <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Approval workload" onClick={() => navigate(firstPendingClaimsRoute(store))} />
+        <MetricCard label="Open bank matches" value={String(openMatches)} detail="Awaiting audit pairing" onClick={() => navigate(firstOpenReconciliationRoute(store))} />
         <MetricCard
           label="Duplicate review"
           value={String(duplicateInsights.groups.length)}
@@ -4694,6 +4694,20 @@ function firstClaimCompletionRoute(store: AppStore) {
     return "/claims?status=approved";
   }
   return "/claims";
+}
+
+function firstPendingClaimsRoute(store: AppStore) {
+  if (store.claims.some((claim) => claim.status === "pending")) {
+    return "/claims?status=pending";
+  }
+  return "/claims";
+}
+
+function firstOpenReconciliationRoute(store: AppStore) {
+  if (store.reconciliation.some((line) => line.status === "Open")) {
+    return "/reconciliation?status=Open";
+  }
+  return "/reconciliation";
 }
 
 function compareInboxRecords(
