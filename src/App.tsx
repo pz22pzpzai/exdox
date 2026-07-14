@@ -1199,7 +1199,7 @@ function IntegrationsPage({ store }: { store: AppStore }) {
               </button>
             </li>
             <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate("/vault")}>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstPublishedOrArchiveRoute(store))}>
                 <strong>Published and archived evidence</strong>
                 <span>{publishedRecords} published record{publishedRecords === 1 ? "" : "s"} plus {store.vault.length} vault file{store.vault.length === 1 ? "" : "s"} retained for retrieval.</span>
               </button>
@@ -4674,6 +4674,16 @@ function firstExportRoute(store: AppStore) {
     return "/claims";
   }
   return "/reconciliation";
+}
+
+function firstPublishedOrArchiveRoute(store: AppStore) {
+  if ([...store.costs, ...store.sales, ...store.vault].some((record) => record.status === "Published")) {
+    return firstInboxRouteForStatus(store, "Published");
+  }
+  if (store.vault.length) {
+    return "/vault";
+  }
+  return "/costs?status=Published";
 }
 
 function compareInboxRecords(
