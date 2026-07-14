@@ -86,6 +86,7 @@ const navItems = [
   { to: "/overview/integrations", label: "Integrations", icon: "integrations" },
   { to: "/overview/workflows", label: "Workflows", icon: "workflow" },
   { to: "/overview/productivity", label: "Productivity", icon: "productivity" },
+  { to: "/overview/automation", label: "Automation", icon: "automation" },
   { to: "/costs", label: "Costs Inbox", icon: "costs" },
   { to: "/sales", label: "Sales Inbox", icon: "sales" },
   { to: "/vault", label: "Vault", icon: "claims" },
@@ -607,6 +608,9 @@ function DashboardShell(props: {
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/productivity" element={<ProductivityPage store={props.store} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/overview") ? (
+                <Route path="/overview/automation" element={<AutomationPage store={props.store} />} />
               ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
@@ -1565,6 +1569,139 @@ function ProductivityPage({ store }: { store: AppStore }) {
                 <span>{store.vault.length} vault file{store.vault.length === 1 ? "" : "s"} are available as stored reference evidence for audit and retrieval.</span>
               </button>
             </li>
+          </ul>
+        </article>
+      </section>
+    </div>
+  );
+}
+
+function AutomationPage({ store }: { store: AppStore }) {
+  const navigate = useNavigate();
+  const allDocuments = [...store.costs, ...store.sales, ...store.vault];
+  const activeRules = store.rules.filter((rule) => rule.isActive);
+  const readyDocuments = allDocuments.filter((record) => record.status === "Ready");
+  const lowConfidenceDocuments = allDocuments.filter((record) => isLowConfidence(record));
+  const reviewDocuments = allDocuments.filter((record) => record.needsReview);
+  const duplicateInsights = buildDuplicateInsights([...store.costs, ...store.sales]);
+  const ruleCoverage = allDocuments.length
+    ? Math.round((allDocuments.filter((record) => (record.category ?? "").trim()).length / allDocuments.length) * 100)
+    : 0;
+  const reviewEscapeRate = allDocuments.length
+    ? Math.round((readyDocuments.length / allDocuments.length) * 100)
+    : 0;
+
+  return (
+    <div className="stack-page">
+      <section className="metrics-grid">
+        <MetricCard label="Active rules" value={String(activeRules.length)} detail="Supplier automation rules currently enabled" onClick={() => navigate("/rules?status=active")} />
+        <MetricCard label="Rule coverage" value={`${ruleCoverage}%`} detail="Records already carrying category output" onClick={() => navigate("/costs")} />
+        <MetricCard label="Ready output" value={`${reviewEscapeRate}%`} detail="Documents already reaching the ready state" onClick={() => navigate("/costs?status=Ready")} />
+        <MetricCard label="Needs review" value={String(reviewDocuments.length)} detail="Records still breaking out of the automated path" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
+        <MetricCard label="Low confidence" value={String(lowConfidenceDocuments.length)} detail="Extractions still needing a manual check" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))} />
+        <MetricCard label="Duplicate groups" value={String(duplicateInsights.groups.length)} detail="Likely repeat uploads slowing clean automation" onClick={() => navigate("/costs?issue=Possible+duplicates")} />
+      </section>
+
+      <section className="overview-panels">
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Automation controls</h2>
+            <span>The parts of Exdox already shaping bookkeeping output</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/rules")}>
+                <strong>Supplier rules</strong>
+                <span>{activeRules.length} active rule{activeRules.length === 1 ? "" : "s"} currently standardise category, tax, and payment choices.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/settings")}>
+                <strong>Tax defaults</strong>
+                <span>Organisation VAT posture and fallback tax rate settings shape how review fields start out.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/overview/data-health")}>
+                <strong>Data-health safeguards</strong>
+                <span>{lowConfidenceDocuments.length + duplicateInsights.groups.length} active blocker{lowConfidenceDocuments.length + duplicateInsights.groups.length === 1 ? "" : "s"} are still interrupting hands-off processing.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Automation drag</h2>
+            <span>What is still forcing manual intervention</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))}>
+                <strong>Manual review fallback</strong>
+                <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? "" : "s"} still need human coding, tax, or publish decisions.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))}>
+                <strong>Extraction uncertainty</strong>
+                <span>{lowConfidenceDocuments.length} low-confidence document{lowConfidenceDocuments.length === 1 ? "" : "s"} are slowing automation confidence.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/costs?issue=Possible+duplicates")}>
+                <strong>Duplicate interference</strong>
+                <span>{duplicateInsights.groups.length} candidate group{duplicateInsights.groups.length === 1 ? "" : "s"} still need a human duplicate check.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Publish-ready output</h2>
+            <span>Where automation is already succeeding</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Ready")}>
+                <strong>Costs ready for handoff</strong>
+                <span>{store.costs.filter((record) => record.status === "Ready").length} cost document{store.costs.filter((record) => record.status === "Ready").length === 1 ? "" : "s"} already reached the ready queue.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/sales?status=Ready")}>
+                <strong>Sales ready for handoff</strong>
+                <span>{store.sales.filter((record) => record.status === "Ready").length} sales document{store.sales.filter((record) => record.status === "Ready").length === 1 ? "" : "s"} are ready for the next step.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Published")}>
+                <strong>Published output</strong>
+                <span>{allDocuments.filter((record) => record.status === "Published").length} document{allDocuments.filter((record) => record.status === "Published").length === 1 ? "" : "s"} have already cleared the downstream workflow.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Recent rule-shaped activity</h2>
+            <span>Newest records with coding already in place</span>
+          </div>
+          <ul className="summary-list">
+            {allDocuments
+              .filter((record) => (record.category ?? "").trim())
+              .sort((left, right) => compareIsoDate(right.updatedAt, left.updatedAt))
+              .slice(0, 8)
+              .map((record) => (
+                <li key={`${record.workspaceContext}-${record.id}`}>
+                  <button className="summary-action-row" type="button" onClick={() => navigate(recordRoute(record))}>
+                    <strong>{record.vendorName?.trim() || record.sourceFilename}</strong>
+                    <span>{workspaceLabel(record.workspaceContext)} | {record.category} | {record.updatedAt.slice(0, 10)}</span>
+                  </button>
+                </li>
+              ))}
           </ul>
         </article>
       </section>
@@ -4217,6 +4354,7 @@ function NavIcon({ name }: { name: string }) {
     integrations: <><path d="M7 12h10" /><path d="M12 7v10" /><path d="M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z" /></>,
     workflow: <><path d="M4 6h8v5H4zM12 13h8v5h-8z" /><path d="M12 8h4M16 8v5M8 11v4h4" /></>,
     productivity: <><path d="M5 19h14M7 16V9M12 16V5M17 16v-3" /></>,
+    automation: <><path d="M12 3v4M12 17v4M4.9 6.5l2.8 2.8M16.3 14.9l2.8 2.8M3 12h4M17 12h4M4.9 17.5l2.8-2.8M16.3 9.1l2.8-2.8" /><circle cx="12" cy="12" r="3" /></>,
     costs: <><path d="M6 3h12l2 5-2 5H6L4 8l2-5Z" /><path d="M8 17h8M9 21h6" /></>,
     sales: <><path d="M4 6h16v12H4z" /><path d="m4 9 8 5 8-5" /></>,
     claims: <><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 13h6M10 17h6" /></>,
