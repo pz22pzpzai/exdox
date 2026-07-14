@@ -1892,12 +1892,18 @@ input {
   text-transform: uppercase;
 }
 
+.document-grid,
 .process-grid,
 .workflow-grid,
 .pricing-grid,
 .company-grid {
   display: grid;
   gap: 12px;
+}
+
+.document-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 30px;
 }
 
 .process-grid {
@@ -1909,6 +1915,7 @@ input {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.document-card,
 .process-card,
 .workflow-card,
 .pricing-card,
@@ -1917,6 +1924,33 @@ input {
   border-radius: 8px;
   background: white;
   box-shadow: 0 4px 12px rgba(17, 28, 56, 0.05);
+}
+
+.document-card {
+  display: block;
+  padding: 18px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.document-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(17, 28, 56, 0.1);
+}
+
+.document-card strong {
+  display: block;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.document-card span {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  line-height: 1.6;
 }
 
 .process-card {
@@ -2134,6 +2168,7 @@ input {
   }
 
   .section-heading,
+  .document-grid,
   .process-grid,
   .workflow-grid,
   .pricing-grid,

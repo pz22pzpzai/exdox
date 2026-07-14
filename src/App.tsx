@@ -4225,6 +4225,45 @@ function PublicHome() {
         <section className="workflow-band">
           <div className="section-heading">
             <div>
+              <p className="section-kicker">Coverage Today</p>
+              <h2>Built for the documents your finance team already works with</h2>
+            </div>
+            <p>
+              Exdox keeps the real submission mix visible in one place across mobile and web, from
+              receipt capture and invoice handling to mileage claims, bank-led evidence, and archived support files.
+            </p>
+          </div>
+          <div className="document-grid">
+            <Link className="document-card" to="/register">
+              <strong>Receipts</strong>
+              <span>Mobile capture, employee submission, and web upload</span>
+            </Link>
+            <Link className="document-card" to="/register">
+              <strong>Purchase invoices</strong>
+              <span>Structured totals, tax fields, and review-ready coding</span>
+            </Link>
+            <Link className="document-card" to="/register">
+              <strong>Sales documents</strong>
+              <span>Separate sales workspace with the same synced review flow</span>
+            </Link>
+            <Link className="document-card" to="/register">
+              <strong>Mileage claims</strong>
+              <span>Staff mileage entry and approval-ready claim handling</span>
+            </Link>
+            <Link className="document-card" to="/register">
+              <strong>Bank-led evidence</strong>
+              <span>Imported bank activity matched back to supporting records</span>
+            </Link>
+            <Link className="document-card" to="/register">
+              <strong>Vault files</strong>
+              <span>Stored reference documents with protected retrieval</span>
+            </Link>
+          </div>
+        </section>
+
+        <section className="workflow-band">
+          <div className="section-heading">
+            <div>
               <p className="section-kicker">Operational Flow</p>
               <h2>Move from capture to publish without switching tools</h2>
             </div>
