@@ -4219,6 +4219,7 @@ function PublicHome() {
             <Link className="capability-card" to="/register"><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></Link>
             <Link className="capability-card" to="/register"><NavIcon name="integrations" /><strong>Bank & Statement Review</strong><span>Imported bank activity and evidence-led review</span></Link>
             <Link className="capability-card" to="/register"><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></Link>
+            <Link className="capability-card" to="/register"><NavIcon name="overview" /><strong>Organisation Switching</strong><span>Move between business contexts without leaving the workspace</span></Link>
           </div>
         </section>
 
