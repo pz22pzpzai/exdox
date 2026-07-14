@@ -1318,7 +1318,7 @@ function WorkflowPage({ store }: { store: AppStore }) {
         <MetricCard label="Sales approvals" value={String(salesReady.length)} detail="Sales documents ready for handoff" onClick={() => navigate("/sales?status=Ready")} />
         <MetricCard label="Pending claims" value={String(pendingClaims.length)} detail="Expense claims awaiting approval" onClick={() => navigate("/claims?status=pending")} />
         <MetricCard label="Still processing" value={String(processingDocuments.length)} detail="Uploads not yet settled into review" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.status === "Processing", "Processing"))} />
-        <MetricCard label="Published" value={String(publishedDocuments.length)} detail="Documents already pushed onward" onClick={() => navigate("/costs?status=Published")} />
+        <MetricCard label="Published" value={String(publishedDocuments.length)} detail="Documents already pushed onward" onClick={() => navigate(firstInboxRouteForStatus(store, "Published"))} />
       </section>
 
       <section className="overview-panels">
@@ -1403,7 +1403,7 @@ function WorkflowPage({ store }: { store: AppStore }) {
           </div>
           <ul className="summary-list">
             <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Published")}>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForStatus(store, "Published"))}>
                 <strong>Published document trail</strong>
                 <span>{publishedDocuments.length} published document{publishedDocuments.length === 1 ? "" : "s"} are already in the downstream handoff state.</span>
               </button>
@@ -1595,7 +1595,7 @@ function AutomationPage({ store }: { store: AppStore }) {
       <section className="metrics-grid">
         <MetricCard label="Active rules" value={String(activeRules.length)} detail="Supplier automation rules currently enabled" onClick={() => navigate("/rules?status=active")} />
         <MetricCard label="Rule coverage" value={`${ruleCoverage}%`} detail="Records already carrying category output" onClick={() => navigate("/costs")} />
-        <MetricCard label="Ready output" value={`${reviewEscapeRate}%`} detail="Documents already reaching the ready state" onClick={() => navigate("/costs?status=Ready")} />
+        <MetricCard label="Ready output" value={`${reviewEscapeRate}%`} detail="Documents already reaching the ready state" onClick={() => navigate(firstInboxRouteForStatus(store, "Ready"))} />
         <MetricCard label="Needs review" value={String(reviewDocuments.length)} detail="Records still breaking out of the automated path" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
         <MetricCard label="Low confidence" value={String(lowConfidenceDocuments.length)} detail="Extractions still needing a manual check" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))} />
         <MetricCard label="Duplicate groups" value={String(duplicateInsights.groups.length)} detail="Likely repeat uploads slowing clean automation" onClick={() => navigate("/costs?issue=Possible+duplicates")} />
@@ -1675,7 +1675,7 @@ function AutomationPage({ store }: { store: AppStore }) {
               </button>
             </li>
             <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Published")}>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForStatus(store, "Published"))}>
                 <strong>Published output</strong>
                 <span>{allDocuments.filter((record) => record.status === "Published").length} document{allDocuments.filter((record) => record.status === "Published").length === 1 ? "" : "s"} have already cleared the downstream workflow.</span>
               </button>
