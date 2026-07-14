@@ -83,6 +83,7 @@ const salesCategoryOptions = [
 const navItems = [
   { to: "/overview", label: "Overview", icon: "overview" },
   { to: "/overview/data-health", label: "Data Health", icon: "health" },
+  { to: "/overview/integrations", label: "Integrations", icon: "integrations" },
   { to: "/costs", label: "Costs Inbox", icon: "costs" },
   { to: "/sales", label: "Sales Inbox", icon: "sales" },
   { to: "/vault", label: "Vault", icon: "claims" },
@@ -596,6 +597,9 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/data-health" element={<DataHealthPage store={props.store} />} />
               ) : null}
+              {isRouteAllowed(props.session, "/overview") ? (
+                <Route path="/overview/integrations" element={<IntegrationsPage store={props.store} />} />
+              ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
                   path="/costs"
@@ -1096,6 +1100,165 @@ function DataHealthPage({ store }: { store: AppStore }) {
               <li>
                 <strong>No duplicate groups open</strong>
                 <span>Repeat-upload candidates will appear here as soon as the same evidence shows up more than once.</span>
+              </li>
+            )}
+          </ul>
+        </article>
+      </section>
+    </div>
+  );
+}
+
+function IntegrationsPage({ store }: { store: AppStore }) {
+  const navigate = useNavigate();
+  const allRecords = [...store.costs, ...store.sales, ...store.vault];
+  const sourceCounts = {
+    mobile: allRecords.filter((record) => record.receiptSource === "mobile").length,
+    web_upload: allRecords.filter((record) => record.receiptSource === "web_upload").length,
+    email: allRecords.filter((record) => record.receiptSource === "email").length,
+    bank_import: allRecords.filter((record) => record.receiptSource === "bank_import").length,
+  };
+  const readyCosts = store.costs.filter((record) => record.status === "Ready").length;
+  const readySales = store.sales.filter((record) => record.status === "Ready").length;
+  const publishedRecords = allRecords.filter((record) => record.status === "Published").length;
+  const reviewedClaims = store.claims.filter((claim) => claim.status === "pending").length;
+  const openBankMatches = store.reconciliation.filter((line) => line.status === "Open").length;
+  const auditedBankMatches = store.reconciliation.filter((line) => line.status === "Audited").length;
+  const recentUploads = allRecords
+    .slice()
+    .sort((left, right) => compareIsoDate(right.createdAt, left.createdAt))
+    .slice(0, 8);
+
+  return (
+    <div className="stack-page">
+      <section className="metrics-grid">
+        <MetricCard label="Mobile capture" value={String(sourceCounts.mobile)} detail="Receipts from the app" onClick={() => navigate(firstInboxRouteForSource(store, "mobile"))} />
+        <MetricCard label="Web uploads" value={String(sourceCounts.web_upload)} detail="Drag-and-drop from the browser" onClick={() => navigate(firstInboxRouteForSource(store, "web_upload"))} />
+        <MetricCard label="Email intake" value={String(sourceCounts.email)} detail="Documents submitted by email" onClick={() => navigate(firstInboxRouteForSource(store, "email"))} />
+        <MetricCard label="Bank imports" value={String(sourceCounts.bank_import)} detail="Receipts linked from bank-led flows" onClick={() => navigate(firstInboxRouteForSource(store, "bank_import"))} />
+        <MetricCard label="Ready to publish" value={String(readyCosts + readySales)} detail="Documents ready for accounting handoff" onClick={() => navigate(readyCosts ? "/costs?status=Ready" : "/sales?status=Ready")} />
+        <MetricCard label="Open bank matches" value={String(openBankMatches)} detail="Statement lines still awaiting audit pairing" onClick={() => navigate("/reconciliation?status=Open")} />
+      </section>
+
+      <section className="overview-panels">
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Submission channels</h2>
+            <span>How records are reaching Exdox</span>
+          </div>
+          <ul className="summary-list">
+            {([
+              { source: "mobile", label: "Mobile receipt capture", detail: "Sent from the synced app workflow." },
+              { source: "web_upload", label: "Web drag-and-drop", detail: "Uploaded directly into the website inboxes." },
+              { source: "email", label: "Email submission", detail: "Documents arriving through the email intake route." },
+              { source: "bank_import", label: "Bank-led import", detail: "Receipts brought into review alongside bank activity." },
+            ] as const).map((item) => (
+              <li key={item.source}>
+                <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForSource(store, item.source))}>
+                  <strong>{item.label}</strong>
+                  <span>{sourceCounts[item.source]} record{sourceCounts[item.source] === 1 ? "" : "s"} | {item.detail}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Accounting handoff</h2>
+            <span>Current downstream publishing posture</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Ready")}>
+                <strong>Costs ready for export or publish</strong>
+                <span>{readyCosts} cost document{readyCosts === 1 ? "" : "s"} are sitting in Ready.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/sales?status=Ready")}>
+                <strong>Sales invoices ready for handoff</strong>
+                <span>{readySales} sales document{readySales === 1 ? "" : "s"} are ready for the accounting workflow.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=pending")}>
+                <strong>Expense approvals waiting</strong>
+                <span>{reviewedClaims} pending claim{reviewedClaims === 1 ? "" : "s"} still need approval decisions.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/vault")}>
+                <strong>Published and archived evidence</strong>
+                <span>{publishedRecords} published record{publishedRecords === 1 ? "" : "s"} plus {store.vault.length} vault file{store.vault.length === 1 ? "" : "s"} retained for retrieval.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Open banking</h2>
+            <span>Live reconciliation coverage</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Open")}>
+                <strong>Open reconciliation lines</strong>
+                <span>{openBankMatches} imported bank line{openBankMatches === 1 ? "" : "s"} still need a matched document or audit action.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Audited")}>
+                <strong>Audited bank matches</strong>
+                <span>{auditedBankMatches} line{auditedBankMatches === 1 ? "" : "s"} have already been cleared through reconciliation.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/requisitions")}>
+                <strong>Bank connection setup</strong>
+                <span>Open the requisitions flow to start or retry the read-only bank connection handshake.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Supported accounting stack</h2>
+            <span>Current downstream compatibility surface</span>
+          </div>
+          <ul className="summary-list">
+            {["Sage", "Xero", "QuickBooks", "FreeAgent"].map((platform) => (
+              <li key={platform}>
+                <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Ready")}>
+                  <strong>{platform}</strong>
+                  <span>Use the existing Ready and Published receipt workflow as the accounting handoff path for this platform.</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Recent connected activity</h2>
+            <span>Latest synced records across channels</span>
+          </div>
+          <ul className="summary-list">
+            {recentUploads.length ? (
+              recentUploads.map((record) => (
+                <li key={`${record.workspaceContext}-${record.id}`}>
+                  <button className="summary-action-row" type="button" onClick={() => navigate(recordRoute(record))}>
+                    <strong>{record.vendorName?.trim() || record.sourceFilename}</strong>
+                    <span>{sourceLabel(record.receiptSource)} | {workspaceLabel(record.workspaceContext)} | {record.createdAt.slice(0, 10)}</span>
+                  </button>
+                </li>
+              ))
+            ) : (
+              <li>
+                <strong>No connected activity yet</strong>
+                <span>Uploads, imports, and archived files will appear here once the first records sync into the workspace.</span>
               </li>
             )}
           </ul>
@@ -3747,6 +3910,7 @@ function NavIcon({ name }: { name: string }) {
   const paths: Record<string, React.ReactNode> = {
     overview: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></>,
     health: <><path d="M12 21s-6-4.35-8.5-8.16C1.94 10.55 3.1 7 6.4 7c2 0 3.1 1.08 3.6 2 .5-.92 1.6-2 3.6-2 3.3 0 4.46 3.55 2.9 5.84C18 16.65 12 21 12 21Z" /><path d="M8 12h2l1.2-2.2L13 15l1.1-2H16" /></>,
+    integrations: <><path d="M7 12h10" /><path d="M12 7v10" /><path d="M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z" /></>,
     costs: <><path d="M6 3h12l2 5-2 5H6L4 8l2-5Z" /><path d="M8 17h8M9 21h6" /></>,
     sales: <><path d="M4 6h16v12H4z" /><path d="m4 9 8 5 8-5" /></>,
     claims: <><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 13h6M10 17h6" /></>,
@@ -3995,6 +4159,19 @@ function firstInboxRouteForIssue(
     return `/vault?issue=${encodeURIComponent(issue)}`;
   }
   return `/costs?issue=${encodeURIComponent(issue)}`;
+}
+
+function firstInboxRouteForSource(store: AppStore, source: ReceiptRecord["receiptSource"]) {
+  if (store.costs.some((record) => record.receiptSource === source)) {
+    return `/costs?source=${encodeURIComponent(source)}`;
+  }
+  if (store.sales.some((record) => record.receiptSource === source)) {
+    return `/sales?source=${encodeURIComponent(source)}`;
+  }
+  if (store.vault.some((record) => record.receiptSource === source)) {
+    return `/vault?source=${encodeURIComponent(source)}`;
+  }
+  return `/costs?source=${encodeURIComponent(source)}`;
 }
 
 function compareInboxRecords(
