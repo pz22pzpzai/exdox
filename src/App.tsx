@@ -836,15 +836,10 @@ function OverviewPage({ store }: { store: AppStore }) {
           </div>
           <div className="status-strip">
             {(["Processing", "Review", "Ready", "Published"] as InboxStatus[]).map((status) => (
-              <div className="status-box" key={status}>
-                <strong>
-                  {
-                    [...store.costs, ...store.sales, ...store.vault].filter((item) => item.status === status)
-                      .length
-                  }
-                </strong>
+              <button className="status-box" type="button" key={status} onClick={() => navigate(firstInboxRouteForStatus(store, status))}>
+                <strong>{[...store.costs, ...store.sales, ...store.vault].filter((item) => item.status === status).length}</strong>
                 <span>{status}</span>
-              </div>
+              </button>
             ))}
           </div>
         </article>
@@ -858,16 +853,20 @@ function OverviewPage({ store }: { store: AppStore }) {
             {store.rules.length ? (
               store.rules.slice(0, 4).map((rule) => (
                 <li key={rule.id}>
-                  <strong>{rule.supplierMatchText}</strong>
-                  <span>
-                    {rule.category} | {rule.taxRate} | {rule.paymentMethod}
-                  </span>
+                  <button className="summary-action-row" type="button" onClick={() => navigate("/rules")}>
+                    <strong>{rule.supplierMatchText}</strong>
+                    <span>
+                      {rule.category} | {rule.taxRate} | {rule.paymentMethod}
+                    </span>
+                  </button>
                 </li>
               ))
             ) : (
               <li>
-                <strong>No supplier rules yet</strong>
-                <span>Automation rules will appear here once they are created.</span>
+                <button className="summary-action-row" type="button" onClick={() => navigate("/rules")}>
+                  <strong>No supplier rules yet</strong>
+                  <span>Open the rules workspace to create the first automation rule.</span>
+                </button>
               </li>
             )}
           </ul>
@@ -4617,6 +4616,19 @@ function firstInboxRouteForSource(store: AppStore, source: ReceiptRecord["receip
     return `/vault?source=${encodeURIComponent(source)}`;
   }
   return `/costs?source=${encodeURIComponent(source)}`;
+}
+
+function firstInboxRouteForStatus(store: AppStore, status: InboxStatus) {
+  if (store.costs.some((record) => record.status === status)) {
+    return `/costs?status=${encodeURIComponent(status)}`;
+  }
+  if (store.sales.some((record) => record.status === status)) {
+    return `/sales?status=${encodeURIComponent(status)}`;
+  }
+  if (store.vault.some((record) => record.status === status)) {
+    return `/vault?status=${encodeURIComponent(status)}`;
+  }
+  return `/costs?status=${encodeURIComponent(status)}`;
 }
 
 function compareInboxRecords(
