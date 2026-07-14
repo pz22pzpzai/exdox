@@ -1242,7 +1242,7 @@ function IntegrationsPage({ store }: { store: AppStore }) {
           <ul className="summary-list">
             {["Sage", "Xero", "QuickBooks", "FreeAgent"].map((platform) => (
               <li key={platform}>
-                <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Ready")}>
+                <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForStatus(store, "Ready"))}>
                   <strong>{platform}</strong>
                   <span>Use the existing Ready and Published receipt workflow as the accounting handoff path for this platform.</span>
                 </button>
@@ -1460,8 +1460,8 @@ function ProductivityPage({ store }: { store: AppStore }) {
       <section className="metrics-grid">
         <MetricCard label="Automation coverage" value={`${automatedCoverage}%`} detail="Ready or published records across all queues" onClick={() => navigate(readyDocuments.length ? firstInboxRouteForStatus(store, "Ready") : firstPublishedOrArchiveRoute(store))} />
         <MetricCard label="Review completion" value={`${reviewCompletion}%`} detail="Records that no longer need manual review" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
-        <MetricCard label="Bank audit coverage" value={`${bankCoverage}%`} detail="Imported bank lines already audited" onClick={() => navigate("/reconciliation")} />
-        <MetricCard label="Claim completion" value={`${claimCompletion}%`} detail="Claims approved or fully paid" onClick={() => navigate("/claims")} />
+        <MetricCard label="Bank audit coverage" value={`${bankCoverage}%`} detail="Imported bank lines already audited" onClick={() => navigate("/reconciliation?status=Audited")} />
+        <MetricCard label="Claim completion" value={`${claimCompletion}%`} detail="Claims approved or fully paid" onClick={() => navigate(firstClaimCompletionRoute(store))} />
         <MetricCard label="Low-confidence drag" value={String(lowConfidenceDocuments.length)} detail="Records still slowing down review quality" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))} />
         <MetricCard label="Duplicate drag" value={String(duplicateGroups)} detail="Repeat-upload groups still consuming time" onClick={() => navigate(firstInboxRouteForDuplicateReview(store))} />
       </section>
@@ -4684,6 +4684,16 @@ function firstPublishedOrArchiveRoute(store: AppStore) {
     return "/vault";
   }
   return "/costs?status=Published";
+}
+
+function firstClaimCompletionRoute(store: AppStore) {
+  if (store.claims.some((claim) => claim.status === "paid")) {
+    return "/claims?status=paid";
+  }
+  if (store.claims.some((claim) => claim.status === "approved")) {
+    return "/claims?status=approved";
+  }
+  return "/claims";
 }
 
 function compareInboxRecords(
