@@ -14,6 +14,8 @@ import {
   attachReceiptToClaim,
   clearStoredSession,
   completeBankCallback,
+  createBillingCheckoutSession,
+  createBillingPortalSession,
   createClaim,
   createRequisition,
   deleteReceipt,
@@ -40,6 +42,8 @@ import {
   uploadDocuments,
 } from "./api";
 import type {
+  BillingCycle,
+  BillingPlanId,
   ClaimRecord,
   InboxStatus,
   InviteResult,
@@ -95,6 +99,97 @@ const navItems = [
   { to: "/reconciliation", label: "Bank Reconciliation", icon: "bank" },
   { to: "/settings", label: "Company Settings", icon: "settings" },
   { to: "/requisitions", label: "Open Banking", icon: "open-banking" },
+  { to: "/billing", label: "Billing", icon: "billing" },
+];
+
+const publicNavItems = [
+  { to: "/", label: "Home" },
+  { to: "/platform", label: "Platform" },
+  { to: "/integrations", label: "Integrations" },
+  { to: "/pricing", label: "Pricing" },
+  { to: "/company", label: "Company" },
+] as const;
+
+const pricingPlans: Array<{
+  id: BillingPlanId;
+  name: string;
+  tagline: string;
+  monthlyDocuments: string;
+  users: string;
+  cta: string;
+  featured?: boolean;
+  trialLabel: string;
+  features: string[];
+}> = [
+  {
+    id: "capture",
+    name: "Capture",
+    tagline: "Receipt capture and review for lean teams",
+    monthlyDocuments: "150 documents / month",
+    users: "3 users included",
+    cta: "Start Capture Trial",
+    trialLabel: "14-day trial",
+    features: [
+      "Mobile receipt and invoice capture",
+      "Web upload for finance review",
+      "Employee drop box",
+      "Expense claims",
+      "VAT fields and manual edits",
+      "Data health follow-up",
+    ],
+  },
+  {
+    id: "control",
+    name: "Control",
+    tagline: "Costs, sales, claims, and approval-ready workflows",
+    monthlyDocuments: "500 documents / month",
+    users: "10 users included",
+    cta: "Start Control Trial",
+    trialLabel: "14-day trial",
+    featured: true,
+    features: [
+      "Everything in Capture",
+      "Sales inbox",
+      "Approval-oriented review queues",
+      "Queue CSV exports",
+      "Shared web and mobile workspace",
+      "Business-admin finance controls",
+    ],
+  },
+  {
+    id: "operations",
+    name: "Operations",
+    tagline: "Rules, vault storage, open banking, and reconciliation",
+    monthlyDocuments: "2,000 documents / month",
+    users: "25 users included",
+    cta: "Start Operations Trial",
+    trialLabel: "14-day trial",
+    features: [
+      "Everything in Control",
+      "Supplier rules",
+      "Vault archive workspace",
+      "Bank reconciliation",
+      "Open banking requisitions",
+      "Archive-safe evidence retrieval",
+    ],
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    tagline: "Custom rollout for multi-entity finance teams",
+    monthlyDocuments: "Custom document volume",
+    users: "Custom seats",
+    cta: "Talk to Sales",
+    trialLabel: "30-day rollout window",
+    features: [
+      "Everything in Operations",
+      "Multi-entity support planning",
+      "Custom rollout and onboarding",
+      "Priority support",
+      "Custom document/user limits",
+      "Stripe-ready billing setup",
+    ],
+  },
 ];
 
 const brandLogoSrc = "/branding/exdox-logo.png";
@@ -199,6 +294,8 @@ export function App() {
           error={authError ?? error}
           initialEmail={new URLSearchParams(location.search).get("email") ?? ""}
           inviteToken={new URLSearchParams(location.search).get("inviteToken") ?? ""}
+          initialPlan={normalizePublicPlan(new URLSearchParams(location.search).get("plan"))}
+          initialBillingCycle={normalizePublicBillingCycle(new URLSearchParams(location.search).get("billingCycle"))}
           onRegister={async (input) => {
             setAuthBusy(true);
             setAuthError(null);
@@ -216,7 +313,7 @@ export function App() {
         />
       );
     }
-    return <PublicHome />;
+    return <PublicSite />;
   }
 
   if (!session) {
@@ -468,7 +565,10 @@ function DashboardShell(props: {
     props.store.claims.filter((claim) => claim.status === "pending").length +
     props.store.reconciliation.filter((line) => line.status === "Open").length;
   const visibleNavItems = businessAdmin
-    ? navItems.filter((item) => isRouteAllowed(props.session, item.to))
+    ? navItems.map((item) => ({
+        ...item,
+        locked: !isRouteAllowed(props.session, item.to),
+      }))
     : [
         { to: "/dropbox", label: "My Drop Box", icon: "costs" },
         { to: "/claims", label: "My Claims", icon: "claims" },
@@ -487,11 +587,14 @@ function DashboardShell(props: {
             {visibleNavItems.map((item) => (
               <NavLink
                 key={item.to}
-                className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}`}
-                to={item.to}
+                className={({ isActive }) =>
+                  `sidebar-link${isActive ? " active" : ""}${"locked" in item && item.locked ? " locked" : ""}`
+                }
+                to={"locked" in item && item.locked ? `/billing?locked=${encodeURIComponent(item.to)}` : item.to}
               >
                 <NavIcon name={item.icon} />
                 {item.label}
+                {"locked" in item && item.locked ? <span className="sidebar-lock-tag">Locked</span> : null}
               </NavLink>
             ))}
           </nav>
@@ -752,6 +855,7 @@ function DashboardShell(props: {
                   element={<BankCallbackPage onComplete={props.onCompleteBankCallback} />}
                 />
               ) : null}
+              <Route path="/billing" element={<BillingPage session={props.session} />} />
               <Route path="*" element={<Navigate to={defaultRoute} replace />} />
             </>
           ) : (
@@ -4048,23 +4152,34 @@ function RegisterState(props: {
   error: string | null;
   initialEmail: string;
   inviteToken: string;
+  initialPlan: BillingPlanId;
+  initialBillingCycle: BillingCycle;
   onRegister: (input: {
     email: string;
     password: string;
     fullName?: string;
     organisationName?: string;
     inviteToken?: string;
+    billingPlan?: BillingPlanId;
+    billingCycle?: BillingCycle;
   }) => Promise<void>;
 }) {
   const [fullName, setFullName] = useState("");
   const [organisationName, setOrganisationName] = useState("");
   const [email, setEmail] = useState(props.initialEmail);
   const [password, setPassword] = useState("");
+  const [billingPlan, setBillingPlan] = useState<BillingPlanId>(props.initialPlan);
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>(props.initialBillingCycle);
   const invitedFlow = Boolean(props.inviteToken);
 
   useEffect(() => {
     setEmail(props.initialEmail);
   }, [props.initialEmail]);
+
+  useEffect(() => {
+    setBillingPlan(props.initialPlan);
+    setBillingCycle(props.initialBillingCycle);
+  }, [props.initialBillingCycle, props.initialPlan]);
 
   return (
     <div className="login-state">
@@ -4099,6 +4214,8 @@ function RegisterState(props: {
                   fullName: fullName || undefined,
                   organisationName: invitedFlow ? undefined : organisationName || undefined,
                   inviteToken: props.inviteToken || undefined,
+                  billingPlan: invitedFlow ? undefined : billingPlan,
+                  billingCycle: invitedFlow ? undefined : billingCycle,
                 });
               }}
             >
@@ -4113,16 +4230,38 @@ function RegisterState(props: {
                 />
               </label>
               {!invitedFlow ? (
-                <label>
-                  Organisation name
-                  <input
-                    type="text"
-                    autoComplete="organization"
-                    value={organisationName}
-                    onChange={(event) => setOrganisationName(event.target.value)}
-                    placeholder="Your business or organisation"
-                  />
-                </label>
+                <>
+                  <label>
+                    Organisation name
+                    <input
+                      type="text"
+                      autoComplete="organization"
+                      value={organisationName}
+                      onChange={(event) => setOrganisationName(event.target.value)}
+                      placeholder="Your business or organisation"
+                    />
+                  </label>
+                  <label>
+                    Selected plan
+                    <select value={billingPlan} onChange={(event) => setBillingPlan(event.target.value as BillingPlanId)}>
+                      {pricingPlans.map((plan) => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Billing cycle
+                    <select
+                      value={billingCycle}
+                      onChange={(event) => setBillingCycle(event.target.value as BillingCycle)}
+                    >
+                      <option value="monthly">Monthly</option>
+                      <option value="annual">Annual</option>
+                    </select>
+                  </label>
+                </>
               ) : null}
               <label>
                 Registered Email
@@ -4160,7 +4299,7 @@ function RegisterState(props: {
         </main>
         <footer className="login-footer">
           <span>
-            <Link to="/#pricing">Pricing</Link>
+            <Link to="/pricing">Pricing</Link>
             {" | "}
             <a href="mailto:hello@exdox.co.uk?subject=Security%20request">Security</a>
           </span>
@@ -4172,7 +4311,86 @@ function RegisterState(props: {
   );
 }
 
-function PublicHome() {
+function PublicSite() {
+  const location = useLocation();
+
+  if (location.pathname === "/platform") {
+    return (
+      <PublicLayout activePath="/platform">
+        <PublicPageIntro
+          kicker="Platform"
+          title="The finance workspace is split into the pages people actually expect."
+          body="Capture, review, claims, vault storage, rules, reconciliation, and data health all sit inside the same synced Exdox web surface."
+        />
+        <PlatformCapabilitiesSection />
+        <CoverageSection />
+        <FlowSection />
+        <WorkflowCoverageSection />
+      </PublicLayout>
+    );
+  }
+
+  if (location.pathname === "/integrations") {
+    return (
+      <PublicLayout activePath="/integrations">
+        <PublicPageIntro
+          kicker="Integrations"
+          title="Keep evidence, review queues, and accounting handoff in one operational flow."
+          body="Exdox already supports the workflow around connected accounting systems with ready and published queues, protected source evidence, and bank-led reconciliation."
+        />
+        <IntegrationSection />
+        <FlowSection />
+        <WorkflowCoverageSection />
+      </PublicLayout>
+    );
+  }
+
+  if (location.pathname === "/pricing") {
+    return (
+      <PublicLayout activePath="/pricing">
+        <PricingSection />
+      </PublicLayout>
+    );
+  }
+
+  if (location.pathname === "/company") {
+    return (
+      <PublicLayout activePath="/company">
+        <PublicPageIntro
+          kicker="Company"
+          title="Built so the app, website, and source evidence stay aligned."
+          body="The same organisation-scoped records flow across mobile capture, web review, archive retrieval, and finance controls."
+        />
+        <CompanySection />
+      </PublicLayout>
+    );
+  }
+
+  return (
+    <PublicLayout activePath="/">
+      <section className="public-hero">
+        <div className="public-hero-copy">
+          <h1>Capture, review and publish business spend without chasing paper.</h1>
+          <p>
+            exdox gives your team the same synced workspace across mobile and web for receipt capture,
+            invoice review, document vault storage, expense claims, supplier rules and bank-led reconciliation.
+          </p>
+          <div className="hero-actions">
+            <Link className="public-primary" to="/register?plan=control&billingCycle=monthly">Start Your Free Trial</Link>
+            <Link className="secondary-inline-link" to="/pricing">See pricing structure</Link>
+          </div>
+          <span>No credit card required to start the trial.</span>
+        </div>
+        <img src="/branding/exdox-platform-hero.png" alt="Connected exdox accounting workspace" />
+      </section>
+      <PlatformCapabilitiesSection />
+      <FlowSection />
+      <PricingTeaserSection />
+    </PublicLayout>
+  );
+}
+
+function PublicLayout(props: { activePath: string; children: React.ReactNode }) {
   return (
     <div className="public-home">
       <header className="public-header">
@@ -4181,11 +4399,15 @@ function PublicHome() {
           <strong>exdox</strong>
         </Link>
         <nav className="public-nav" aria-label="Website">
-          <a className="active" href="#home">Home</a>
-          <a href="#platform">Platform</a>
-          <a href="#integration">Integrations</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#company">Company</a>
+          {publicNavItems.map((item) => (
+            <NavLink
+              key={item.to}
+              className={({ isActive }) => `public-nav-link${isActive || props.activePath === item.to ? " active" : ""}`}
+              to={item.to}
+            >
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
         <div className="public-actions">
           <Link to="/login">Log In</Link>
@@ -4193,244 +4415,474 @@ function PublicHome() {
         </div>
       </header>
 
-      <main>
-        <section className="public-hero" id="home">
-          <div className="public-hero-copy">
-            <h1>Capture, review and publish business spend without chasing paper.</h1>
-            <p>
-              exdox gives your team the same synced workspace across mobile and web for receipt capture,
-              invoice review, document vault storage, expense claims, supplier rules and bank-led reconciliation.
-            </p>
-            <Link className="public-primary" to="/register">Start Your Free Trial</Link>
-            <span>No credit card required.</span>
-          </div>
-          <img src="/branding/exdox-platform-hero.png" alt="Connected exdox accounting workspace" />
-        </section>
-
-        <section className="capabilities-band" id="platform">
-          <h2>Key Platform Capabilities</h2>
-          <div className="capabilities-grid">
-            <Link className="capability-card" to="/register"><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></Link>
-            <Link className="capability-card" to="/register"><NavIcon name="workflow" /><strong>Approval Workflows</strong><span>Review, approve and publish in one place</span></Link>
-            <Link className="capability-card" to="/register"><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent coding and tax defaults</span></Link>
-            <Link className="capability-card" to="/register"><NavIcon name="claims" /><strong>Mileage & Expense Claims</strong><span>Staff submission, mileage entry and approval</span></Link>
-            <Link className="capability-card" to="/register"><NavIcon name="health" /><strong>Client Data Health</strong><span>Unreadable, duplicate and low-confidence follow-up</span></Link>
-            <Link className="capability-card" to="/register"><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive and retrieve source evidence fast</span></Link>
-            <Link className="capability-card" to="/register"><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></Link>
-            <Link className="capability-card" to="/register"><NavIcon name="integrations" /><strong>Bank & Statement Review</strong><span>Imported bank activity and evidence-led review</span></Link>
-            <Link className="capability-card" to="/register"><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></Link>
-            <Link className="capability-card" to="/register"><NavIcon name="overview" /><strong>Organisation Switching</strong><span>Move between business contexts without leaving the workspace</span></Link>
-          </div>
-        </section>
-
-        <section className="workflow-band">
-          <div className="section-heading">
-            <div>
-              <p className="section-kicker">Coverage Today</p>
-              <h2>Built for the documents your finance team already works with</h2>
-            </div>
-            <p>
-              Exdox keeps the real submission mix visible in one place across mobile and web, from
-              receipt capture and invoice handling to mileage claims, bank-led evidence, and archived support files.
-            </p>
-          </div>
-          <div className="document-grid">
-            <Link className="document-card" to="/register">
-              <strong>Receipts</strong>
-              <span>Mobile capture, employee submission, and web upload</span>
-            </Link>
-            <Link className="document-card" to="/register">
-              <strong>Purchase invoices</strong>
-              <span>Structured totals, tax fields, and review-ready coding</span>
-            </Link>
-            <Link className="document-card" to="/register">
-              <strong>Sales documents</strong>
-              <span>Separate sales workspace with the same synced review flow</span>
-            </Link>
-            <Link className="document-card" to="/register">
-              <strong>Mileage claims</strong>
-              <span>Staff mileage entry and approval-ready claim handling</span>
-            </Link>
-            <Link className="document-card" to="/register">
-              <strong>Bank-led evidence</strong>
-              <span>Imported bank activity matched back to supporting records</span>
-            </Link>
-            <Link className="document-card" to="/register">
-              <strong>Vault files</strong>
-              <span>Stored reference documents with protected retrieval</span>
-            </Link>
-          </div>
-        </section>
-
-        <section className="workflow-band">
-          <div className="section-heading">
-            <div>
-              <p className="section-kicker">Operational Flow</p>
-              <h2>Move from capture to publish without switching tools</h2>
-            </div>
-            <p>
-              Exdox already covers the real bookkeeping path your team works through every day:
-              collect evidence, extract the data, review exceptions, retain the source file, and
-              keep approvals moving in the same synced workspace.
-            </p>
-          </div>
-          <div className="process-grid">
-            <Link className="process-card" to="/register">
-              <span>1. Capture</span>
-              <strong>Collect receipts, invoices, and supporting files</strong>
-              <p>Use mobile capture, web upload, employee drop box flows, and bank-led intake.</p>
-            </Link>
-            <Link className="process-card" to="/register">
-              <span>2. Extract</span>
-              <strong>Pull out totals, tax, supplier, and line detail</strong>
-              <p>Structured extraction, VAT-aware fields, and document detail all stay visible for review.</p>
-            </Link>
-            <Link className="process-card" to="/register">
-              <span>3. Review</span>
-              <strong>Work the exceptions instead of retyping everything</strong>
-              <p>Needs-review, duplicate, unreadable, and low-confidence signals surface the items that need attention.</p>
-            </Link>
-            <Link className="process-card" to="/register">
-              <span>4. Store</span>
-              <strong>Keep the original evidence easy to retrieve</strong>
-              <p>Vault storage, protected document access, and searchable archive views keep source files close at hand.</p>
-            </Link>
-            <Link className="process-card" to="/register">
-              <span>5. Approve &amp; Publish</span>
-              <strong>Move claims, reviews, and handoff queues forward</strong>
-              <p>Approval-ready claims, ready queues, and export routes keep the downstream workflow moving.</p>
-            </Link>
-          </div>
-        </section>
-
-        <section className="workflow-band">
-          <div className="section-heading">
-            <div>
-              <p className="section-kicker">Feature Coverage</p>
-              <h2>Built around the same workflow finance teams expect from Dext</h2>
-            </div>
-            <p>
-              Capture, review, rules, approvals, open banking and reconciliation are all available inside the
-              same Exdox web workspace that syncs with the mobile app.
-            </p>
-          </div>
-          <div className="workflow-grid">
-            <Link className="workflow-card workflow-link" to="/register">
-              <strong>Capture any way your team works</strong>
-              <ul>
-                <li>Mobile receipt capture in the app</li>
-                <li>Drag-and-drop uploads in costs and sales inboxes</li>
-                <li>Dedicated employee drop box for non-admin users</li>
-                <li>Mileage entry and expense-claim capture for staff</li>
-                <li>Bank-line review against imported statement activity</li>
-                <li>Separate workspaces for purchase and sales documents</li>
-              </ul>
-            </Link>
-            <Link className="workflow-card workflow-link" to="/register">
-              <strong>Automate the review layer</strong>
-              <ul>
-                <li>Supplier rules for category, tax rate and payment method</li>
-                <li>VAT-aware editable totals, net and tax fields</li>
-                <li>Needs-review queues across costs, sales and claims</li>
-                <li>Low-confidence and unreadable-document follow-up</li>
-                <li>Duplicate upload checks before final publish</li>
-                <li>Audit-friendly document detail editing before publish</li>
-              </ul>
-            </Link>
-            <Link className="workflow-card workflow-link" to="/register">
-              <strong>Close the loop with finance controls</strong>
-              <ul>
-                <li>Dedicated vault workspace for searchable archived evidence</li>
-                <li>Open banking requisitions and callback handling</li>
-                <li>Approval-ready claims and document review handoff</li>
-                <li>Reconciliation matching against imported bank lines</li>
-                <li>Filtered CSV exports across queues and document views</li>
-                <li>Organisation-level VAT settings and tax defaults</li>
-                <li>Live sync with the same receipt records used in mobile</li>
-              </ul>
-            </Link>
-          </div>
-        </section>
-
-        <section className="integration-band" id="integration">
-          <div>
-            <h2>Accounting Integrations &amp; Connected Workflows</h2>
-            <p>
-              Keep capture, review and accounting data moving together across your finance stack with
-              synced web and mobile workflows, organisation switching, bank-linked reconciliation,
-              ready-and-published handoff queues, and archive-safe evidence retrieval from the same workspace.
-            </p>
-          </div>
-          <div className="integration-names" aria-label="Compatible accounting platforms">
-            <Link to="/register">Sage</Link>
-            <Link to="/register">Xero</Link>
-            <Link to="/register">QuickBooks</Link>
-            <Link to="/register">FreeAgent</Link>
-          </div>
-        </section>
-
-        <section className="pricing-band" id="pricing">
-          <div className="section-heading">
-            <div>
-              <p className="section-kicker">Pricing</p>
-              <h2>Roll out Exdox by workflow, not by disconnected tools</h2>
-            </div>
-            <p>
-              Start with employee capture, then layer in supplier rules, claims, tax controls and
-              reconciliation as your finance process matures.
-            </p>
-          </div>
-          <div className="pricing-grid">
-            <Link className="pricing-card pricing-link" to="/register">
-              <span>Employee Capture</span>
-              <strong>Drop box uploads</strong>
-              <p>For teams who need staff to submit receipts without opening the full finance control surface.</p>
-            </Link>
-            <Link className="pricing-card pricing-card featured pricing-link" to="/register">
-              <span>Business Control</span>
-              <strong>Costs, sales and claims</strong>
-              <p>For businesses running receipt review, invoice handling, tax editing and approval workflows.</p>
-            </Link>
-            <Link className="pricing-card pricing-link" to="/register">
-              <span>Finance Ops</span>
-              <strong>Rules and bank matching</strong>
-              <p>For organisations that want supplier automation, vault storage, open banking connections and reconciliation support.</p>
-            </Link>
-          </div>
-          <div className="section-actions">
-            <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Pricing%20request">Request Pricing</a>
-            <Link className="secondary-inline-link" to="/register">Start Free Trial</Link>
-          </div>
-        </section>
-
-        <section className="company-band" id="company">
-          <div className="section-heading">
-            <div>
-              <p className="section-kicker">Company</p>
-              <h2>One evidence trail across mobile capture and the web workspace</h2>
-            </div>
-            <p>
-              Exdox is designed so the same organisation-scoped records stay visible across app and web,
-              with review state, tax edits and document actions remaining in sync.
-            </p>
-          </div>
-          <div className="company-grid">
-            <Link className="company-card company-link" to="/register">
-              <strong>Secure operational model</strong>
-              <p>Organisation-scoped routes, authenticated sessions and protected receipt asset retrieval.</p>
-            </Link>
-            <Link className="company-card company-link" to="/register">
-              <strong>Review-ready audit trail</strong>
-              <p>Receipts, vault files, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
-            </Link>
-            <Link className="company-card company-link" to="/register">
-              <strong>Built for finance teams</strong>
-              <p>Business admins get the full control surface, employees can still submit directly, and the active organisation context stays visible across the workspace.</p>
-            </Link>
-          </div>
-        </section>
-      </main>
+      <main>{props.children}</main>
+      <footer className="public-footer">
+        <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
+        <span>
+          <Link to="/pricing">Pricing</Link>
+          {" | "}
+          <a href="mailto:hello@exdox.co.uk?subject=Security%20request">Security</a>
+        </span>
+      </footer>
     </div>
+  );
+}
+
+function PublicPageIntro(props: { kicker: string; title: string; body: string }) {
+  return (
+    <section className="public-page-intro">
+      <p className="section-kicker">{props.kicker}</p>
+      <h1>{props.title}</h1>
+      <p>{props.body}</p>
+    </section>
+  );
+}
+
+function PlatformCapabilitiesSection() {
+  return (
+    <section className="capabilities-band">
+      <h2>Key Platform Capabilities</h2>
+      <div className="capabilities-grid">
+        <Link className="capability-card" to="/register?plan=capture&billingCycle=monthly"><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></Link>
+        <Link className="capability-card" to="/register?plan=control&billingCycle=monthly"><NavIcon name="workflow" /><strong>Approval Workflows</strong><span>Review, approve and publish in one place</span></Link>
+        <Link className="capability-card" to="/register?plan=operations&billingCycle=monthly"><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent coding and tax defaults</span></Link>
+        <Link className="capability-card" to="/register?plan=control&billingCycle=monthly"><NavIcon name="claims" /><strong>Mileage & Expense Claims</strong><span>Staff submission, mileage entry and approval</span></Link>
+        <Link className="capability-card" to="/register?plan=capture&billingCycle=monthly"><NavIcon name="health" /><strong>Client Data Health</strong><span>Unreadable, duplicate and low-confidence follow-up</span></Link>
+        <Link className="capability-card" to="/register?plan=operations&billingCycle=monthly"><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive and retrieve source evidence fast</span></Link>
+        <Link className="capability-card" to="/register?plan=operations&billingCycle=monthly"><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></Link>
+        <Link className="capability-card" to="/register?plan=operations&billingCycle=monthly"><NavIcon name="integrations" /><strong>Bank & Statement Review</strong><span>Imported bank activity and evidence-led review</span></Link>
+        <Link className="capability-card" to="/register?plan=control&billingCycle=monthly"><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></Link>
+        <Link className="capability-card" to="/register?plan=enterprise&billingCycle=annual"><NavIcon name="overview" /><strong>Organisation Switching</strong><span>Move between business contexts without leaving the workspace</span></Link>
+      </div>
+    </section>
+  );
+}
+
+function CoverageSection() {
+  return (
+    <section className="workflow-band">
+      <div className="section-heading">
+        <div>
+          <p className="section-kicker">Coverage Today</p>
+          <h2>Built for the documents your finance team already works with</h2>
+        </div>
+        <p>
+          Exdox keeps the real submission mix visible in one place across mobile and web, from
+          receipt capture and invoice handling to mileage claims, bank-led evidence, and archived support files.
+        </p>
+      </div>
+      <div className="document-grid">
+        <Link className="document-card" to="/register?plan=capture&billingCycle=monthly"><strong>Receipts</strong><span>Mobile capture, employee submission, and web upload</span></Link>
+        <Link className="document-card" to="/register?plan=capture&billingCycle=monthly"><strong>Purchase invoices</strong><span>Structured totals, tax fields, and review-ready coding</span></Link>
+        <Link className="document-card" to="/register?plan=control&billingCycle=monthly"><strong>Sales documents</strong><span>Separate sales workspace with the same synced review flow</span></Link>
+        <Link className="document-card" to="/register?plan=control&billingCycle=monthly"><strong>Mileage claims</strong><span>Staff mileage entry and approval-ready claim handling</span></Link>
+        <Link className="document-card" to="/register?plan=operations&billingCycle=monthly"><strong>Bank-led evidence</strong><span>Imported bank activity matched back to supporting records</span></Link>
+        <Link className="document-card" to="/register?plan=operations&billingCycle=monthly"><strong>Vault files</strong><span>Stored reference documents with protected retrieval</span></Link>
+      </div>
+    </section>
+  );
+}
+
+function FlowSection() {
+  return (
+    <section className="workflow-band">
+      <div className="section-heading">
+        <div>
+          <p className="section-kicker">Operational Flow</p>
+          <h2>Move from capture to publish without switching tools</h2>
+        </div>
+        <p>
+          Exdox already covers the real bookkeeping path your team works through every day:
+          collect evidence, extract the data, review exceptions, retain the source file, and
+          keep approvals moving in the same synced workspace.
+        </p>
+      </div>
+      <div className="process-grid">
+        <Link className="process-card" to="/register?plan=capture&billingCycle=monthly"><span>1. Capture</span><strong>Collect receipts, invoices, and supporting files</strong><p>Use mobile capture, web upload, employee drop box flows, and bank-led intake.</p></Link>
+        <Link className="process-card" to="/register?plan=capture&billingCycle=monthly"><span>2. Extract</span><strong>Pull out totals, tax, supplier, and line detail</strong><p>Structured extraction, VAT-aware fields, and document detail all stay visible for review.</p></Link>
+        <Link className="process-card" to="/register?plan=control&billingCycle=monthly"><span>3. Review</span><strong>Work the exceptions instead of retyping everything</strong><p>Needs-review, duplicate, unreadable, and low-confidence signals surface the items that need attention.</p></Link>
+        <Link className="process-card" to="/register?plan=operations&billingCycle=monthly"><span>4. Store</span><strong>Keep the original evidence easy to retrieve</strong><p>Vault storage, protected document access, and searchable archive views keep source files close at hand.</p></Link>
+        <Link className="process-card" to="/register?plan=control&billingCycle=monthly"><span>5. Approve &amp; Publish</span><strong>Move claims, reviews, and handoff queues forward</strong><p>Approval-ready claims, ready queues, and export routes keep the downstream workflow moving.</p></Link>
+      </div>
+    </section>
+  );
+}
+
+function WorkflowCoverageSection() {
+  return (
+    <section className="workflow-band">
+      <div className="section-heading">
+        <div>
+          <p className="section-kicker">Feature Coverage</p>
+          <h2>Built around the same workflow finance teams expect from Dext</h2>
+        </div>
+        <p>
+          Capture, review, rules, approvals, open banking and reconciliation are all available inside the
+          same Exdox web workspace that syncs with the mobile app.
+        </p>
+      </div>
+      <div className="workflow-grid">
+        <Link className="workflow-card workflow-link" to="/register?plan=capture&billingCycle=monthly">
+          <strong>Capture any way your team works</strong>
+          <ul>
+            <li>Mobile receipt capture in the app</li>
+            <li>Drag-and-drop uploads in costs and sales inboxes</li>
+            <li>Dedicated employee drop box for non-admin users</li>
+            <li>Mileage entry and expense-claim capture for staff</li>
+            <li>Bank-line review against imported statement activity</li>
+            <li>Separate workspaces for purchase and sales documents</li>
+          </ul>
+        </Link>
+        <Link className="workflow-card workflow-link" to="/register?plan=operations&billingCycle=monthly">
+          <strong>Automate the review layer</strong>
+          <ul>
+            <li>Supplier rules for category, tax rate and payment method</li>
+            <li>VAT-aware editable totals, net and tax fields</li>
+            <li>Needs-review queues across costs, sales and claims</li>
+            <li>Low-confidence and unreadable-document follow-up</li>
+            <li>Duplicate upload checks before final publish</li>
+            <li>Audit-friendly document detail editing before publish</li>
+          </ul>
+        </Link>
+        <Link className="workflow-card workflow-link" to="/register?plan=operations&billingCycle=monthly">
+          <strong>Close the loop with finance controls</strong>
+          <ul>
+            <li>Dedicated vault workspace for searchable archived evidence</li>
+            <li>Open banking requisitions and callback handling</li>
+            <li>Approval-ready claims and document review handoff</li>
+            <li>Reconciliation matching against imported bank lines</li>
+            <li>Filtered CSV exports across queues and document views</li>
+            <li>Organisation-level VAT settings and tax defaults</li>
+            <li>Live sync with the same receipt records used in mobile</li>
+          </ul>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function IntegrationSection() {
+  return (
+    <section className="integration-band">
+      <div>
+        <h2>Accounting Integrations &amp; Connected Workflows</h2>
+        <p>
+          Keep capture, review and accounting data moving together across your finance stack with
+          synced web and mobile workflows, organisation switching, bank-linked reconciliation,
+          ready-and-published handoff queues, and archive-safe evidence retrieval from the same workspace.
+        </p>
+      </div>
+      <div className="integration-names" aria-label="Compatible accounting platforms">
+        <Link to="/register?plan=control&billingCycle=monthly">Sage</Link>
+        <Link to="/register?plan=control&billingCycle=monthly">Xero</Link>
+        <Link to="/register?plan=control&billingCycle=monthly">QuickBooks</Link>
+        <Link to="/register?plan=control&billingCycle=monthly">FreeAgent</Link>
+      </div>
+    </section>
+  );
+}
+
+function PricingTeaserSection() {
+  return (
+    <section className="pricing-band">
+      <div className="section-heading">
+        <div>
+          <p className="section-kicker">Pricing</p>
+          <h2>Roll out Exdox by workflow, not by disconnected tools</h2>
+        </div>
+        <p>
+          Start with employee capture, then layer in supplier rules, claims, tax controls and
+          reconciliation as your finance process matures.
+        </p>
+      </div>
+      <div className="pricing-grid">
+        {pricingPlans.slice(0, 3).map((plan) => (
+          <Link
+            key={plan.id}
+            className={`pricing-card pricing-link${plan.featured ? " featured" : ""}`}
+            to={buildRegisterLink(plan.id, "monthly")}
+          >
+            <span>{plan.name}</span>
+            <strong>{plan.tagline}</strong>
+            <p>{plan.monthlyDocuments} · {plan.users}</p>
+          </Link>
+        ))}
+      </div>
+      <div className="section-actions">
+        <Link className="public-button" to="/pricing">View pricing page</Link>
+        <Link className="secondary-inline-link" to={buildRegisterLink("control", "monthly")}>Start Free Trial</Link>
+      </div>
+    </section>
+  );
+}
+
+function PricingSection() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>(normalizePublicBillingCycle(params.get("billingCycle")));
+
+  return (
+    <section className="pricing-band pricing-page-band">
+      <div className="section-heading">
+        <div>
+          <p className="section-kicker">Pricing</p>
+          <h1>Choose the workflow depth your finance team needs today.</h1>
+        </div>
+        <p>
+          We can already implement plan-based route lockouts, seat limits, document limits, and trial access.
+          Stripe checkout is wired so live payment can switch on as soon as the price ids are added.
+        </p>
+      </div>
+      <div className="billing-cycle-toggle" role="group" aria-label="Billing cycle">
+        <button
+          className={billingCycle === "monthly" ? "active" : ""}
+          type="button"
+          onClick={() => setBillingCycle("monthly")}
+        >
+          Monthly
+        </button>
+        <button
+          className={billingCycle === "annual" ? "active" : ""}
+          type="button"
+          onClick={() => setBillingCycle("annual")}
+        >
+          Annual
+        </button>
+      </div>
+      <div className="pricing-grid pricing-grid-expanded">
+        {pricingPlans.map((plan) => (
+          <article key={plan.id} className={`pricing-card${plan.featured ? " featured" : ""}`}>
+            <span>{plan.name}</span>
+            <strong>{plan.tagline}</strong>
+            <p>{plan.trialLabel}</p>
+            <p>{plan.monthlyDocuments}</p>
+            <p>{plan.users}</p>
+            <ul className="pricing-feature-list">
+              {plan.features.map((feature) => (
+                <li key={feature}>{feature}</li>
+              ))}
+            </ul>
+            {plan.id === "enterprise" ? (
+              <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Enterprise%20pricing%20request">Talk to Sales</a>
+            ) : (
+              <Link className="public-button" to={buildRegisterLink(plan.id, billingCycle)}>
+                {plan.cta}
+              </Link>
+            )}
+          </article>
+        ))}
+      </div>
+      <div className="pricing-notes-grid">
+        <article className="company-card">
+          <strong>What we already enforce</strong>
+          <p>Selected plans now control route access in the signed-in website, invite capacity, and monthly document-processing limits.</p>
+        </article>
+        <article className="company-card">
+          <strong>Annual billing support</strong>
+          <p>The pricing flow already supports monthly and annual plan selection so Stripe can be connected cleanly later without reworking the public site.</p>
+        </article>
+        <article className="company-card">
+          <strong>When limits are reached</strong>
+          <p>If a workspace hits its monthly document allowance, new extraction is paused until the next cycle or a plan upgrade.</p>
+        </article>
+      </div>
+      <div className="workflow-grid pricing-faq-grid">
+        <article className="workflow-card">
+          <strong>Free trial</strong>
+          <ul>
+            <li>Capture, Control, and Operations start with a 14-day trial</li>
+            <li>Enterprise can use a longer onboarding window</li>
+            <li>No card is required to create the initial workspace</li>
+          </ul>
+        </article>
+        <article className="workflow-card">
+          <strong>Feature lockouts</strong>
+          <ul>
+            <li>Capture does not unlock supplier rules, vault, or reconciliation</li>
+            <li>Control adds sales and broader workflow coverage</li>
+            <li>Operations unlocks rules, vault, open banking, and reconciliation</li>
+          </ul>
+        </article>
+        <article className="workflow-card">
+          <strong>Stripe-ready next step</strong>
+          <ul>
+            <li>Checkout session and billing portal endpoints are in place</li>
+            <li>Plan/cycle selection is already sent through registration and billing</li>
+            <li>Adding Stripe keys and price ids will switch payments on</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function CompanySection() {
+  return (
+    <section className="company-band">
+      <div className="section-heading">
+        <div>
+          <p className="section-kicker">Company</p>
+          <h2>One evidence trail across mobile capture and the web workspace</h2>
+        </div>
+        <p>
+          Exdox is designed so the same organisation-scoped records stay visible across app and web,
+          with review state, tax edits and document actions remaining in sync.
+        </p>
+      </div>
+      <div className="company-grid">
+        <Link className="company-card company-link" to="/register?plan=control&billingCycle=monthly">
+          <strong>Secure operational model</strong>
+          <p>Organisation-scoped routes, authenticated sessions and protected receipt asset retrieval.</p>
+        </Link>
+        <Link className="company-card company-link" to="/register?plan=operations&billingCycle=monthly">
+          <strong>Review-ready audit trail</strong>
+          <p>Receipts, vault files, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
+        </Link>
+        <Link className="company-card company-link" to="/register?plan=enterprise&billingCycle=annual">
+          <strong>Built for finance teams</strong>
+          <p>Business admins get the full control surface, employees can still submit directly, and the active organisation context stays visible across the workspace.</p>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function BillingPage(props: { session: SessionState }) {
+  const navigate = useNavigate();
+  const [busyPlan, setBusyPlan] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const lockedRoute = new URLSearchParams(useLocation().search).get("locked");
+  const billing = props.session.billing;
+
+  if (!billing) {
+    return (
+      <section className="panel-stack">
+        <div className="panel">
+          <h2>Billing</h2>
+          <p>Billing information is not available for this workspace yet.</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel-stack">
+      <div className="panel">
+        <div className="panel-header">
+          <div>
+            <p className="section-kicker">Billing</p>
+            <h2>{billing.planLabel ?? billing.planId} plan</h2>
+          </div>
+          <span className="status-chip">{billing.status.replace(/_/g, " ")}</span>
+        </div>
+        {lockedRoute ? <p className="locked-explainer">That workspace area is locked on your current plan: {lockedRoute}</p> : null}
+        <div className="billing-metrics">
+          <div className="metric-card">
+            <span>Billing cycle</span>
+            <strong>{billing.billingCycle}</strong>
+          </div>
+          <div className="metric-card">
+            <span>Documents this month</span>
+            <strong>
+              {billing.monthlyDocumentUsage}
+              {billing.monthlyDocumentLimit !== null ? ` / ${billing.monthlyDocumentLimit}` : ""}
+            </strong>
+          </div>
+          <div className="metric-card">
+            <span>Users in workspace</span>
+            <strong>
+              {billing.currentUserCount}
+              {billing.includedUsers !== null ? ` / ${billing.includedUsers}` : ""}
+            </strong>
+          </div>
+        </div>
+        <p className="muted-copy">
+          {billing.stripeConfigured
+            ? "Stripe checkout is ready. Choose a plan below to open checkout, or use the billing portal if this workspace already has a Stripe customer."
+            : "Stripe checkout endpoints are wired, but the live Stripe secret key and price ids have not been added yet."}
+        </p>
+        <div className="section-actions">
+          <button className="secondary-action" type="button" onClick={() => navigate("/pricing")}>
+            Compare plans
+          </button>
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={!billing.stripeConfigured || !billing.stripeCustomerId || busyPlan !== null}
+            onClick={async () => {
+              setBusyPlan("portal");
+              setMessage(null);
+              try {
+                const response = await createBillingPortalSession(props.session.token);
+                if (response.portalUrl) {
+                  window.location.href = response.portalUrl;
+                }
+              } catch (error) {
+                setMessage(error instanceof Error ? error.message : "Could not open billing portal.");
+              } finally {
+                setBusyPlan(null);
+              }
+            }}
+          >
+            Open billing portal
+          </button>
+        </div>
+        {message ? <div className="error-banner">{message}</div> : null}
+      </div>
+
+      <div className="pricing-grid pricing-grid-expanded">
+        {pricingPlans.map((plan) => {
+          const active = billing.planId === plan.id;
+          return (
+            <article key={plan.id} className={`pricing-card${plan.featured ? " featured" : ""}${active ? " current-plan" : ""}`}>
+              <span>{plan.name}</span>
+              <strong>{plan.tagline}</strong>
+              <p>{plan.monthlyDocuments}</p>
+              <p>{plan.users}</p>
+              <ul className="pricing-feature-list">
+                {plan.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+              {active ? (
+                <button className="secondary-action" type="button" disabled>
+                  Current plan
+                </button>
+              ) : plan.id === "enterprise" ? (
+                <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Enterprise%20upgrade%20request">
+                  Talk to sales
+                </a>
+              ) : (
+                <button
+                  className="public-button"
+                  type="button"
+                  disabled={busyPlan !== null}
+                  onClick={async () => {
+                    setBusyPlan(plan.id);
+                    setMessage(null);
+                    try {
+                      const response = await createBillingCheckoutSession(props.session.token, {
+                        planId: plan.id,
+                        billingCycle: "monthly",
+                      });
+                      if (response.checkoutUrl) {
+                        window.location.href = response.checkoutUrl;
+                      }
+                    } catch (error) {
+                      setMessage(error instanceof Error ? error.message : "Could not start checkout.");
+                    } finally {
+                      setBusyPlan(null);
+                    }
+                  }}
+                >
+                  {busyPlan === plan.id ? "Opening checkout..." : "Upgrade"}
+                </button>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -4448,6 +4900,7 @@ function NavIcon({ name }: { name: string }) {
     rules: <><circle cx="8" cy="8" r="3" /><circle cx="16" cy="16" r="3" /><path d="M10.5 10.5 13.5 13.5M16 3v4M3 16h4" /></>,
     bank: <><path d="m3 9 9-6 9 6M5 10h14M6 10v8M10 10v8M14 10v8M18 10v8M4 21h16" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" /></>,
+    billing: <><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M4 10h16M8 15h4" /></>,
     "open-banking": <><path d="M4 7h16v13H4zM8 4h8l2 3H6l2-3Z" /><path d="M8 11h8M8 15h5" /></>,
   };
 
@@ -5161,13 +5614,13 @@ function isBusinessAdmin(session: SessionState) {
 }
 
 function isRouteAllowed(session: SessionState, pathname: string) {
+  if (isBusinessAdmin(session) && pathname.startsWith("/billing")) {
+    return true;
+  }
+
   const allowedRoutes = session.allowedWebRoutes;
   if (!allowedRoutes?.length) {
     return isBusinessAdmin(session) ? pathname !== "/dropbox" : pathname === "/dropbox" || pathname.startsWith("/claims");
-  }
-
-  if (isBusinessAdmin(session) && pathname.startsWith("/vault")) {
-    return true;
   }
 
   return allowedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
@@ -5176,13 +5629,17 @@ function isRouteAllowed(session: SessionState, pathname: string) {
 function getDefaultRoute(session: SessionState) {
   const allowedRoutes = session.allowedWebRoutes;
   if (allowedRoutes?.length) {
-    return allowedRoutes[0]!;
+    const firstAllowed = allowedRoutes.find((route) => route !== "/billing");
+    return firstAllowed ?? "/billing";
   }
 
   return isBusinessAdmin(session) ? "/overview" : "/dropbox";
 }
 
 function getAttentionRoute(session: SessionState, store: AppStore) {
+  if (isBusinessAdmin(session) && session.billing && !isBillingStatusActive(session.billing.status)) {
+    return "/billing";
+  }
   if (!isBusinessAdmin(session)) {
     if (store.claims.some((claim) => claim.status === "pending")) {
       return "/claims";
@@ -5223,9 +5680,30 @@ function routeTitle(pathname: string) {
   if (pathname.startsWith("/dropbox")) {
     return "My Drop Box";
   }
+  if (pathname.startsWith("/billing")) {
+    return "Billing";
+  }
 
   const matched = navItems.find((item) => pathname.startsWith(item.to));
   return matched?.label ?? "Overview";
+}
+
+function buildRegisterLink(planId: BillingPlanId, billingCycle: BillingCycle) {
+  return `/register?plan=${encodeURIComponent(planId)}&billingCycle=${encodeURIComponent(billingCycle)}`;
+}
+
+function normalizePublicPlan(value: string | null): BillingPlanId {
+  return value === "capture" || value === "control" || value === "operations" || value === "enterprise"
+    ? value
+    : "control";
+}
+
+function normalizePublicBillingCycle(value: string | null): BillingCycle {
+  return value === "annual" ? "annual" : "monthly";
+}
+
+function isBillingStatusActive(status: NonNullable<SessionState["billing"]>["status"]) {
+  return status === "trialing" || status === "active" || status === "legacy";
 }
 
 function documentTypeLabel(documentType: ReceiptRecord["documentType"]) {

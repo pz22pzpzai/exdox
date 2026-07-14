@@ -1,4 +1,8 @@
 import type {
+  BillingCycle,
+  BillingPlanDefinition,
+  BillingPlanId,
+  BillingSummary,
   BankRequisition,
   ClaimRecord,
   InviteResult,
@@ -89,6 +93,8 @@ export async function registerWithEmail(input: {
   fullName?: string;
   organisationName?: string;
   inviteToken?: string;
+  billingPlan?: BillingPlanId;
+  billingCycle?: BillingCycle;
 }): Promise<SessionState> {
   const response = await fetch(`${API_BASE_URL}/register`, {
     method: "POST",
@@ -121,6 +127,8 @@ export async function fetchSession(token: string): Promise<SessionState> {
     organisations: SessionState["organisations"];
     activeOrganisationId: number;
     allowedWebRoutes?: string[];
+    billing?: BillingSummary;
+    entitlements?: SessionState["entitlements"];
   }>("/session", token);
 
   return {
@@ -129,7 +137,34 @@ export async function fetchSession(token: string): Promise<SessionState> {
     organisations: response.organisations,
     activeOrganisationId: response.activeOrganisationId,
     allowedWebRoutes: response.allowedWebRoutes,
+    billing: response.billing,
+    entitlements: response.entitlements,
   };
+}
+
+export async function fetchBilling(token: string): Promise<{
+  billing: BillingSummary;
+  entitlements: NonNullable<SessionState["entitlements"]>;
+  plans: BillingPlanDefinition[];
+}> {
+  return apiFetch("/billing", token);
+}
+
+export async function createBillingCheckoutSession(
+  token: string,
+  payload: { planId: BillingPlanId; billingCycle: BillingCycle },
+): Promise<{ checkoutUrl: string | null; sessionId?: string }> {
+  return apiFetch("/billing/checkout-session", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createBillingPortalSession(token: string): Promise<{ portalUrl: string | null }> {
+  return apiFetch("/billing/portal-session", token, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 }
 
 export async function listReceipts(
@@ -405,7 +440,31 @@ export function buildFallbackSession(token: string, user: SessionUser): SessionS
     activeOrganisationId: user.organisationId,
     allowedWebRoutes:
       user.role === "Business_Admin"
-        ? ["/overview", "/costs", "/sales", "/vault", "/claims", "/rules", "/reconciliation", "/settings", "/requisitions", "/bank-callback"]
+        ? ["/overview", "/costs", "/sales", "/vault", "/claims", "/rules", "/reconciliation", "/settings", "/requisitions", "/bank-callback", "/billing"]
         : ["/dropbox"],
+    billing:
+      user.role === "Business_Admin"
+        ? {
+            planId: "legacy",
+            planLabel: "Legacy",
+            status: "legacy",
+            billingCycle: "custom",
+            trialEndsAt: null,
+            monthlyDocumentLimit: null,
+            monthlyDocumentUsage: 0,
+            includedUsers: null,
+            currentUserCount: 1,
+            stripeCustomerId: null,
+            stripeSubscriptionId: null,
+            stripeConfigured: false,
+          }
+        : undefined,
+    entitlements:
+      user.role === "Business_Admin"
+        ? {
+            features: ["mobile_capture", "web_upload", "cost_review", "sales_review", "vault", "supplier_rules"],
+            lockedRoutes: [],
+          }
+        : undefined,
   };
 }

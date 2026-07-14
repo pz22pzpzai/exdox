@@ -156,4 +156,39 @@ export type SessionState = {
   organisations: Array<{ id: number; name: string }>;
   activeOrganisationId: number;
   allowedWebRoutes?: string[];
+  billing?: BillingSummary;
+  entitlements?: {
+    features: string[];
+    lockedRoutes: string[];
+  };
+};
+
+export type BillingPlanId = "capture" | "control" | "operations" | "enterprise" | "legacy";
+export type BillingStatus = "trialing" | "active" | "past_due" | "canceled" | "inactive" | "legacy";
+export type BillingCycle = "monthly" | "annual" | "custom";
+
+export type BillingSummary = {
+  planId: BillingPlanId;
+  planLabel?: string;
+  status: BillingStatus;
+  billingCycle: BillingCycle;
+  trialEndsAt: string | null;
+  monthlyDocumentLimit: number | null;
+  monthlyDocumentUsage: number;
+  includedUsers: number | null;
+  currentUserCount: number;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  stripeConfigured: boolean;
+};
+
+export type BillingPlanDefinition = {
+  id: BillingPlanId;
+  label: string;
+  monthlyDocumentLimit: number | null;
+  includedUsers: number | null;
+  routes: string[];
+  features: string[];
+  trialDays: number | null;
+  highlight?: string;
 };
