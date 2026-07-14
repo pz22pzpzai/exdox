@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /register
+Disallow: /billing
+Disallow: /dropbox
+Disallow: /claims
+Disallow: /costs
+Disallow: /sales
+Disallow: /vault
+Disallow: /rules
+Disallow: /reconciliation
+Disallow: /settings
+Disallow: /requisitions
+Disallow: /overview
+Disallow: /bank-callback
+
+Sitemap: https://www.exdox.co.uk/sitemap.xml

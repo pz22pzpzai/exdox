@@ -194,6 +194,16 @@ const pricingPlans: Array<{
 
 const brandLogoSrc = "/branding/exdox-logo.png";
 const brandMarkSrc = "/branding/exdox-mark.png";
+const websiteOrigin = "https://www.exdox.co.uk";
+
+type SeoConfig = {
+  title: string;
+  description: string;
+  canonicalPath: string;
+  robots: string;
+  ogType?: "website" | "article";
+  structuredData?: Record<string, unknown> | Array<Record<string, unknown>>;
+};
 
 type AppStore = {
   costs: ReceiptRecord[];
@@ -204,6 +214,239 @@ type AppStore = {
   reconciliation: ReconciliationLine[];
   settings: OrganisationSettings | null;
 };
+
+function SeoManager({ pathname, session }: { pathname: string; session: SessionState | null }) {
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const seo = buildSeoConfig(pathname, session);
+    document.title = seo.title;
+    updateMetaTag("name", "description", seo.description);
+    updateMetaTag("name", "robots", seo.robots);
+    updateMetaTag("property", "og:title", seo.title);
+    updateMetaTag("property", "og:description", seo.description);
+    updateMetaTag("property", "og:type", seo.ogType ?? "website");
+    updateMetaTag("property", "og:url", `${websiteOrigin}${seo.canonicalPath}`);
+    updateMetaTag("property", "og:site_name", "Exdox");
+    updateMetaTag("property", "og:image", `${websiteOrigin}/branding/exdox-platform-hero.png`);
+    updateMetaTag("name", "twitter:card", "summary_large_image");
+    updateMetaTag("name", "twitter:title", seo.title);
+    updateMetaTag("name", "twitter:description", seo.description);
+    updateMetaTag("name", "twitter:image", `${websiteOrigin}/branding/exdox-platform-hero.png`);
+    updateCanonicalLink(`${websiteOrigin}${seo.canonicalPath}`);
+    updateStructuredData(seo.structuredData);
+  }, [pathname, session]);
+
+  return null;
+}
+
+function buildSeoConfig(pathname: string, session: SessionState | null): SeoConfig {
+  const normalizedPath = normalizeCanonicalPath(pathname);
+  if (!session) {
+    if (normalizedPath === "/platform") {
+      return {
+        title: "Expense Management Platform | Receipt Capture, Claims and Reconciliation | Exdox",
+        description:
+          "Explore the Exdox expense management platform for receipt capture, invoice review, VAT handling, document storage, claims, and reconciliation.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Platform",
+          pageDescription:
+            "Explore the Exdox expense management platform for receipt capture, invoice review, VAT handling, document storage, claims, and reconciliation.",
+        }),
+      };
+    }
+    if (normalizedPath === "/integrations") {
+      return {
+        title: "Accounting Integrations and Finance Workflows | Exdox",
+        description:
+          "See how Exdox supports accounting workflows with review queues, protected source evidence, bank reconciliation, and publish-ready handoff.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Integrations",
+          pageDescription:
+            "See how Exdox supports accounting workflows with review queues, protected source evidence, bank reconciliation, and publish-ready handoff.",
+        }),
+      };
+    }
+    if (normalizedPath === "/pricing") {
+      return {
+        title: "Pricing for Receipt Capture and Expense Workflows | Exdox",
+        description:
+          "Compare Exdox pricing for receipt capture, expense claims, supplier rules, document vault storage, and reconciliation workflows.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Pricing",
+          pageDescription:
+            "Compare Exdox pricing for receipt capture, expense claims, supplier rules, document vault storage, and reconciliation workflows.",
+        }),
+      };
+    }
+    if (normalizedPath === "/company") {
+      return {
+        title: "About Exdox | Business Expense Capture and Review Software",
+        description:
+          "Learn how Exdox keeps mobile capture, web review, archived evidence, VAT edits, and finance controls aligned in one workspace.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Company",
+          pageDescription:
+            "Learn how Exdox keeps mobile capture, web review, archived evidence, VAT edits, and finance controls aligned in one workspace.",
+        }),
+      };
+    }
+    if (normalizedPath === "/login") {
+      return {
+        title: "Log In | Exdox",
+        description: "Log in to your Exdox workspace.",
+        canonicalPath: normalizedPath,
+        robots: "noindex,nofollow",
+      };
+    }
+    if (normalizedPath === "/register") {
+      return {
+        title: "Start Your Free Trial | Exdox",
+        description: "Create an Exdox workspace and start your free trial.",
+        canonicalPath: normalizedPath,
+        robots: "noindex,nofollow",
+      };
+    }
+    return {
+      title: "Exdox | Expense Management Software for Receipt Capture, VAT Review and Claims",
+      description:
+        "Exdox helps businesses capture receipts and invoices, review VAT and totals, manage expense claims, store source documents, and keep finance workflows moving.",
+      canonicalPath: normalizedPath,
+      robots: "index,follow",
+      structuredData: buildPublicStructuredData({
+        path: normalizedPath,
+        pageName: "Home",
+        pageDescription:
+          "Exdox helps businesses capture receipts and invoices, review VAT and totals, manage expense claims, store source documents, and keep finance workflows moving.",
+      }),
+    };
+  }
+
+  return {
+    title: `Exdox Workspace | ${routeTitle(normalizedPath)}`,
+    description: "Secure Exdox workspace area for uploaded documents, claims, and finance operations.",
+    canonicalPath: normalizedPath,
+    robots: "noindex,nofollow",
+  };
+}
+
+function normalizeCanonicalPath(pathname: string) {
+  if (!pathname || pathname === "") {
+    return "/";
+  }
+  return pathname === "/" ? pathname : pathname.replace(/\/+$/, "") || "/";
+}
+
+function buildPublicStructuredData(input: {
+  path: string;
+  pageName: string;
+  pageDescription: string;
+}) {
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "Exdox",
+      url: websiteOrigin,
+      logo: `${websiteOrigin}/branding/exdox-logo.png`,
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "sales",
+        email: "hello@exdox.co.uk",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Exdox",
+      url: websiteOrigin,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Exdox",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web, iOS, Android",
+      url: `${websiteOrigin}${input.path}`,
+      description: input.pageDescription,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "GBP",
+        description: "Free trial available",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: input.pageName,
+      url: `${websiteOrigin}${input.path}`,
+      description: input.pageDescription,
+    },
+  ];
+}
+
+function updateMetaTag(attributeName: "name" | "property", attributeValue: string, content: string) {
+  if (!document.head) {
+    return;
+  }
+
+  let element = document.head.querySelector(`meta[${attributeName}="${attributeValue}"]`) as HTMLMetaElement | null;
+  if (!element) {
+    element = document.createElement("meta");
+    element.setAttribute(attributeName, attributeValue);
+    document.head.appendChild(element);
+  }
+  element.setAttribute("content", content);
+}
+
+function updateCanonicalLink(href: string) {
+  if (!document.head) {
+    return;
+  }
+
+  let element = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!element) {
+    element = document.createElement("link");
+    element.setAttribute("rel", "canonical");
+    document.head.appendChild(element);
+  }
+  element.setAttribute("href", href);
+}
+
+function updateStructuredData(structuredData?: Record<string, unknown> | Array<Record<string, unknown>>) {
+  if (!document.head) {
+    return;
+  }
+
+  const existing = document.getElementById("exdox-structured-data");
+  if (!structuredData) {
+    existing?.remove();
+    return;
+  }
+
+  const script = existing instanceof HTMLScriptElement ? existing : document.createElement("script");
+  script.id = "exdox-structured-data";
+  script.type = "application/ld+json";
+  script.text = JSON.stringify(structuredData);
+  if (!existing) {
+    document.head.appendChild(script);
+  }
+}
 
 export function App() {
   const location = useLocation();
@@ -274,250 +517,267 @@ export function App() {
 
   if (loading) {
     return (
-      <div className="app-loading">
-        <div className="loading-panel">
-          <div className="loading-mark-shell">
-            <img className="loading-mark" src={brandMarkSrc} alt="exdox" />
+      <>
+        <SeoManager pathname={location.pathname} session={session} />
+        <div className="app-loading">
+          <div className="loading-panel">
+            <div className="loading-mark-shell">
+              <img className="loading-mark" src={brandMarkSrc} alt="exdox" />
+            </div>
+            <strong>Loading Exdox workspace</strong>
+            <p>Preparing your dashboard and organisation context.</p>
           </div>
-          <strong>Loading Exdox workspace</strong>
-          <p>Preparing your dashboard and organisation context.</p>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!session && location.pathname !== "/login") {
     if (location.pathname === "/register") {
       return (
-        <RegisterState
+        <>
+          <SeoManager pathname={location.pathname} session={session} />
+          <RegisterState
+            busy={authBusy}
+            error={authError ?? error}
+            initialEmail={new URLSearchParams(location.search).get("email") ?? ""}
+            inviteToken={new URLSearchParams(location.search).get("inviteToken") ?? ""}
+            initialPlan={normalizePublicPlan(new URLSearchParams(location.search).get("plan"))}
+            initialBillingCycle={normalizePublicBillingCycle(new URLSearchParams(location.search).get("billingCycle"))}
+            onRegister={async (input) => {
+              setAuthBusy(true);
+              setAuthError(null);
+              setError(null);
+              try {
+                const nextSession = await registerWithEmail(input);
+                await loadWorkspace(nextSession.token, nextSession);
+              } catch (registerError) {
+                setSession(null);
+                setAuthError(registerError instanceof Error ? registerError.message : "Registration failed.");
+              } finally {
+                setAuthBusy(false);
+              }
+            }}
+          />
+        </>
+      );
+    }
+    return (
+      <>
+        <SeoManager pathname={location.pathname} session={session} />
+        <PublicSite />
+      </>
+    );
+  }
+
+  if (!session) {
+    return (
+      <>
+        <SeoManager pathname={location.pathname} session={session} />
+        <LoginState
           busy={authBusy}
           error={authError ?? error}
-          initialEmail={new URLSearchParams(location.search).get("email") ?? ""}
-          inviteToken={new URLSearchParams(location.search).get("inviteToken") ?? ""}
-          initialPlan={normalizePublicPlan(new URLSearchParams(location.search).get("plan"))}
-          initialBillingCycle={normalizePublicBillingCycle(new URLSearchParams(location.search).get("billingCycle"))}
-          onRegister={async (input) => {
+          onLogin={async (email, password) => {
             setAuthBusy(true);
             setAuthError(null);
             setError(null);
             try {
-              const nextSession = await registerWithEmail(input);
+              const nextSession = await loginWithEmail({ email, password });
               await loadWorkspace(nextSession.token, nextSession);
-            } catch (registerError) {
+            } catch (loginError) {
               setSession(null);
-              setAuthError(registerError instanceof Error ? registerError.message : "Registration failed.");
+              setAuthError(loginError instanceof Error ? loginError.message : "Sign in failed.");
             } finally {
               setAuthBusy(false);
             }
           }}
         />
-      );
-    }
-    return <PublicSite />;
-  }
-
-  if (!session) {
-    return (
-      <LoginState
-        busy={authBusy}
-        error={authError ?? error}
-        onLogin={async (email, password) => {
-          setAuthBusy(true);
-          setAuthError(null);
-          setError(null);
-          try {
-            const nextSession = await loginWithEmail({ email, password });
-            await loadWorkspace(nextSession.token, nextSession);
-          } catch (loginError) {
-            setSession(null);
-            setAuthError(loginError instanceof Error ? loginError.message : "Sign in failed.");
-          } finally {
-            setAuthBusy(false);
-          }
-        }}
-      />
+      </>
     );
   }
 
   const defaultRoute = getDefaultRoute(session);
 
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={<Navigate to={defaultRoute} replace />}
-      />
-      <Route
-        path="/*"
-        element={
-          <DashboardShell
-            session={session}
-            store={store}
-            error={error}
-            onUpload={async (workspaceContext, files) => {
-              const pendingReceipts = buildPendingReceipts(session, workspaceContext, files);
-              const targetKey =
-                workspaceContext === "cost" ? "costs" : workspaceContext === "sales" ? "sales" : "vault";
-              setError(null);
-              setStore((current) => ({
-                ...current,
-                [targetKey]: [...pendingReceipts, ...current[targetKey]],
-              }));
-
-              try {
-                await uploadDocuments(session.token, workspaceContext, files);
-                const refreshed = await listReceipts(session.token, workspaceContext);
+    <>
+      <SeoManager pathname={location.pathname} session={session} />
+      <Routes>
+        <Route
+          path="/"
+          element={<Navigate to={defaultRoute} replace />}
+        />
+        <Route
+          path="/*"
+          element={
+            <DashboardShell
+              session={session}
+              store={store}
+              error={error}
+              onUpload={async (workspaceContext, files) => {
+                const pendingReceipts = buildPendingReceipts(session, workspaceContext, files);
+                const targetKey =
+                  workspaceContext === "cost" ? "costs" : workspaceContext === "sales" ? "sales" : "vault";
+                setError(null);
                 setStore((current) => ({
                   ...current,
-                  [targetKey]: refreshed,
+                  [targetKey]: [...pendingReceipts, ...current[targetKey]],
                 }));
-              } catch (uploadError) {
-                setStore((current) => ({
-                  ...current,
-                  [targetKey]: current[targetKey].filter(
-                    (receipt) => !pendingReceipts.some((pending) => pending.id === receipt.id),
-                  ),
-                }));
-                setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
-                throw uploadError;
-              }
-            }}
-            onReceiptSave={async (id, payload) => {
-              const saved = await saveReceipt(session.token, id, payload);
-              setStore((current) => ({
-                ...current,
-                costs: current.costs.map((item) => (item.id === id ? saved : item)),
-                sales: current.sales.map((item) => (item.id === id ? saved : item)),
-                vault: current.vault.map((item) => (item.id === id ? saved : item)),
-              }));
-            }}
-            onReceiptDelete={async (id) => {
-              await deleteReceipt(session.token, id);
-              setStore((current) => ({
-                ...current,
-                costs: current.costs.filter((item) => item.id !== id),
-                sales: current.sales.filter((item) => item.id !== id),
-                vault: current.vault.filter((item) => item.id !== id),
-              }));
-            }}
-            onAttachReceiptToClaim={async (receiptId, claimId) => {
-              const savedReceipt = await attachReceiptToClaim(session.token, { receiptId, claimId });
-              const [claims, costs] = await Promise.all([
-                listClaims(session.token),
-                listReceipts(session.token, "cost"),
-              ]);
-              setStore((current) => ({
-                ...current,
-                claims,
-                costs: costs.map((item) => (item.id === savedReceipt.id ? savedReceipt : item)),
-              }));
-              return savedReceipt;
-            }}
-            onClaimCreate={async (payload) => {
-              const claim = await createClaim(session.token, payload);
-              const refreshedClaims = await listClaims(session.token);
-              setStore((current) => ({
-                ...current,
-                claims: refreshedClaims.some((item) => item.id === claim.id)
-                  ? refreshedClaims
-                  : [claim, ...refreshedClaims],
-              }));
-              return claim;
-            }}
-            onClaimStatusChange={async (id, status) => {
-              const saved = await updateClaimStatus(session.token, id, status);
-              setStore((current) => ({
-                ...current,
-                claims: current.claims.map((item) => (item.id === id ? saved : item)),
-              }));
-            }}
-            onRuleSave={async (payload) => {
-              const saved = await saveRule(session.token, payload);
-              setStore((current) => {
-                const existing = current.rules.find((item) => item.id === saved.id);
-                return {
-                  ...current,
-                  rules: existing
-                    ? current.rules.map((item) => (item.id === saved.id ? saved : item))
-                    : [saved, ...current.rules],
-                };
-              });
-            }}
-            onRuleDelete={async (id) => {
-              await removeRule(session.token, id);
-              setStore((current) => ({
-                ...current,
-                rules: current.rules.filter((item) => item.id !== id),
-              }));
-            }}
-            onMatch={async (statementLineId, receiptId) => {
-              await matchReconciliation(session.token, statementLineId, receiptId);
-              const refreshed = await listReconciliation(session.token);
-              setStore((current) => ({
-                ...current,
-                reconciliation: refreshed,
-              }));
-            }}
-            onCreateRequisition={async (input) => createRequisition(session.token, input)}
-            onCompleteBankCallback={async (input) => completeBankCallback(session.token, input)}
-            onSettingsSave={async (payload) => {
-              const saved = await saveSettings(session.token, payload);
-              setStore((current) => ({
-                ...current,
-                settings: saved,
-              }));
-            }}
-            onInviteEmployee={async (payload) => sendInvite(session.token, payload)}
-            onActiveOrganisationChange={async (organisationId) => {
-              const nextSession =
-                session.activeOrganisationId === organisationId
-                  ? session
-                  : {
-                      ...session,
-                      activeOrganisationId: organisationId,
-                    };
 
-              setSession((current) => {
-                if (!current || current.activeOrganisationId === organisationId) {
-                  return current;
+                try {
+                  await uploadDocuments(session.token, workspaceContext, files);
+                  const refreshed = await listReceipts(session.token, workspaceContext);
+                  setStore((current) => ({
+                    ...current,
+                    [targetKey]: refreshed,
+                  }));
+                } catch (uploadError) {
+                  setStore((current) => ({
+                    ...current,
+                    [targetKey]: current[targetKey].filter(
+                      (receipt) => !pendingReceipts.some((pending) => pending.id === receipt.id),
+                    ),
+                  }));
+                  setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
+                  throw uploadError;
                 }
-
-                const updatedSession = {
+              }}
+              onReceiptSave={async (id, payload) => {
+                const saved = await saveReceipt(session.token, id, payload);
+                setStore((current) => ({
                   ...current,
-                  activeOrganisationId: organisationId,
-                };
-                saveStoredSession(updatedSession);
-                return updatedSession;
-              });
-              await loadWorkspace(session.token, nextSession);
-            }}
-            onSignOut={() => {
-              clearStoredSession();
-              setSession(null);
-              setStore({
-                costs: [],
-                sales: [],
-                vault: [],
-                claims: [],
-                rules: [],
-                reconciliation: [],
-                settings: null,
-              });
-              setError(null);
-              setAuthError(null);
-            }}
-            loadReceipt={async (id) => {
-              const [receipt, assetUrl] = await Promise.all([
-                getReceipt(session.token, id),
-                getReceiptAssetUrl(session.token, id),
-              ]);
-              return { receipt, assetUrl };
-            }}
-            loadClaim={async (id) => getClaim(session.token, id)}
-          />
-        }
-      />
-    </Routes>
+                  costs: current.costs.map((item) => (item.id === id ? saved : item)),
+                  sales: current.sales.map((item) => (item.id === id ? saved : item)),
+                  vault: current.vault.map((item) => (item.id === id ? saved : item)),
+                }));
+              }}
+              onReceiptDelete={async (id) => {
+                await deleteReceipt(session.token, id);
+                setStore((current) => ({
+                  ...current,
+                  costs: current.costs.filter((item) => item.id !== id),
+                  sales: current.sales.filter((item) => item.id !== id),
+                  vault: current.vault.filter((item) => item.id !== id),
+                }));
+              }}
+              onAttachReceiptToClaim={async (receiptId, claimId) => {
+                const savedReceipt = await attachReceiptToClaim(session.token, { receiptId, claimId });
+                const [claims, costs] = await Promise.all([
+                  listClaims(session.token),
+                  listReceipts(session.token, "cost"),
+                ]);
+                setStore((current) => ({
+                  ...current,
+                  claims,
+                  costs: costs.map((item) => (item.id === savedReceipt.id ? savedReceipt : item)),
+                }));
+                return savedReceipt;
+              }}
+              onClaimCreate={async (payload) => {
+                const claim = await createClaim(session.token, payload);
+                const refreshedClaims = await listClaims(session.token);
+                setStore((current) => ({
+                  ...current,
+                  claims: refreshedClaims.some((item) => item.id === claim.id)
+                    ? refreshedClaims
+                    : [claim, ...refreshedClaims],
+                }));
+                return claim;
+              }}
+              onClaimStatusChange={async (id, status) => {
+                const saved = await updateClaimStatus(session.token, id, status);
+                setStore((current) => ({
+                  ...current,
+                  claims: current.claims.map((item) => (item.id === id ? saved : item)),
+                }));
+              }}
+              onRuleSave={async (payload) => {
+                const saved = await saveRule(session.token, payload);
+                setStore((current) => {
+                  const existing = current.rules.find((item) => item.id === saved.id);
+                  return {
+                    ...current,
+                    rules: existing
+                      ? current.rules.map((item) => (item.id === saved.id ? saved : item))
+                      : [saved, ...current.rules],
+                  };
+                });
+              }}
+              onRuleDelete={async (id) => {
+                await removeRule(session.token, id);
+                setStore((current) => ({
+                  ...current,
+                  rules: current.rules.filter((item) => item.id !== id),
+                }));
+              }}
+              onMatch={async (statementLineId, receiptId) => {
+                await matchReconciliation(session.token, statementLineId, receiptId);
+                const refreshed = await listReconciliation(session.token);
+                setStore((current) => ({
+                  ...current,
+                  reconciliation: refreshed,
+                }));
+              }}
+              onCreateRequisition={async (input) => createRequisition(session.token, input)}
+              onCompleteBankCallback={async (input) => completeBankCallback(session.token, input)}
+              onSettingsSave={async (payload) => {
+                const saved = await saveSettings(session.token, payload);
+                setStore((current) => ({
+                  ...current,
+                  settings: saved,
+                }));
+              }}
+              onInviteEmployee={async (payload) => sendInvite(session.token, payload)}
+              onActiveOrganisationChange={async (organisationId) => {
+                const nextSession =
+                  session.activeOrganisationId === organisationId
+                    ? session
+                    : {
+                        ...session,
+                        activeOrganisationId: organisationId,
+                      };
+
+                setSession((current) => {
+                  if (!current || current.activeOrganisationId === organisationId) {
+                    return current;
+                  }
+
+                  const updatedSession = {
+                    ...current,
+                    activeOrganisationId: organisationId,
+                  };
+                  saveStoredSession(updatedSession);
+                  return updatedSession;
+                });
+                await loadWorkspace(session.token, nextSession);
+              }}
+              onSignOut={() => {
+                clearStoredSession();
+                setSession(null);
+                setStore({
+                  costs: [],
+                  sales: [],
+                  vault: [],
+                  claims: [],
+                  rules: [],
+                  reconciliation: [],
+                  settings: null,
+                });
+                setError(null);
+                setAuthError(null);
+              }}
+              loadReceipt={async (id) => {
+                const [receipt, assetUrl] = await Promise.all([
+                  getReceipt(session.token, id),
+                  getReceiptAssetUrl(session.token, id),
+                ]);
+                return { receipt, assetUrl };
+              }}
+              loadClaim={async (id) => getClaim(session.token, id)}
+            />
+          }
+        />
+      </Routes>
+    </>
   );
 }
 
