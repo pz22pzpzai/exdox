@@ -4183,7 +4183,7 @@ function PublicHome() {
         <nav className="public-nav" aria-label="Website">
           <a className="active" href="#home">Home</a>
           <a href="#platform">Platform</a>
-          <a href="#integration">Integration</a>
+          <a href="#integration">Integrations</a>
           <a href="#pricing">Pricing</a>
           <a href="#company">Company</a>
         </nav>
