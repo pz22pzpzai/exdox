@@ -4294,21 +4294,21 @@ function PublicHome() {
             </p>
           </div>
           <div className="pricing-grid">
-            <article className="pricing-card">
+            <Link className="pricing-card pricing-link" to="/register">
               <span>Employee Capture</span>
               <strong>Drop box uploads</strong>
               <p>For teams who need staff to submit receipts without opening the full finance control surface.</p>
-            </article>
-            <article className="pricing-card featured">
+            </Link>
+            <Link className="pricing-card pricing-card featured pricing-link" to="/register">
               <span>Business Control</span>
               <strong>Costs, sales and claims</strong>
               <p>For businesses running receipt review, invoice handling, tax editing and approval workflows.</p>
-            </article>
-            <article className="pricing-card">
+            </Link>
+            <Link className="pricing-card pricing-link" to="/register">
               <span>Finance Ops</span>
               <strong>Rules and bank matching</strong>
               <p>For organisations that want supplier automation, vault storage, open banking connections and reconciliation support.</p>
-            </article>
+            </Link>
           </div>
           <div className="section-actions">
             <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Pricing%20request">Request Pricing</a>
