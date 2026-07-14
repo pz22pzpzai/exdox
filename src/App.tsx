@@ -4210,12 +4210,12 @@ function PublicHome() {
         <section className="capabilities-band" id="platform">
           <h2>Key Platform Capabilities</h2>
           <div className="capabilities-grid">
-            <article><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></article>
-            <article><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent coding and tax defaults</span></article>
-            <article><NavIcon name="claims" /><strong>Expense Claims</strong><span>Review, approve and publish faster</span></article>
-            <article><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive reference files separately</span></article>
-            <article><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></article>
-            <article><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></article>
+            <Link className="capability-card" to="/register"><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></Link>
+            <Link className="capability-card" to="/register"><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent coding and tax defaults</span></Link>
+            <Link className="capability-card" to="/register"><NavIcon name="claims" /><strong>Expense Claims</strong><span>Review, approve and publish faster</span></Link>
+            <Link className="capability-card" to="/register"><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive reference files separately</span></Link>
+            <Link className="capability-card" to="/register"><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></Link>
+            <Link className="capability-card" to="/register"><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></Link>
           </div>
         </section>
 

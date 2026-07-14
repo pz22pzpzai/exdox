@@ -1824,7 +1824,8 @@ input {
   margin: 0 auto;
 }
 
-.capabilities-grid article {
+.capabilities-grid article,
+.capability-card {
   display: grid;
   grid-template-columns: 30px 1fr;
   align-items: center;
@@ -1834,6 +1835,16 @@ input {
   background: linear-gradient(145deg, #12203f, #182442);
   border-radius: 6px;
   box-shadow: 0 8px 18px rgba(17, 28, 56, 0.12);
+}
+
+.capability-card {
+  text-decoration: none;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.capability-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(17, 28, 56, 0.18);
 }
 
 .capabilities-grid .nav-icon {
