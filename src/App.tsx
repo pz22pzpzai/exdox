@@ -4275,7 +4275,7 @@ function PublicHome() {
             </p>
           </div>
           <div className="workflow-grid">
-            <article className="workflow-card">
+            <Link className="workflow-card workflow-link" to="/register">
               <strong>Capture any way your team works</strong>
               <ul>
                 <li>Mobile receipt capture in the app</li>
@@ -4285,8 +4285,8 @@ function PublicHome() {
                 <li>Bank-line review against imported statement activity</li>
                 <li>Separate workspaces for purchase and sales documents</li>
               </ul>
-            </article>
-            <article className="workflow-card">
+            </Link>
+            <Link className="workflow-card workflow-link" to="/register">
               <strong>Automate the review layer</strong>
               <ul>
                 <li>Supplier rules for category, tax rate and payment method</li>
@@ -4296,8 +4296,8 @@ function PublicHome() {
                 <li>Duplicate upload checks before final publish</li>
                 <li>Audit-friendly document detail editing before publish</li>
               </ul>
-            </article>
-            <article className="workflow-card">
+            </Link>
+            <Link className="workflow-card workflow-link" to="/register">
               <strong>Close the loop with finance controls</strong>
               <ul>
                 <li>Dedicated vault workspace for searchable archived evidence</li>
@@ -4308,7 +4308,7 @@ function PublicHome() {
                 <li>Organisation-level VAT settings and tax defaults</li>
                 <li>Live sync with the same receipt records used in mobile</li>
               </ul>
-            </article>
+            </Link>
           </div>
         </section>
 
