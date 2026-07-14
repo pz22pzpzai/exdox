@@ -1551,7 +1551,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
           </div>
           <ul className="summary-list">
             <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate("/costs")}>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstExportRoute(store))}>
                 <strong>Queue CSV exports</strong>
                 <span>Costs, sales, vault, claims, and reconciliation all support filtered CSV export from their live queues.</span>
               </button>
@@ -1594,7 +1594,7 @@ function AutomationPage({ store }: { store: AppStore }) {
     <div className="stack-page">
       <section className="metrics-grid">
         <MetricCard label="Active rules" value={String(activeRules.length)} detail="Supplier automation rules currently enabled" onClick={() => navigate("/rules?status=active")} />
-        <MetricCard label="Rule coverage" value={`${ruleCoverage}%`} detail="Records already carrying category output" onClick={() => navigate("/costs")} />
+        <MetricCard label="Rule coverage" value={`${ruleCoverage}%`} detail="Records already carrying category output" onClick={() => navigate(firstInboxRouteForCategorizedRecords(store))} />
         <MetricCard label="Ready output" value={`${reviewEscapeRate}%`} detail="Documents already reaching the ready state" onClick={() => navigate(firstInboxRouteForStatus(store, "Ready"))} />
         <MetricCard label="Needs review" value={String(reviewDocuments.length)} detail="Records still breaking out of the automated path" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
         <MetricCard label="Low confidence" value={String(lowConfidenceDocuments.length)} detail="Extractions still needing a manual check" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))} />
@@ -4645,6 +4645,35 @@ function firstInboxRouteForDuplicateReview(store: AppStore) {
     return "/sales?issue=Possible+duplicates";
   }
   return "/costs?issue=Possible+duplicates";
+}
+
+function firstInboxRouteForCategorizedRecords(store: AppStore) {
+  if (store.costs.some((record) => (record.category ?? "").trim())) {
+    return "/costs";
+  }
+  if (store.sales.some((record) => (record.category ?? "").trim())) {
+    return "/sales";
+  }
+  if (store.vault.some((record) => (record.category ?? "").trim())) {
+    return "/vault";
+  }
+  return "/costs";
+}
+
+function firstExportRoute(store: AppStore) {
+  if (store.costs.length) {
+    return "/costs";
+  }
+  if (store.sales.length) {
+    return "/sales";
+  }
+  if (store.vault.length) {
+    return "/vault";
+  }
+  if (store.claims.length) {
+    return "/claims";
+  }
+  return "/reconciliation";
 }
 
 function compareInboxRecords(
