@@ -82,6 +82,7 @@ const salesCategoryOptions = [
 
 const navItems = [
   { to: "/overview", label: "Overview", icon: "overview" },
+  { to: "/overview/data-health", label: "Data Health", icon: "health" },
   { to: "/costs", label: "Costs Inbox", icon: "costs" },
   { to: "/sales", label: "Sales Inbox", icon: "sales" },
   { to: "/vault", label: "Vault", icon: "claims" },
@@ -592,6 +593,9 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview" element={<OverviewPage store={props.store} />} />
               ) : null}
+              {isRouteAllowed(props.session, "/overview") ? (
+                <Route path="/overview/data-health" element={<DataHealthPage store={props.store} />} />
+              ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
                   path="/costs"
@@ -930,6 +934,168 @@ function OverviewPage({ store }: { store: AppStore }) {
               <li>
                 <strong>No review blockers detected</strong>
                 <span>There are no unreadable documents, stalled uploads, or duplicate candidates right now.</span>
+              </li>
+            )}
+          </ul>
+          <div className="toolbar">
+            <button className="secondary-action" type="button" onClick={() => navigate("/overview/data-health")}>
+              Open data health view
+            </button>
+          </div>
+        </article>
+      </section>
+    </div>
+  );
+}
+
+function DataHealthPage({ store }: { store: AppStore }) {
+  const navigate = useNavigate();
+  const allRecords = [...store.costs, ...store.sales, ...store.vault];
+  const duplicateInsights = buildDuplicateInsights([...store.costs, ...store.sales]);
+  const healthIssues = buildWorkspaceHealthIssues(store, 6);
+  const codingGapRecords = buildCodingGapRecords(store);
+  const attentionRecords = buildAttentionRecords(store, duplicateInsights.byReceiptId);
+  const workspaceBreakdown = [
+    { label: "Costs", route: "/costs", records: attentionRecords.filter(({ record }) => record.workspaceContext === "cost") },
+    { label: "Sales", route: "/sales", records: attentionRecords.filter(({ record }) => record.workspaceContext === "sales") },
+    { label: "Vault", route: "/vault", records: attentionRecords.filter(({ record }) => record.workspaceContext === "vault") },
+  ];
+  const unreadableCount = allRecords.filter((record) => looksUnreadable(record)).length;
+  const processingCount = allRecords.filter((record) => record.status === "Processing").length;
+  const lowConfidenceCount = allRecords.filter((record) => isLowConfidence(record)).length;
+  const reviewCount = allRecords.filter((record) => record.needsReview).length;
+
+  return (
+    <div className="stack-page">
+      <section className="metrics-grid">
+        <MetricCard
+          label="Unreadable"
+          value={String(unreadableCount)}
+          detail="Manual fallback or re-upload needed"
+          onClick={() => navigate(firstInboxRouteForIssue(store, (record) => looksUnreadable(record), "Unreadable"))}
+        />
+        <MetricCard
+          label="Still processing"
+          value={String(processingCount)}
+          detail="Uploads not yet settled into review"
+          onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.status === "Processing", "Processing"))}
+        />
+        <MetricCard
+          label="Low confidence"
+          value={String(lowConfidenceCount)}
+          detail="Extraction needs a closer check"
+          onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))}
+        />
+        <MetricCard
+          label="Needs review"
+          value={String(reviewCount)}
+          detail="Coding or publish decisions outstanding"
+          onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))}
+        />
+        <MetricCard
+          label="Duplicate groups"
+          value={String(duplicateInsights.groups.length)}
+          detail="Likely repeat uploads awaiting review"
+          onClick={() => navigate("/costs?issue=Possible+duplicates")}
+        />
+        <MetricCard
+          label="Coding gaps"
+          value={String(codingGapRecords.length)}
+          detail="Documents missing category or supplier"
+          onClick={() => navigate(codingGapRecords[0] ? recordRoute(codingGapRecords[0]) : "/costs")}
+        />
+      </section>
+
+      <section className="overview-panels">
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Priority queues</h2>
+            <span>Fast route into problem areas</span>
+          </div>
+          <ul className="summary-list">
+            {healthIssues.map((issue) => (
+              <li key={issue.label}>
+                <button className="summary-action-row" type="button" onClick={() => navigate(issue.route)}>
+                  <strong>{issue.label}</strong>
+                  <span>{issue.detail}</span>
+                </button>
+              </li>
+            ))}
+            {codingGapRecords.length ? (
+              <li>
+                <button className="summary-action-row" type="button" onClick={() => navigate(recordRoute(codingGapRecords[0]!))}>
+                  <strong>{codingGapRecords.length} document{codingGapRecords.length === 1 ? "" : "s"} missing coding detail</strong>
+                  <span>Open the next document missing a supplier or category and complete the review fields.</span>
+                </button>
+              </li>
+            ) : null}
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Attention records</h2>
+            <span>Highest-friction uploads first</span>
+          </div>
+          <ul className="summary-list">
+            {attentionRecords.length ? (
+              attentionRecords.slice(0, 8).map(({ record, reasons }) => (
+                <li key={record.id}>
+                  <button className="summary-action-row" type="button" onClick={() => navigate(recordRoute(record))}>
+                    <strong>{record.vendorName?.trim() || record.sourceFilename}</strong>
+                    <span>
+                      {workspaceLabel(record.workspaceContext)} | {currency(record.totalAmount ?? 0)} | {record.createdAt.slice(0, 10)} | {reasons.join(", ")}
+                    </span>
+                  </button>
+                </li>
+              ))
+            ) : (
+              <li>
+                <strong>No data-health blockers right now</strong>
+                <span>Unreadable, low-confidence, duplicate, and incomplete records will show up here automatically.</span>
+              </li>
+            )}
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Workspace breakdown</h2>
+            <span>Where the cleanup work is sitting</span>
+          </div>
+          <ul className="summary-list">
+            {workspaceBreakdown.map((workspace) => (
+              <li key={workspace.label}>
+                <button className="summary-action-row" type="button" onClick={() => navigate(workspace.route)}>
+                  <strong>{workspace.label}</strong>
+                  <span>
+                    {workspace.records.length} attention item{workspace.records.length === 1 ? "" : "s"} in this queue
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Duplicate review</h2>
+            <span>Candidate groups pulled from live records</span>
+          </div>
+          <ul className="summary-list">
+            {duplicateInsights.groups.length ? (
+              duplicateInsights.groups.slice(0, 6).map((group) => (
+                <li key={group.key}>
+                  <button className="summary-action-row" type="button" onClick={() => navigate(recordRoute(group.records[0]!))}>
+                    <strong>{group.vendorLabel} | {currency(group.grossAmount)}</strong>
+                    <span>{group.documentDate} | {group.workspaceLabel} | {group.records.length} linked uploads</span>
+                  </button>
+                </li>
+              ))
+            ) : (
+              <li>
+                <strong>No duplicate groups open</strong>
+                <span>Repeat-upload candidates will appear here as soon as the same evidence shows up more than once.</span>
               </li>
             )}
           </ul>
@@ -1671,6 +1837,7 @@ function ClaimsPage({
   onCreateClaim: (payload: { name?: string; description?: string; currency?: string }) => Promise<ClaimRecord>;
   employeeMode?: boolean;
 }) {
+  const location = useLocation();
   const navigate = useNavigate();
   const [draft, setDraft] = useState({
     name: "",
@@ -1682,6 +1849,23 @@ function ClaimsPage({
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ClaimRecord["status"] | "all">("all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextStatus = params.get("status");
+    const nextSort = params.get("sort");
+
+    setStatusFilter(
+      nextStatus === "pending" || nextStatus === "approved" || nextStatus === "paid" || nextStatus === "rejected"
+        ? nextStatus
+        : "all",
+    );
+    setSortOrder(
+      nextSort === "oldest" || nextSort === "highest_total" || nextSort === "lowest_total"
+        ? nextSort
+        : "newest",
+    );
+  }, [location.search]);
 
   const filteredClaims = claims
     .filter((claim) => statusFilter === "all" || claim.status === statusFilter)
@@ -1806,11 +1990,28 @@ function EmployeeDropboxPage(props: {
   onUpload: (workspaceContext: "cost" | "sales" | "vault", files: File[]) => Promise<void>;
   uploadBusy: boolean;
 }) {
+  const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
   const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextSearch = params.get("search") ?? "";
+    const nextStatus = params.get("status");
+    const nextSort = params.get("sort");
+
+    setQuery(nextSearch);
+    setStatusFilter(nextStatus === "Processing" || nextStatus === "Review" || nextStatus === "Ready" || nextStatus === "Published" ? nextStatus : "All");
+    setSortOrder(
+      nextSort === "oldest" || nextSort === "highest_total" || nextSort === "lowest_total"
+        ? nextSort
+        : "newest",
+    );
+  }, [location.search]);
+
   const search = deferredQuery.trim().toLowerCase();
   const filteredReceipts = props.receipts.filter((receipt) => {
     const matchesSearch =
@@ -2116,6 +2317,7 @@ function RulesPage(props: {
   ) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
 }) {
+  const location = useLocation();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [sortOrder, setSortOrder] = useState<"a_z" | "z_a" | "active_first">("a_z");
@@ -2132,6 +2334,18 @@ function RulesPage(props: {
   const [error, setError] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
   const search = deferredQuery.trim().toLowerCase();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextSearch = params.get("search") ?? "";
+    const nextStatus = params.get("status");
+    const nextSort = params.get("sort");
+
+    setQuery(nextSearch);
+    setStatusFilter(nextStatus === "active" || nextStatus === "inactive" ? nextStatus : "all");
+    setSortOrder(nextSort === "z_a" || nextSort === "active_first" ? nextSort : "a_z");
+  }, [location.search]);
+
   const filteredRules = props.rules.filter((rule) => {
     const matchesSearch =
       !search ||
@@ -3532,6 +3746,7 @@ function PublicHome() {
 function NavIcon({ name }: { name: string }) {
   const paths: Record<string, React.ReactNode> = {
     overview: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></>,
+    health: <><path d="M12 21s-6-4.35-8.5-8.16C1.94 10.55 3.1 7 6.4 7c2 0 3.1 1.08 3.6 2 .5-.92 1.6-2 3.6-2 3.3 0 4.46 3.55 2.9 5.84C18 16.65 12 21 12 21Z" /><path d="M8 12h2l1.2-2.2L13 15l1.1-2H16" /></>,
     costs: <><path d="M6 3h12l2 5-2 5H6L4 8l2-5Z" /><path d="M8 17h8M9 21h6" /></>,
     sales: <><path d="M4 6h16v12H4z" /><path d="m4 9 8 5 8-5" /></>,
     claims: <><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 13h6M10 17h6" /></>,
@@ -3614,7 +3829,7 @@ function buildDuplicateInsights(records: ReceiptRecord[]) {
   };
 }
 
-function buildWorkspaceHealthIssues(store: AppStore) {
+function buildWorkspaceHealthIssues(store: AppStore, limit = 4) {
   const allRecords = [...store.costs, ...store.sales, ...store.vault];
   const unreadableCount = allRecords.filter((record) => looksUnreadable(record)).length;
   const processingCount = allRecords.filter((record) => record.status === "Processing").length;
@@ -3663,7 +3878,57 @@ function buildWorkspaceHealthIssues(store: AppStore) {
     });
   }
 
-  return issues.slice(0, 4);
+  return issues.slice(0, limit);
+}
+
+function buildCodingGapRecords(store: AppStore) {
+  return [...store.costs, ...store.sales]
+    .filter((record) => needsCodingAttention(record))
+    .sort((left, right) => compareIsoDate(right.updatedAt, left.updatedAt));
+}
+
+function buildAttentionRecords(
+  store: AppStore,
+  duplicateGroupsByReceiptId: Map<number, DuplicateInsightGroup>,
+) {
+  return [...store.costs, ...store.sales, ...store.vault]
+    .map((record) => {
+      const reasons: string[] = [];
+      if (looksUnreadable(record)) reasons.push("Unreadable");
+      if (record.status === "Processing") reasons.push("Processing");
+      if (duplicateGroupsByReceiptId.has(record.id)) reasons.push("Possible duplicate");
+      if (isLowConfidence(record)) reasons.push("Low confidence");
+      if (record.needsReview) reasons.push("Needs review");
+      if (needsCodingAttention(record)) reasons.push("Coding gap");
+      return { record, reasons };
+    })
+    .filter(({ reasons }) => reasons.length > 0)
+    .sort((left, right) => {
+      const severityDelta = right.reasons.length - left.reasons.length;
+      if (severityDelta !== 0) {
+        return severityDelta;
+      }
+      return compareIsoDate(right.record.updatedAt, left.record.updatedAt);
+    });
+}
+
+function needsCodingAttention(record: ReceiptRecord) {
+  if (record.workspaceContext === "vault") {
+    return false;
+  }
+  return !(record.category ?? "").trim() || !(record.vendorName ?? "").trim();
+}
+
+function recordRoute(record: ReceiptRecord) {
+  return `${workspaceRoute(record.workspaceContext)}/${record.id}`;
+}
+
+function workspaceRoute(context: ReceiptRecord["workspaceContext"]) {
+  return context === "sales" ? "/sales" : context === "vault" ? "/vault" : "/costs";
+}
+
+function workspaceLabel(context: ReceiptRecord["workspaceContext"]) {
+  return context === "sales" ? "Sales" : context === "vault" ? "Vault" : "Costs";
 }
 
 function duplicateCandidateKeys(record: ReceiptRecord) {
