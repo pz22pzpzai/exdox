@@ -2019,6 +2019,17 @@ input {
   font-size: 1.35rem;
 }
 
+.integration-names a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.integration-names a:hover {
+  color: var(--blue);
+}
+
 .pricing-band,
 .company-band {
   border-top: 1px solid #e2e9f0;

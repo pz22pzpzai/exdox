@@ -4314,18 +4314,18 @@ function PublicHome() {
 
         <section className="integration-band" id="integration">
           <div>
-            <h2>Simple Integration</h2>
+            <h2>Accounting Integrations &amp; Connected Workflows</h2>
             <p>
               Keep capture, review and accounting data moving together across your finance stack with
-              synced web and mobile workflows, organisation switching, bank-linked reconciliation, and
-              export-ready audit handoff from the same workspace.
+              synced web and mobile workflows, organisation switching, bank-linked reconciliation,
+              ready-and-published handoff queues, and archive-safe evidence retrieval from the same workspace.
             </p>
           </div>
           <div className="integration-names" aria-label="Compatible accounting platforms">
-            <strong>Sage</strong>
-            <strong>Xero</strong>
-            <strong>QuickBooks</strong>
-            <strong>FreeAgent</strong>
+            <Link to="/register">Sage</Link>
+            <Link to="/register">Xero</Link>
+            <Link to="/register">QuickBooks</Link>
+            <Link to="/register">FreeAgent</Link>
           </div>
         </section>
 
