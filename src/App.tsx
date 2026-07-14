@@ -811,7 +811,7 @@ function OverviewPage({ store }: { store: AppStore }) {
   return (
     <div className="stack-page">
       <section className="metrics-grid">
-        <MetricCard label="Costs in review" value={currency(totalCosts)} detail={`${store.costs.length} documents`} onClick={() => navigate("/costs")} />
+        <MetricCard label="Costs ledger" value={currency(totalCosts)} detail={`${store.costs.length} documents`} onClick={() => navigate("/costs")} />
         <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${store.sales.length} invoices`} onClick={() => navigate("/sales")} />
         <MetricCard label="Vault archive" value={String(vaultDocuments)} detail="Stored reference files" onClick={() => navigate("/vault")} />
         <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Approval workload" onClick={() => navigate(firstPendingClaimsRoute(store))} />
