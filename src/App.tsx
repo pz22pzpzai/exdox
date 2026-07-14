@@ -1147,7 +1147,7 @@ function IntegrationsPage({ store }: { store: AppStore }) {
         <MetricCard label="Web uploads" value={String(sourceCounts.web_upload)} detail="Drag-and-drop from the browser" onClick={() => navigate(firstInboxRouteForSource(store, "web_upload"))} />
         <MetricCard label="Email intake" value={String(sourceCounts.email)} detail="Documents submitted by email" onClick={() => navigate(firstInboxRouteForSource(store, "email"))} />
         <MetricCard label="Bank imports" value={String(sourceCounts.bank_import)} detail="Receipts linked from bank-led flows" onClick={() => navigate(firstInboxRouteForSource(store, "bank_import"))} />
-        <MetricCard label="Ready to publish" value={String(readyCosts + readySales)} detail="Documents ready for accounting handoff" onClick={() => navigate(readyCosts ? "/costs?status=Ready" : "/sales?status=Ready")} />
+        <MetricCard label="Ready to publish" value={String(readyCosts + readySales)} detail="Documents ready for accounting handoff" onClick={() => navigate(firstInboxRouteForStatus(store, "Ready"))} />
         <MetricCard label="Open bank matches" value={String(openBankMatches)} detail="Statement lines still awaiting audit pairing" onClick={() => navigate("/reconciliation?status=Open")} />
       </section>
 
@@ -1458,7 +1458,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
   return (
     <div className="stack-page">
       <section className="metrics-grid">
-        <MetricCard label="Automation coverage" value={`${automatedCoverage}%`} detail="Ready or published records across all queues" onClick={() => navigate(readyDocuments.length ? "/costs?status=Ready" : "/costs")} />
+        <MetricCard label="Automation coverage" value={`${automatedCoverage}%`} detail="Ready or published records across all queues" onClick={() => navigate(readyDocuments.length ? firstInboxRouteForStatus(store, "Ready") : firstPublishedOrArchiveRoute(store))} />
         <MetricCard label="Review completion" value={`${reviewCompletion}%`} detail="Records that no longer need manual review" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
         <MetricCard label="Bank audit coverage" value={`${bankCoverage}%`} detail="Imported bank lines already audited" onClick={() => navigate("/reconciliation")} />
         <MetricCard label="Claim completion" value={`${claimCompletion}%`} detail="Claims approved or fully paid" onClick={() => navigate("/claims")} />
