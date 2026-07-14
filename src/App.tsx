@@ -4279,6 +4279,7 @@ function PublicHome() {
             <strong>Sage</strong>
             <strong>Xero</strong>
             <strong>QuickBooks</strong>
+            <strong>FreeAgent</strong>
           </div>
         </section>
 
