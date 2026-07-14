@@ -4036,7 +4036,7 @@ function LoginState(props: {
             {" | "}
             <a href="mailto:hello@exdox.co.uk?subject=Privacy%20request">Privacy</a>
           </span>
-          <span>Compatible with Xero, QuickBooks and Sage</span>
+          <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
           <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
         </footer>
       </div>
@@ -4165,7 +4165,7 @@ function RegisterState(props: {
             {" | "}
             <a href="mailto:hello@exdox.co.uk?subject=Security%20request">Security</a>
           </span>
-          <span>Compatible with Xero, QuickBooks and Sage</span>
+          <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
           <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
         </footer>
       </div>
