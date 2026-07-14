@@ -4211,10 +4211,13 @@ function PublicHome() {
           <h2>Key Platform Capabilities</h2>
           <div className="capabilities-grid">
             <Link className="capability-card" to="/register"><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></Link>
+            <Link className="capability-card" to="/register"><NavIcon name="workflow" /><strong>Approval Workflows</strong><span>Review, approve and publish in one place</span></Link>
             <Link className="capability-card" to="/register"><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent coding and tax defaults</span></Link>
-            <Link className="capability-card" to="/register"><NavIcon name="claims" /><strong>Expense Claims</strong><span>Review, approve and publish faster</span></Link>
-            <Link className="capability-card" to="/register"><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive reference files separately</span></Link>
+            <Link className="capability-card" to="/register"><NavIcon name="claims" /><strong>Mileage & Expense Claims</strong><span>Staff submission, mileage entry and approval</span></Link>
+            <Link className="capability-card" to="/register"><NavIcon name="health" /><strong>Client Data Health</strong><span>Unreadable, duplicate and low-confidence follow-up</span></Link>
+            <Link className="capability-card" to="/register"><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive and retrieve source evidence fast</span></Link>
             <Link className="capability-card" to="/register"><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></Link>
+            <Link className="capability-card" to="/register"><NavIcon name="integrations" /><strong>Bank & Statement Review</strong><span>Imported bank activity and evidence-led review</span></Link>
             <Link className="capability-card" to="/register"><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></Link>
           </div>
         </section>
@@ -4237,6 +4240,7 @@ function PublicHome() {
                 <li>Mobile receipt capture in the app</li>
                 <li>Drag-and-drop uploads in costs and sales inboxes</li>
                 <li>Dedicated employee drop box for non-admin users</li>
+                <li>Mileage entry and expense-claim capture for staff</li>
                 <li>Bank-line review against imported statement activity</li>
                 <li>Separate workspaces for purchase and sales documents</li>
               </ul>
@@ -4247,6 +4251,7 @@ function PublicHome() {
                 <li>Supplier rules for category, tax rate and payment method</li>
                 <li>VAT-aware editable totals, net and tax fields</li>
                 <li>Needs-review queues across costs, sales and claims</li>
+                <li>Low-confidence and unreadable-document follow-up</li>
                 <li>Duplicate upload checks before final publish</li>
                 <li>Audit-friendly document detail editing before publish</li>
               </ul>
@@ -4254,8 +4259,9 @@ function PublicHome() {
             <article className="workflow-card">
               <strong>Close the loop with finance controls</strong>
               <ul>
-                <li>Dedicated vault workspace for archived evidence</li>
+                <li>Dedicated vault workspace for searchable archived evidence</li>
                 <li>Open banking requisitions and callback handling</li>
+                <li>Approval-ready claims and document review handoff</li>
                 <li>Reconciliation matching against imported bank lines</li>
                 <li>Filtered CSV exports across queues and document views</li>
                 <li>Organisation-level VAT settings and tax defaults</li>
