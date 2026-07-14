@@ -824,7 +824,7 @@ function OverviewPage({ store }: { store: AppStore }) {
               ? `${duplicateInsights.receiptIds.size} receipts need a duplicate check`
               : "No likely duplicate uploads detected"
           }
-          onClick={() => navigate("/costs")}
+          onClick={() => navigate(firstInboxRouteForDuplicateReview(store))}
         />
       </section>
 
@@ -1011,7 +1011,7 @@ function DataHealthPage({ store }: { store: AppStore }) {
           label="Duplicate groups"
           value={String(duplicateInsights.groups.length)}
           detail="Likely repeat uploads awaiting review"
-          onClick={() => navigate("/costs?issue=Possible+duplicates")}
+          onClick={() => navigate(firstInboxRouteForDuplicateReview(store))}
         />
         <MetricCard
           label="Coding gaps"
@@ -1463,7 +1463,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
         <MetricCard label="Bank audit coverage" value={`${bankCoverage}%`} detail="Imported bank lines already audited" onClick={() => navigate("/reconciliation")} />
         <MetricCard label="Claim completion" value={`${claimCompletion}%`} detail="Claims approved or fully paid" onClick={() => navigate("/claims")} />
         <MetricCard label="Low-confidence drag" value={String(lowConfidenceDocuments.length)} detail="Records still slowing down review quality" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))} />
-        <MetricCard label="Duplicate drag" value={String(duplicateGroups)} detail="Repeat-upload groups still consuming time" onClick={() => navigate("/costs?issue=Possible+duplicates")} />
+        <MetricCard label="Duplicate drag" value={String(duplicateGroups)} detail="Repeat-upload groups still consuming time" onClick={() => navigate(firstInboxRouteForDuplicateReview(store))} />
       </section>
 
       <section className="overview-panels">
@@ -1598,7 +1598,7 @@ function AutomationPage({ store }: { store: AppStore }) {
         <MetricCard label="Ready output" value={`${reviewEscapeRate}%`} detail="Documents already reaching the ready state" onClick={() => navigate(firstInboxRouteForStatus(store, "Ready"))} />
         <MetricCard label="Needs review" value={String(reviewDocuments.length)} detail="Records still breaking out of the automated path" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
         <MetricCard label="Low confidence" value={String(lowConfidenceDocuments.length)} detail="Extractions still needing a manual check" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))} />
-        <MetricCard label="Duplicate groups" value={String(duplicateInsights.groups.length)} detail="Likely repeat uploads slowing clean automation" onClick={() => navigate("/costs?issue=Possible+duplicates")} />
+        <MetricCard label="Duplicate groups" value={String(duplicateInsights.groups.length)} detail="Likely repeat uploads slowing clean automation" onClick={() => navigate(firstInboxRouteForDuplicateReview(store))} />
       </section>
 
       <section className="overview-panels">
@@ -1648,7 +1648,7 @@ function AutomationPage({ store }: { store: AppStore }) {
               </button>
             </li>
             <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate("/costs?issue=Possible+duplicates")}>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForDuplicateReview(store))}>
                 <strong>Duplicate interference</strong>
                 <span>{duplicateInsights.groups.length} candidate group{duplicateInsights.groups.length === 1 ? "" : "s"} still need a human duplicate check.</span>
               </button>
@@ -4472,7 +4472,7 @@ function buildWorkspaceHealthIssues(store: AppStore, limit = 4) {
     issues.push({
       label: `${duplicateGroups} duplicate candidate group${duplicateGroups === 1 ? "" : "s"}`,
       detail: "Likely repeat uploads are grouped from matching supplier or filename, amount, and date evidence.",
-      route: "/costs?issue=Possible+duplicates",
+      route: firstInboxRouteForDuplicateReview(store),
     });
   }
 
@@ -4635,6 +4635,16 @@ function firstInboxRouteForStatus(store: AppStore, status: InboxStatus) {
     return `/vault?status=${encodeURIComponent(status)}`;
   }
   return `/costs?status=${encodeURIComponent(status)}`;
+}
+
+function firstInboxRouteForDuplicateReview(store: AppStore) {
+  if (buildDuplicateInsights(store.costs).groups.length) {
+    return "/costs?issue=Possible+duplicates";
+  }
+  if (buildDuplicateInsights(store.sales).groups.length) {
+    return "/sales?issue=Possible+duplicates";
+  }
+  return "/costs?issue=Possible+duplicates";
 }
 
 function compareInboxRecords(
