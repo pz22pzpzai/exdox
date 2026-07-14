@@ -84,6 +84,7 @@ const navItems = [
   { to: "/overview", label: "Overview", icon: "overview" },
   { to: "/overview/data-health", label: "Data Health", icon: "health" },
   { to: "/overview/integrations", label: "Integrations", icon: "integrations" },
+  { to: "/overview/workflows", label: "Workflows", icon: "workflow" },
   { to: "/costs", label: "Costs Inbox", icon: "costs" },
   { to: "/sales", label: "Sales Inbox", icon: "sales" },
   { to: "/vault", label: "Vault", icon: "claims" },
@@ -599,6 +600,9 @@ function DashboardShell(props: {
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/integrations" element={<IntegrationsPage store={props.store} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/overview") ? (
+                <Route path="/overview/workflows" element={<WorkflowPage store={props.store} />} />
               ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
@@ -1261,6 +1265,154 @@ function IntegrationsPage({ store }: { store: AppStore }) {
                 <span>Uploads, imports, and archived files will appear here once the first records sync into the workspace.</span>
               </li>
             )}
+          </ul>
+        </article>
+      </section>
+    </div>
+  );
+}
+
+function WorkflowPage({ store }: { store: AppStore }) {
+  const navigate = useNavigate();
+  const allDocuments = [...store.costs, ...store.sales, ...store.vault];
+  const documentsNeedingReview = allDocuments.filter((record) => record.needsReview);
+  const costReady = store.costs.filter((record) => record.status === "Ready");
+  const salesReady = store.sales.filter((record) => record.status === "Ready");
+  const pendingClaims = store.claims.filter((claim) => claim.status === "pending");
+  const publishedDocuments = allDocuments.filter((record) => record.status === "Published");
+  const processingDocuments = allDocuments.filter((record) => record.status === "Processing");
+  const reviewByWorkspace = [
+    { label: "Costs review", route: "/costs?issue=Needs+review", records: store.costs.filter((record) => record.needsReview) },
+    { label: "Sales review", route: "/sales?issue=Needs+review", records: store.sales.filter((record) => record.needsReview) },
+    { label: "Vault review", route: "/vault?issue=Needs+review", records: store.vault.filter((record) => record.needsReview) },
+  ];
+  const nextActions = [
+    ...documentsNeedingReview.map((record) => ({
+      key: `receipt-${record.workspaceContext}-${record.id}`,
+      title: record.vendorName?.trim() || record.sourceFilename,
+      subtitle: `${workspaceLabel(record.workspaceContext)} | ${record.status} | ${record.createdAt.slice(0, 10)}`,
+      route: recordRoute(record),
+    })),
+    ...pendingClaims.map((claim) => ({
+      key: `claim-${claim.id}`,
+      title: claim.name,
+      subtitle: `Claim approval | ${claim.documentCount} document${claim.documentCount === 1 ? "" : "s"} | ${currency(claim.totalAmount)}`,
+      route: `/claims/${claim.id}`,
+    })),
+  ]
+    .sort((left, right) => right.subtitle.localeCompare(left.subtitle))
+    .slice(0, 10);
+
+  return (
+    <div className="stack-page">
+      <section className="metrics-grid">
+        <MetricCard label="Review queue" value={String(documentsNeedingReview.length)} detail="Documents waiting on coding or final checks" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
+        <MetricCard label="Cost approvals" value={String(costReady.length)} detail="Cost documents ready for handoff" onClick={() => navigate("/costs?status=Ready")} />
+        <MetricCard label="Sales approvals" value={String(salesReady.length)} detail="Sales documents ready for handoff" onClick={() => navigate("/sales?status=Ready")} />
+        <MetricCard label="Pending claims" value={String(pendingClaims.length)} detail="Expense claims awaiting approval" onClick={() => navigate("/claims?status=pending")} />
+        <MetricCard label="Still processing" value={String(processingDocuments.length)} detail="Uploads not yet settled into review" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.status === "Processing", "Processing"))} />
+        <MetricCard label="Published" value={String(publishedDocuments.length)} detail="Documents already pushed onward" onClick={() => navigate("/costs?status=Published")} />
+      </section>
+
+      <section className="overview-panels">
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Workflow lanes</h2>
+            <span>Direct routes into the main approval queues</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=pending")}>
+                <strong>Claims approval lane</strong>
+                <span>{pendingClaims.length} pending claim{pendingClaims.length === 1 ? "" : "s"} waiting on approve, reject, or paid decisions.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Ready")}>
+                <strong>Costs publish lane</strong>
+                <span>{costReady.length} cost document{costReady.length === 1 ? "" : "s"} are ready for accounting handoff.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/sales?status=Ready")}>
+                <strong>Sales publish lane</strong>
+                <span>{salesReady.length} sales document{salesReady.length === 1 ? "" : "s"} are ready for the next step.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Open")}>
+                <strong>Reconciliation audit lane</strong>
+                <span>{store.reconciliation.filter((line) => line.status === "Open").length} imported bank line{store.reconciliation.filter((line) => line.status === "Open").length === 1 ? "" : "s"} still need clearing.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Review by workspace</h2>
+            <span>Where review pressure is building</span>
+          </div>
+          <ul className="summary-list">
+            {reviewByWorkspace.map((workspace) => (
+              <li key={workspace.label}>
+                <button className="summary-action-row" type="button" onClick={() => navigate(workspace.route)}>
+                  <strong>{workspace.label}</strong>
+                  <span>{workspace.records.length} document{workspace.records.length === 1 ? "" : "s"} currently need attention in this queue.</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Next actions</h2>
+            <span>Fastest way to keep work moving</span>
+          </div>
+          <ul className="summary-list">
+            {nextActions.length ? (
+              nextActions.map((item) => (
+                <li key={item.key}>
+                  <button className="summary-action-row" type="button" onClick={() => navigate(item.route)}>
+                    <strong>{item.title}</strong>
+                    <span>{item.subtitle}</span>
+                  </button>
+                </li>
+              ))
+            ) : (
+              <li>
+                <strong>No stalled workflow items right now</strong>
+                <span>Review items, pending claims, and publish-ready documents will surface here as the queues change.</span>
+              </li>
+            )}
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Workflow completion</h2>
+            <span>Records that already moved through the process</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Published")}>
+                <strong>Published document trail</strong>
+                <span>{publishedDocuments.length} published document{publishedDocuments.length === 1 ? "" : "s"} are already in the downstream handoff state.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=approved")}>
+                <strong>Approved claims</strong>
+                <span>{store.claims.filter((claim) => claim.status === "approved").length} approved claim{store.claims.filter((claim) => claim.status === "approved").length === 1 ? "" : "s"} are waiting on payment or close-out.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=paid")}>
+                <strong>Paid claims</strong>
+                <span>{store.claims.filter((claim) => claim.status === "paid").length} claim{store.claims.filter((claim) => claim.status === "paid").length === 1 ? "" : "s"} have fully completed the reimbursement workflow.</span>
+              </button>
+            </li>
           </ul>
         </article>
       </section>
@@ -3911,6 +4063,7 @@ function NavIcon({ name }: { name: string }) {
     overview: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></>,
     health: <><path d="M12 21s-6-4.35-8.5-8.16C1.94 10.55 3.1 7 6.4 7c2 0 3.1 1.08 3.6 2 .5-.92 1.6-2 3.6-2 3.3 0 4.46 3.55 2.9 5.84C18 16.65 12 21 12 21Z" /><path d="M8 12h2l1.2-2.2L13 15l1.1-2H16" /></>,
     integrations: <><path d="M7 12h10" /><path d="M12 7v10" /><path d="M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z" /></>,
+    workflow: <><path d="M4 6h8v5H4zM12 13h8v5h-8z" /><path d="M12 8h4M16 8v5M8 11v4h4" /></>,
     costs: <><path d="M6 3h12l2 5-2 5H6L4 8l2-5Z" /><path d="M8 17h8M9 21h6" /></>,
     sales: <><path d="M4 6h16v12H4z" /><path d="m4 9 8 5 8-5" /></>,
     claims: <><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 13h6M10 17h6" /></>,
