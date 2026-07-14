@@ -4225,6 +4225,47 @@ function PublicHome() {
         <section className="workflow-band">
           <div className="section-heading">
             <div>
+              <p className="section-kicker">Operational Flow</p>
+              <h2>Move from capture to publish without switching tools</h2>
+            </div>
+            <p>
+              Exdox already covers the real bookkeeping path your team works through every day:
+              collect evidence, extract the data, review exceptions, retain the source file, and
+              keep approvals moving in the same synced workspace.
+            </p>
+          </div>
+          <div className="process-grid">
+            <Link className="process-card" to="/register">
+              <span>1. Capture</span>
+              <strong>Collect receipts, invoices, and supporting files</strong>
+              <p>Use mobile capture, web upload, employee drop box flows, and bank-led intake.</p>
+            </Link>
+            <Link className="process-card" to="/register">
+              <span>2. Extract</span>
+              <strong>Pull out totals, tax, supplier, and line detail</strong>
+              <p>Structured extraction, VAT-aware fields, and document detail all stay visible for review.</p>
+            </Link>
+            <Link className="process-card" to="/register">
+              <span>3. Review</span>
+              <strong>Work the exceptions instead of retyping everything</strong>
+              <p>Needs-review, duplicate, unreadable, and low-confidence signals surface the items that need attention.</p>
+            </Link>
+            <Link className="process-card" to="/register">
+              <span>4. Store</span>
+              <strong>Keep the original evidence easy to retrieve</strong>
+              <p>Vault storage, protected document access, and searchable archive views keep source files close at hand.</p>
+            </Link>
+            <Link className="process-card" to="/register">
+              <span>5. Approve &amp; Publish</span>
+              <strong>Move claims, reviews, and handoff queues forward</strong>
+              <p>Approval-ready claims, ready queues, and export routes keep the downstream workflow moving.</p>
+            </Link>
+          </div>
+        </section>
+
+        <section className="workflow-band">
+          <div className="section-heading">
+            <div>
               <p className="section-kicker">Feature Coverage</p>
               <h2>Built around the same workflow finance teams expect from Dext</h2>
             </div>
