@@ -85,6 +85,7 @@ const navItems = [
   { to: "/overview/data-health", label: "Data Health", icon: "health" },
   { to: "/overview/integrations", label: "Integrations", icon: "integrations" },
   { to: "/overview/workflows", label: "Workflows", icon: "workflow" },
+  { to: "/overview/productivity", label: "Productivity", icon: "productivity" },
   { to: "/costs", label: "Costs Inbox", icon: "costs" },
   { to: "/sales", label: "Sales Inbox", icon: "sales" },
   { to: "/vault", label: "Vault", icon: "claims" },
@@ -603,6 +604,9 @@ function DashboardShell(props: {
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/workflows" element={<WorkflowPage store={props.store} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/overview") ? (
+                <Route path="/overview/productivity" element={<ProductivityPage store={props.store} />} />
               ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
@@ -1411,6 +1415,154 @@ function WorkflowPage({ store }: { store: AppStore }) {
               <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=paid")}>
                 <strong>Paid claims</strong>
                 <span>{store.claims.filter((claim) => claim.status === "paid").length} claim{store.claims.filter((claim) => claim.status === "paid").length === 1 ? "" : "s"} have fully completed the reimbursement workflow.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
+      </section>
+    </div>
+  );
+}
+
+function ProductivityPage({ store }: { store: AppStore }) {
+  const navigate = useNavigate();
+  const allDocuments = [...store.costs, ...store.sales, ...store.vault];
+  const reviewDocuments = allDocuments.filter((record) => record.needsReview);
+  const readyDocuments = allDocuments.filter((record) => record.status === "Ready");
+  const publishedDocuments = allDocuments.filter((record) => record.status === "Published");
+  const processingDocuments = allDocuments.filter((record) => record.status === "Processing");
+  const lowConfidenceDocuments = allDocuments.filter((record) => isLowConfidence(record));
+  const duplicateGroups = buildDuplicateInsights([...store.costs, ...store.sales]).groups.length;
+  const automatedCoverage = allDocuments.length
+    ? Math.round(((publishedDocuments.length + readyDocuments.length) / allDocuments.length) * 100)
+    : 0;
+  const reviewCompletion = allDocuments.length
+    ? Math.round(((allDocuments.length - reviewDocuments.length) / allDocuments.length) * 100)
+    : 0;
+  const bankAudited = store.reconciliation.filter((line) => line.status === "Audited").length;
+  const bankCoverage = store.reconciliation.length
+    ? Math.round((bankAudited / store.reconciliation.length) * 100)
+    : 0;
+  const claimsCompleted = store.claims.filter((claim) => claim.status === "approved" || claim.status === "paid").length;
+  const claimCompletion = store.claims.length ? Math.round((claimsCompleted / store.claims.length) * 100) : 0;
+  const sourceMix = [
+    { label: "Mobile", count: allDocuments.filter((record) => record.receiptSource === "mobile").length, route: firstInboxRouteForSource(store, "mobile") },
+    { label: "Web", count: allDocuments.filter((record) => record.receiptSource === "web_upload").length, route: firstInboxRouteForSource(store, "web_upload") },
+    { label: "Email", count: allDocuments.filter((record) => record.receiptSource === "email").length, route: firstInboxRouteForSource(store, "email") },
+    { label: "Bank", count: allDocuments.filter((record) => record.receiptSource === "bank_import").length, route: firstInboxRouteForSource(store, "bank_import") },
+  ];
+
+  return (
+    <div className="stack-page">
+      <section className="metrics-grid">
+        <MetricCard label="Automation coverage" value={`${automatedCoverage}%`} detail="Ready or published records across all queues" onClick={() => navigate(readyDocuments.length ? "/costs?status=Ready" : "/costs")} />
+        <MetricCard label="Review completion" value={`${reviewCompletion}%`} detail="Records that no longer need manual review" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
+        <MetricCard label="Bank audit coverage" value={`${bankCoverage}%`} detail="Imported bank lines already audited" onClick={() => navigate("/reconciliation")} />
+        <MetricCard label="Claim completion" value={`${claimCompletion}%`} detail="Claims approved or fully paid" onClick={() => navigate("/claims")} />
+        <MetricCard label="Low-confidence drag" value={String(lowConfidenceDocuments.length)} detail="Records still slowing down review quality" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))} />
+        <MetricCard label="Duplicate drag" value={String(duplicateGroups)} detail="Repeat-upload groups still consuming time" onClick={() => navigate("/costs?issue=Possible+duplicates")} />
+      </section>
+
+      <section className="overview-panels">
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Operational throughput</h2>
+            <span>Where team time is currently going</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.status === "Processing", "Processing"))}>
+                <strong>Processing backlog</strong>
+                <span>{processingDocuments.length} document{processingDocuments.length === 1 ? "" : "s"} are still settling into the review flow.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))}>
+                <strong>Manual review load</strong>
+                <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? "" : "s"} still need coding, tax, or publish decisions.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=pending")}>
+                <strong>Approval queue</strong>
+                <span>{store.claims.filter((claim) => claim.status === "pending").length} claim{store.claims.filter((claim) => claim.status === "pending").length === 1 ? "" : "s"} are waiting on approval.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Open")}>
+                <strong>Open bank audit queue</strong>
+                <span>{store.reconciliation.filter((line) => line.status === "Open").length} bank line{store.reconciliation.filter((line) => line.status === "Open").length === 1 ? "" : "s"} still need matching or audit closure.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Automation levers</h2>
+            <span>Controls that improve output quality</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/rules")}>
+                <strong>Supplier rules in place</strong>
+                <span>{store.rules.length} rule{store.rules.length === 1 ? "" : "s"} are available to standardise category, tax, and payment defaults.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/overview/data-health")}>
+                <strong>Data-health blockers</strong>
+                <span>{lowConfidenceDocuments.length + duplicateGroups} active quality blockers are still reducing hands-off throughput.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/settings")}>
+                <strong>Organisation tax defaults</strong>
+                <span>Company VAT posture and fallback tax settings are available to reduce avoidable review corrections.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Channel mix</h2>
+            <span>Where submissions are entering the system</span>
+          </div>
+          <ul className="summary-list">
+            {sourceMix.map((source) => (
+              <li key={source.label}>
+                <button className="summary-action-row" type="button" onClick={() => navigate(source.route)}>
+                  <strong>{source.label}</strong>
+                  <span>{source.count} document{source.count === 1 ? "" : "s"} currently originate from this channel.</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Export and handoff</h2>
+            <span>Output paths already available on the website</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/costs")}>
+                <strong>Queue CSV exports</strong>
+                <span>Costs, sales, vault, claims, and reconciliation all support filtered CSV export from their live queues.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/overview/integrations")}>
+                <strong>Accounting handoff posture</strong>
+                <span>{readyDocuments.length} record{readyDocuments.length === 1 ? "" : "s"} are sitting in Ready and {publishedDocuments.length} have already been published onward.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/vault")}>
+                <strong>Archive retrieval</strong>
+                <span>{store.vault.length} vault file{store.vault.length === 1 ? "" : "s"} are available as stored reference evidence for audit and retrieval.</span>
               </button>
             </li>
           </ul>
@@ -4064,6 +4216,7 @@ function NavIcon({ name }: { name: string }) {
     health: <><path d="M12 21s-6-4.35-8.5-8.16C1.94 10.55 3.1 7 6.4 7c2 0 3.1 1.08 3.6 2 .5-.92 1.6-2 3.6-2 3.3 0 4.46 3.55 2.9 5.84C18 16.65 12 21 12 21Z" /><path d="M8 12h2l1.2-2.2L13 15l1.1-2H16" /></>,
     integrations: <><path d="M7 12h10" /><path d="M12 7v10" /><path d="M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z" /></>,
     workflow: <><path d="M4 6h8v5H4zM12 13h8v5h-8z" /><path d="M12 8h4M16 8v5M8 11v4h4" /></>,
+    productivity: <><path d="M5 19h14M7 16V9M12 16V5M17 16v-3" /></>,
     costs: <><path d="M6 3h12l2 5-2 5H6L4 8l2-5Z" /><path d="M8 17h8M9 21h6" /></>,
     sales: <><path d="M4 6h16v12H4z" /><path d="m4 9 8 5 8-5" /></>,
     claims: <><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 13h6M10 17h6" /></>,
