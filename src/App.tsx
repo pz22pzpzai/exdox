@@ -4375,18 +4375,18 @@ function PublicHome() {
             </p>
           </div>
           <div className="company-grid">
-            <article className="company-card">
+            <Link className="company-card company-link" to="/register">
               <strong>Secure operational model</strong>
               <p>Organisation-scoped routes, authenticated sessions and protected receipt asset retrieval.</p>
-            </article>
-            <article className="company-card">
+            </Link>
+            <Link className="company-card company-link" to="/register">
               <strong>Review-ready audit trail</strong>
               <p>Receipts, vault files, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
-            </article>
-            <article className="company-card">
+            </Link>
+            <Link className="company-card company-link" to="/register">
               <strong>Built for finance teams</strong>
               <p>Business admins get the full control surface, employees can still submit directly, and the active organisation context stays visible across the workspace.</p>
-            </article>
+            </Link>
           </div>
         </section>
       </main>
