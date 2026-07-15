@@ -318,22 +318,33 @@ const pricingSliderSteps: Array<{
     unlockedWorkspaces: ["Costs", "Claims"],
     lockedWorkspaces: ["Sales", "Vault", "Multi-entity"],
   },
-  {
-    label: "25 users",
-    markerLabel: "Control",
-    users: 25,
-    documents: 2500,
-    monthlyPrice: 75,
-    annualMonthlyPrice: 60,
-    bankStatementCredits: 120,
-    lineItemCredits: 60,
-    supplierStatementCredits: 25,
-    planId: "control",
-    accessBand: "Control",
-    tagline: "Costs, sales, claims, and approval-ready workflows",
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
-    lockedWorkspaces: ["Vault", "Multi-entity"],
-  },
+  ...Array.from({ length: 14 }, (_, index) => {
+    const users = 30 + index * 5;
+    const progress = (users - 25) / 75;
+    const monthlyPrice = Number((75 + progress * 105).toFixed(2));
+    const annualMonthlyPrice = Number((monthlyPrice * 0.8).toFixed(2));
+    const bankStatementCredits = Math.round(120 + progress * 380);
+    const lineItemCredits = Math.round(60 + progress * 190);
+    const supplierStatementCredits = Math.round(25 + progress * 75);
+    const highlightedUsers = new Set([30, 45, 60, 75, 95]);
+
+    return {
+      label: `${users} users`,
+      markerLabel: highlightedUsers.has(users) ? String(users) : "",
+      users,
+      documents: users * 100,
+      monthlyPrice,
+      annualMonthlyPrice,
+      bankStatementCredits,
+      lineItemCredits,
+      supplierStatementCredits,
+      planId: "control" as BillingPlanId,
+      accessBand: "Control",
+      tagline: "Costs, sales, claims, and approval-ready workflows",
+      unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+      lockedWorkspaces: ["Vault", "Multi-entity"],
+    };
+  }),
   {
     label: "100 users",
     markerLabel: "Operations",
@@ -4659,8 +4670,17 @@ function RegisterState(props: {
                   billingPlan: invitedFlow ? undefined : billingPlan,
                   billingCycle: invitedFlow ? undefined : billingCycle,
                   monthlyDocumentLimit:
-                    invitedFlow || billingPlan !== "capture" ? undefined : props.initialMonthlyDocumentLimit,
-                  includedUsers: invitedFlow || billingPlan !== "capture" ? undefined : props.initialIncludedUsers,
+                    invitedFlow ||
+                    billingPlan !== props.initialPlan ||
+                    (billingPlan !== "capture" && billingPlan !== "control")
+                      ? undefined
+                      : props.initialMonthlyDocumentLimit,
+                  includedUsers:
+                    invitedFlow ||
+                    billingPlan !== props.initialPlan ||
+                    (billingPlan !== "capture" && billingPlan !== "control")
+                      ? undefined
+                      : props.initialIncludedUsers,
                 });
               }}
             >
@@ -5134,7 +5154,11 @@ function PricingSection() {
             onChange={(event) => setSliderIndex(Number(event.target.value))}
             aria-label="Pricing allowance slider"
           />
-          <div className="slider-markers" aria-hidden="true">
+          <div
+            className="slider-markers"
+            aria-hidden="true"
+            style={{ gridTemplateColumns: `repeat(${pricingSliderSteps.length}, minmax(0, 1fr))` }}
+          >
             {pricingSliderSteps.map((step, index) => (
               <span key={`${step.planId}-${step.markerLabel}-${index}`}>{step.markerLabel}</span>
             ))}
@@ -5148,8 +5172,14 @@ function PricingSection() {
             <Link
               className="public-button"
               to={buildRegisterLink(selectedStep.planId, billingCycle === "annual" ? "annual" : "monthly", {
-                monthlyDocumentLimit: selectedStep.planId === "capture" ? selectedStep.documents : undefined,
-                includedUsers: selectedStep.planId === "capture" ? selectedStep.users : undefined,
+                monthlyDocumentLimit:
+                  selectedStep.planId === "capture" || selectedStep.planId === "control"
+                    ? selectedStep.documents
+                    : undefined,
+                includedUsers:
+                  selectedStep.planId === "capture" || selectedStep.planId === "control"
+                    ? selectedStep.users
+                    : undefined,
               })}
             >
               {selectedPlan.cta}
