@@ -2313,23 +2313,22 @@ input {
 
 .slider-markers {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   font-size: 0.76rem;
   color: var(--muted);
 }
 
-.slider-markers span:nth-child(1) {
+.slider-markers span:first-child {
   text-align: left;
 }
 
-.slider-markers span:nth-child(2),
-.slider-markers span:nth-child(3) {
-  text-align: center;
+.slider-markers span:last-child {
+  text-align: right;
 }
 
-.slider-markers span:nth-child(4) {
-  text-align: right;
+.slider-markers span:not(:first-child):not(:last-child) {
+  text-align: center;
 }
 
 .slider-side-stack {

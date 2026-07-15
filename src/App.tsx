@@ -154,7 +154,7 @@ const pricingPlans: Array<{
     id: "control",
     name: "Control",
     tagline: "Costs, sales, claims, and approval-ready workflows",
-    monthlyDocuments: "2,500 documents / month",
+    monthlyDocuments: "1,250 documents / month",
     users: "25 users included",
     cta: "Start Control Trial",
     trialLabel: "14-day trial",
@@ -219,6 +219,92 @@ const pricingPlans: Array<{
       "Custom document/user limits",
       "Stripe-ready billing setup",
     ],
+  },
+];
+
+const pricingSliderSteps: Array<{
+  label: string;
+  users: number;
+  documents: number;
+  monthlyPrice: number;
+  annualMonthlyPrice: number;
+  bankStatementCredits: number;
+  lineItemCredits: number;
+  supplierStatementCredits: number;
+  planId: BillingPlanId;
+  accessBand: string;
+  tagline: string;
+  unlockedWorkspaces: string[];
+}> = [
+  {
+    label: "5 users",
+    users: 5,
+    documents: 250,
+    monthlyPrice: 15,
+    annualMonthlyPrice: 12,
+    bankStatementCredits: 10,
+    lineItemCredits: 5,
+    supplierStatementCredits: 5,
+    planId: "capture",
+    accessBand: "Capture",
+    tagline: "Receipt capture and review for lean teams",
+    unlockedWorkspaces: ["Costs", "Claims"],
+  },
+  {
+    label: "10 users",
+    users: 10,
+    documents: 500,
+    monthlyPrice: 30,
+    annualMonthlyPrice: 24,
+    bankStatementCredits: 20,
+    lineItemCredits: 10,
+    supplierStatementCredits: 10,
+    planId: "control",
+    accessBand: "Control",
+    tagline: "Adds sales review and broader approval coverage",
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+  },
+  {
+    label: "15 users",
+    users: 15,
+    documents: 750,
+    monthlyPrice: 45,
+    annualMonthlyPrice: 36,
+    bankStatementCredits: 30,
+    lineItemCredits: 15,
+    supplierStatementCredits: 15,
+    planId: "control",
+    accessBand: "Control",
+    tagline: "Scaled document handling for growing finance teams",
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+  },
+  {
+    label: "20 users",
+    users: 20,
+    documents: 1000,
+    monthlyPrice: 60,
+    annualMonthlyPrice: 48,
+    bankStatementCredits: 40,
+    lineItemCredits: 20,
+    supplierStatementCredits: 20,
+    planId: "control",
+    accessBand: "Control",
+    tagline: "Higher team capacity with the same approval workflow band",
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+  },
+  {
+    label: "25 users",
+    users: 25,
+    documents: 1250,
+    monthlyPrice: 75,
+    annualMonthlyPrice: 60,
+    bankStatementCredits: 50,
+    lineItemCredits: 25,
+    supplierStatementCredits: 25,
+    planId: "control",
+    accessBand: "Control",
+    tagline: "Top end of the standard business package range",
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
   },
 ];
 
@@ -4911,14 +4997,14 @@ function PricingSection() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(normalizePublicBillingCycle(params.get("billingCycle")));
-  const [sliderIndex, setSliderIndex] = useState(1);
-  const selectedPlan = pricingPlans[sliderIndex] ?? pricingPlans[1]!;
+  const [sliderIndex, setSliderIndex] = useState(0);
+  const selectedStep = pricingSliderSteps[sliderIndex] ?? pricingSliderSteps[0]!;
   const selectedPrice =
-    billingCycle === "annual" ? selectedPlan.annualMonthlyPrice ?? selectedPlan.monthlyPrice ?? 0 : selectedPlan.monthlyPrice ?? 0;
+    billingCycle === "annual" ? selectedStep.annualMonthlyPrice : selectedStep.monthlyPrice;
   const selectedCredits = [
-    { label: "Sheets of Bank Statement Extraction", value: selectedPlan.bankStatementCredits ?? 0 },
-    { label: "Documents with Line Item Extraction", value: selectedPlan.lineItemCredits ?? 0 },
-    { label: "Supplier Statement Extraction", value: selectedPlan.supplierStatementCredits ?? 0 },
+    { label: "Sheets of Bank Statement Extraction", value: selectedStep.bankStatementCredits },
+    { label: "Documents with Line Item Extraction", value: selectedStep.lineItemCredits },
+    { label: "Supplier Statement Extraction", value: selectedStep.supplierStatementCredits },
   ];
 
   return (
@@ -4957,36 +5043,36 @@ function PricingSection() {
           </div>
           <span className="slider-vat-note">GBP, excludes VAT</span>
           <div className="slider-capacity-copy">
-            <strong>{selectedPlan.monthlyDocuments.replace(" / month", "")}</strong>
+            <strong>{selectedStep.documents.toLocaleString()}</strong>
             <span>Documents Per Month</span>
           </div>
           <div className="slider-capacity-copy">
-            <strong>{selectedPlan.users.replace(" users included", "").replace(" user included", "")}</strong>
+            <strong>{selectedStep.users}</strong>
             <span>Users Included</span>
           </div>
           <input
             className="pricing-slider"
             type="range"
             min={0}
-            max={pricingPlans.length - 1}
+            max={pricingSliderSteps.length - 1}
             step={1}
             value={sliderIndex}
             onChange={(event) => setSliderIndex(Number(event.target.value))}
             aria-label="Pricing allowance slider"
           />
           <div className="slider-markers" aria-hidden="true">
-            {pricingPlans.map((plan) => (
-              <span key={plan.id}>{plan.name}</span>
+            {pricingSliderSteps.map((step) => (
+              <span key={step.label}>{step.label}</span>
             ))}
           </div>
           <p className="slider-helper">Drag the slider to increase allowance.</p>
-          {selectedPlan.id === "enterprise" ? (
+          {selectedStep.planId === "enterprise" ? (
             <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Enterprise%20pricing%20request">
               Talk to Sales
             </a>
           ) : (
-            <Link className="public-button" to={buildRegisterLink(selectedPlan.id, billingCycle === "annual" ? "annual" : "monthly")}>
-              Start {selectedPlan.name} Trial
+            <Link className="public-button" to={buildRegisterLink(selectedStep.planId, billingCycle === "annual" ? "annual" : "monthly")}>
+              Start Trial
             </Link>
           )}
         </article>
@@ -5003,15 +5089,15 @@ function PricingSection() {
             </ul>
           </article>
           <article className="slider-info-card slider-access-card">
-            <h2>{selectedPlan.name} access band</h2>
-            <p>{selectedPlan.tagline}</p>
+            <h2>{selectedStep.accessBand} access band</h2>
+            <p>{selectedStep.tagline}</p>
             <div className="slider-access-tags">
-              {(selectedPlan.unlockedWorkspaces ?? []).map((item) => (
+              {selectedStep.unlockedWorkspaces.map((item) => (
                 <span key={item}>{item}</span>
               ))}
             </div>
             <p className="slider-enterprise-note">
-              {selectedPlan.id === "enterprise"
+              {selectedStep.planId === "enterprise"
                 ? "For larger entity counts and tailored rollout scope, commercial setup is handled directly."
                 : "Route access, users, and document allowance scale with the selected package band."}
             </p>
