@@ -95,6 +95,8 @@ export async function registerWithEmail(input: {
   inviteToken?: string;
   billingPlan?: BillingPlanId;
   billingCycle?: BillingCycle;
+  monthlyDocumentLimit?: number;
+  includedUsers?: number;
 }): Promise<SessionState> {
   const response = await fetch(`${API_BASE_URL}/register`, {
     method: "POST",

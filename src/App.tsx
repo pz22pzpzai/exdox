@@ -154,7 +154,7 @@ const pricingPlans: Array<{
     id: "control",
     name: "Control",
     tagline: "Costs, sales, claims, and approval-ready workflows",
-    monthlyDocuments: "1,250 documents / month",
+    monthlyDocuments: "2,500 documents / month",
     users: "25 users included",
     cta: "Start Control Trial",
     trialLabel: "14-day trial",
@@ -259,10 +259,10 @@ const pricingSliderSteps: Array<{
     bankStatementCredits: 20,
     lineItemCredits: 10,
     supplierStatementCredits: 10,
-    planId: "control",
-    accessBand: "Control",
-    tagline: "Adds sales review and broader approval coverage",
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    planId: "capture",
+    accessBand: "Capture",
+    tagline: "Expanded capture allowance for growing receipt volume",
+    unlockedWorkspaces: ["Costs", "Claims"],
   },
   {
     label: "15 users",
@@ -273,10 +273,10 @@ const pricingSliderSteps: Array<{
     bankStatementCredits: 30,
     lineItemCredits: 15,
     supplierStatementCredits: 15,
-    planId: "control",
-    accessBand: "Control",
-    tagline: "Scaled document handling for growing finance teams",
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    planId: "capture",
+    accessBand: "Capture",
+    tagline: "Scaled capture capacity for broader team usage",
+    unlockedWorkspaces: ["Costs", "Claims"],
   },
   {
     label: "20 users",
@@ -287,10 +287,10 @@ const pricingSliderSteps: Array<{
     bankStatementCredits: 40,
     lineItemCredits: 20,
     supplierStatementCredits: 20,
-    planId: "control",
-    accessBand: "Control",
-    tagline: "Higher team capacity with the same approval workflow band",
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    planId: "capture",
+    accessBand: "Capture",
+    tagline: "Higher user allowance inside the capture package band",
+    unlockedWorkspaces: ["Costs", "Claims"],
   },
   {
     label: "25 users",
@@ -301,10 +301,10 @@ const pricingSliderSteps: Array<{
     bankStatementCredits: 50,
     lineItemCredits: 25,
     supplierStatementCredits: 25,
-    planId: "control",
-    accessBand: "Control",
-    tagline: "Top end of the standard business package range",
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    planId: "capture",
+    accessBand: "Capture",
+    tagline: "Top end of the capture package range",
+    unlockedWorkspaces: ["Costs", "Claims"],
   },
 ];
 
@@ -660,6 +660,8 @@ export function App() {
             inviteToken={new URLSearchParams(location.search).get("inviteToken") ?? ""}
             initialPlan={normalizePublicPlan(new URLSearchParams(location.search).get("plan"))}
             initialBillingCycle={normalizePublicBillingCycle(new URLSearchParams(location.search).get("billingCycle"))}
+            initialMonthlyDocumentLimit={Number(new URLSearchParams(location.search).get("monthlyDocumentLimit")) || undefined}
+            initialIncludedUsers={Number(new URLSearchParams(location.search).get("includedUsers")) || undefined}
             onRegister={async (input) => {
               setAuthBusy(true);
               setAuthError(null);
@@ -4530,6 +4532,8 @@ function RegisterState(props: {
   inviteToken: string;
   initialPlan: BillingPlanId;
   initialBillingCycle: BillingCycle;
+  initialMonthlyDocumentLimit?: number;
+  initialIncludedUsers?: number;
   onRegister: (input: {
     email: string;
     password: string;
@@ -4538,6 +4542,8 @@ function RegisterState(props: {
     inviteToken?: string;
     billingPlan?: BillingPlanId;
     billingCycle?: BillingCycle;
+    monthlyDocumentLimit?: number;
+    includedUsers?: number;
   }) => Promise<void>;
 }) {
   const [fullName, setFullName] = useState("");
@@ -4592,6 +4598,9 @@ function RegisterState(props: {
                   inviteToken: props.inviteToken || undefined,
                   billingPlan: invitedFlow ? undefined : billingPlan,
                   billingCycle: invitedFlow ? undefined : billingCycle,
+                  monthlyDocumentLimit:
+                    invitedFlow || billingPlan !== "capture" ? undefined : props.initialMonthlyDocumentLimit,
+                  includedUsers: invitedFlow || billingPlan !== "capture" ? undefined : props.initialIncludedUsers,
                 });
               }}
             >
@@ -5071,7 +5080,13 @@ function PricingSection() {
               Talk to Sales
             </a>
           ) : (
-            <Link className="public-button" to={buildRegisterLink(selectedStep.planId, billingCycle === "annual" ? "annual" : "monthly")}>
+            <Link
+              className="public-button"
+              to={buildRegisterLink(selectedStep.planId, billingCycle === "annual" ? "annual" : "monthly", {
+                monthlyDocumentLimit: selectedStep.planId === "capture" ? selectedStep.documents : undefined,
+                includedUsers: selectedStep.planId === "capture" ? selectedStep.users : undefined,
+              })}
+            >
               Start Trial
             </Link>
           )}
@@ -6145,8 +6160,25 @@ function routeTitle(pathname: string) {
   return matched?.label ?? "Overview";
 }
 
-function buildRegisterLink(planId: BillingPlanId, billingCycle: BillingCycle) {
-  return `/register?plan=${encodeURIComponent(planId)}&billingCycle=${encodeURIComponent(billingCycle)}`;
+function buildRegisterLink(
+  planId: BillingPlanId,
+  billingCycle: BillingCycle,
+  options?: {
+    monthlyDocumentLimit?: number;
+    includedUsers?: number;
+  },
+) {
+  const params = new URLSearchParams({
+    plan: planId,
+    billingCycle,
+  });
+  if (typeof options?.monthlyDocumentLimit === "number") {
+    params.set("monthlyDocumentLimit", String(options.monthlyDocumentLimit));
+  }
+  if (typeof options?.includedUsers === "number") {
+    params.set("includedUsers", String(options.includedUsers));
+  }
+  return `/register?${params.toString()}`;
 }
 
 function normalizePublicPlan(value: string | null): BillingPlanId {
