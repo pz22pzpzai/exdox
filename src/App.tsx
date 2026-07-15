@@ -332,7 +332,7 @@ const pricingSliderSteps: Array<{
       label: `${users} users`,
       markerLabel: highlightedUsers.has(users) ? String(users) : "",
       users,
-      documents: users * 100,
+      documents: users * 50,
       monthlyPrice,
       annualMonthlyPrice,
       bankStatementCredits,
