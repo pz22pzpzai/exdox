@@ -5100,7 +5100,12 @@ function PricingSection() {
     { label: "Documents with Line Item Extraction", value: selectedStep.lineItemCredits },
     { label: "Supplier Statement Extraction", value: selectedStep.supplierStatementCredits },
   ];
-  const sliderBands = ["Capture", "Control", "Operations", "Enterprise"] as const;
+  const sliderBands: Array<{ id: BillingPlanId; label: string }> = [
+    { id: "capture", label: "Capture" },
+    { id: "control", label: "Control" },
+    { id: "operations", label: "Operations" },
+    { id: "enterprise", label: "Enterprise" },
+  ];
 
   return (
     <section className="pricing-band pricing-page-band">
@@ -5158,10 +5163,10 @@ function PricingSection() {
           <div className="slider-bands" aria-hidden="true">
             {sliderBands.map((band) => (
               <span
-                key={band}
-                className={selectedStep.accessBand === band ? "active" : ""}
+                key={band.id}
+                className={selectedStep.planId === band.id ? "active" : ""}
               >
-                {band}
+                {band.label}
               </span>
             ))}
           </div>
