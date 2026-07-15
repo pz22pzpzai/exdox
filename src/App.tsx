@@ -5100,6 +5100,7 @@ function PricingSection() {
     { label: "Documents with Line Item Extraction", value: selectedStep.lineItemCredits },
     { label: "Supplier Statement Extraction", value: selectedStep.supplierStatementCredits },
   ];
+  const sliderBands = ["Capture", "Control", "Operations", "Enterprise"] as const;
 
   return (
     <section className="pricing-band pricing-page-band">
@@ -5154,13 +5155,14 @@ function PricingSection() {
             onChange={(event) => setSliderIndex(Number(event.target.value))}
             aria-label="Pricing allowance slider"
           />
-          <div
-            className="slider-markers"
-            aria-hidden="true"
-            style={{ gridTemplateColumns: `repeat(${pricingSliderSteps.length}, minmax(0, 1fr))` }}
-          >
-            {pricingSliderSteps.map((step, index) => (
-              <span key={`${step.planId}-${step.markerLabel}-${index}`}>{step.markerLabel}</span>
+          <div className="slider-bands" aria-hidden="true">
+            {sliderBands.map((band) => (
+              <span
+                key={band}
+                className={selectedStep.accessBand === band ? "active" : ""}
+              >
+                {band}
+              </span>
             ))}
           </div>
           <p className="slider-helper">Drag the slider to increase allowance.</p>
