@@ -119,16 +119,28 @@ const pricingPlans: Array<{
   cta: string;
   featured?: boolean;
   trialLabel: string;
+  monthlyPrice?: number;
+  annualMonthlyPrice?: number;
+  bankStatementCredits?: number | null;
+  lineItemCredits?: number | null;
+  supplierStatementCredits?: number | null;
+  unlockedWorkspaces?: string[];
   features: string[];
 }> = [
   {
     id: "capture",
     name: "Capture",
     tagline: "Receipt capture and review for lean teams",
-    monthlyDocuments: "150 documents / month",
-    users: "3 users included",
+    monthlyDocuments: "250 documents / month",
+    users: "5 users included",
     cta: "Start Capture Trial",
     trialLabel: "14-day trial",
+    monthlyPrice: 15,
+    annualMonthlyPrice: 12,
+    bankStatementCredits: 10,
+    lineItemCredits: 5,
+    supplierStatementCredits: 5,
+    unlockedWorkspaces: ["Costs", "Claims"],
     features: [
       "Mobile receipt and invoice capture",
       "Web upload for finance review",
@@ -142,11 +154,17 @@ const pricingPlans: Array<{
     id: "control",
     name: "Control",
     tagline: "Costs, sales, claims, and approval-ready workflows",
-    monthlyDocuments: "500 documents / month",
-    users: "10 users included",
+    monthlyDocuments: "2,500 documents / month",
+    users: "25 users included",
     cta: "Start Control Trial",
     trialLabel: "14-day trial",
     featured: true,
+    monthlyPrice: 75,
+    annualMonthlyPrice: 60,
+    bankStatementCredits: 120,
+    lineItemCredits: 60,
+    supplierStatementCredits: 25,
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
     features: [
       "Everything in Capture",
       "Sales inbox",
@@ -160,10 +178,16 @@ const pricingPlans: Array<{
     id: "operations",
     name: "Operations",
     tagline: "Rules, vault storage, open banking, and reconciliation",
-    monthlyDocuments: "2,000 documents / month",
-    users: "25 users included",
+    monthlyDocuments: "10,000 documents / month",
+    users: "100 users included",
     cta: "Start Operations Trial",
     trialLabel: "14-day trial",
+    monthlyPrice: 180,
+    annualMonthlyPrice: 144,
+    bankStatementCredits: 500,
+    lineItemCredits: 250,
+    supplierStatementCredits: 100,
+    unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims"],
     features: [
       "Everything in Control",
       "Supplier rules",
@@ -177,10 +201,16 @@ const pricingPlans: Array<{
     id: "enterprise",
     name: "Enterprise",
     tagline: "Custom rollout for multi-entity finance teams",
-    monthlyDocuments: "Custom document volume",
-    users: "Custom seats",
+    monthlyDocuments: "50,000 documents / month",
+    users: "500 users included",
     cta: "Talk to Sales",
     trialLabel: "30-day rollout window",
+    monthlyPrice: 455.13,
+    annualMonthlyPrice: 364.1,
+    bankStatementCredits: 2485,
+    lineItemCredits: 2480,
+    supplierStatementCredits: 500,
+    unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims", "Multi-entity"],
     features: [
       "Everything in Operations",
       "Multi-entity support planning",
@@ -4864,6 +4894,7 @@ function PricingTeaserSection() {
           >
             <span>{plan.name}</span>
             <strong>{plan.tagline}</strong>
+            <p>{plan.monthlyPrice != null ? `${currency(plan.monthlyPrice)} per month` : "Custom pricing"}</p>
             <p>{plan.monthlyDocuments} · {plan.users}</p>
           </Link>
         ))}
@@ -4880,6 +4911,15 @@ function PricingSection() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(normalizePublicBillingCycle(params.get("billingCycle")));
+  const [sliderIndex, setSliderIndex] = useState(1);
+  const selectedPlan = pricingPlans[sliderIndex] ?? pricingPlans[1]!;
+  const selectedPrice =
+    billingCycle === "annual" ? selectedPlan.annualMonthlyPrice ?? selectedPlan.monthlyPrice ?? 0 : selectedPlan.monthlyPrice ?? 0;
+  const selectedCredits = [
+    { label: "Sheets of Bank Statement Extraction", value: selectedPlan.bankStatementCredits ?? 0 },
+    { label: "Documents with Line Item Extraction", value: selectedPlan.lineItemCredits ?? 0 },
+    { label: "Supplier Statement Extraction", value: selectedPlan.supplierStatementCredits ?? 0 },
+  ];
 
   return (
     <section className="pricing-band pricing-page-band">
@@ -4892,21 +4932,91 @@ function PricingSection() {
           Exdox plans are structured around document volume, users, control depth, and operational workflow coverage.
         </p>
       </div>
-      <div className="billing-cycle-toggle" role="group" aria-label="Billing cycle">
-        <button
-          className={billingCycle === "monthly" ? "active" : ""}
-          type="button"
-          onClick={() => setBillingCycle("monthly")}
-        >
-          Monthly
-        </button>
-        <button
-          className={billingCycle === "annual" ? "active" : ""}
-          type="button"
-          onClick={() => setBillingCycle("annual")}
-        >
-          Annual
-        </button>
+      <div className="slider-pricing-layout">
+        <article className="slider-pricing-card">
+          <div className="billing-cycle-toggle" role="group" aria-label="Billing cycle">
+            <button
+              className={billingCycle === "monthly" ? "active" : ""}
+              type="button"
+              onClick={() => setBillingCycle("monthly")}
+            >
+              Monthly
+            </button>
+            <button
+              className={billingCycle === "annual" ? "active" : ""}
+              type="button"
+              onClick={() => setBillingCycle("annual")}
+            >
+              Annual
+            </button>
+          </div>
+          <span className="slider-save-note">Save 20% with annual billing</span>
+          <div className="slider-price-row">
+            <strong>{currency(selectedPrice)}</strong>
+            <span>Per Month</span>
+          </div>
+          <span className="slider-vat-note">GBP, excludes VAT</span>
+          <div className="slider-capacity-copy">
+            <strong>{selectedPlan.monthlyDocuments.replace(" / month", "")}</strong>
+            <span>Documents Per Month</span>
+          </div>
+          <div className="slider-capacity-copy">
+            <strong>{selectedPlan.users.replace(" users included", "").replace(" user included", "")}</strong>
+            <span>Users Included</span>
+          </div>
+          <input
+            className="pricing-slider"
+            type="range"
+            min={0}
+            max={pricingPlans.length - 1}
+            step={1}
+            value={sliderIndex}
+            onChange={(event) => setSliderIndex(Number(event.target.value))}
+            aria-label="Pricing allowance slider"
+          />
+          <div className="slider-markers" aria-hidden="true">
+            {pricingPlans.map((plan) => (
+              <span key={plan.id}>{plan.name}</span>
+            ))}
+          </div>
+          <p className="slider-helper">Drag the slider to increase allowance.</p>
+          {selectedPlan.id === "enterprise" ? (
+            <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Enterprise%20pricing%20request">
+              Talk to Sales
+            </a>
+          ) : (
+            <Link className="public-button" to={buildRegisterLink(selectedPlan.id, billingCycle === "annual" ? "annual" : "monthly")}>
+              Start {selectedPlan.name} Trial
+            </Link>
+          )}
+        </article>
+        <div className="slider-side-stack">
+          <article className="slider-info-card">
+            <h2>Included extraction credits</h2>
+            <ul className="slider-credit-list">
+              {selectedCredits.map((credit) => (
+                <li key={credit.label}>
+                  <strong>{credit.value}</strong>
+                  <span>{credit.label}</span>
+                </li>
+              ))}
+            </ul>
+          </article>
+          <article className="slider-info-card slider-access-card">
+            <h2>{selectedPlan.name} access band</h2>
+            <p>{selectedPlan.tagline}</p>
+            <div className="slider-access-tags">
+              {(selectedPlan.unlockedWorkspaces ?? []).map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+            <p className="slider-enterprise-note">
+              {selectedPlan.id === "enterprise"
+                ? "For larger entity counts and tailored rollout scope, commercial setup is handled directly."
+                : "Route access, users, and document allowance scale with the selected package band."}
+            </p>
+          </article>
+        </div>
       </div>
       <div className="pricing-grid pricing-grid-expanded">
         {pricingPlans.map((plan) => (
@@ -4914,6 +5024,7 @@ function PricingSection() {
             <span>{plan.name}</span>
             <strong>{plan.tagline}</strong>
             <p>{plan.trialLabel}</p>
+            <p>{plan.monthlyPrice != null ? `${currency(billingCycle === "annual" ? plan.annualMonthlyPrice ?? plan.monthlyPrice : plan.monthlyPrice)} per month` : "Custom pricing"}</p>
             <p>{plan.monthlyDocuments}</p>
             <p>{plan.users}</p>
             <ul className="pricing-feature-list">
@@ -5096,6 +5207,7 @@ function BillingPage(props: { session: SessionState }) {
             <article key={plan.id} className={`pricing-card${plan.featured ? " featured" : ""}${active ? " current-plan" : ""}`}>
               <span>{plan.name}</span>
               <strong>{plan.tagline}</strong>
+              <p>{plan.monthlyPrice != null ? `${currency(plan.monthlyPrice)} per month` : "Custom pricing"}</p>
               <p>{plan.monthlyDocuments}</p>
               <p>{plan.users}</p>
               <ul className="pricing-feature-list">
