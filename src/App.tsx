@@ -224,6 +224,7 @@ const pricingPlans: Array<{
 
 const pricingSliderSteps: Array<{
   label: string;
+  markerLabel: string;
   users: number;
   documents: number;
   monthlyPrice: number;
@@ -235,9 +236,11 @@ const pricingSliderSteps: Array<{
   accessBand: string;
   tagline: string;
   unlockedWorkspaces: string[];
+  lockedWorkspaces: string[];
 }> = [
   {
     label: "5 users",
+    markerLabel: "5",
     users: 5,
     documents: 250,
     monthlyPrice: 15,
@@ -249,9 +252,11 @@ const pricingSliderSteps: Array<{
     accessBand: "Capture",
     tagline: "Receipt capture and review for lean teams",
     unlockedWorkspaces: ["Costs", "Claims"],
+    lockedWorkspaces: ["Sales", "Vault", "Multi-entity"],
   },
   {
     label: "10 users",
+    markerLabel: "10",
     users: 10,
     documents: 500,
     monthlyPrice: 30,
@@ -263,9 +268,11 @@ const pricingSliderSteps: Array<{
     accessBand: "Capture",
     tagline: "Expanded capture allowance for growing receipt volume",
     unlockedWorkspaces: ["Costs", "Claims"],
+    lockedWorkspaces: ["Sales", "Vault", "Multi-entity"],
   },
   {
     label: "15 users",
+    markerLabel: "15",
     users: 15,
     documents: 750,
     monthlyPrice: 45,
@@ -277,9 +284,11 @@ const pricingSliderSteps: Array<{
     accessBand: "Capture",
     tagline: "Scaled capture capacity for broader team usage",
     unlockedWorkspaces: ["Costs", "Claims"],
+    lockedWorkspaces: ["Sales", "Vault", "Multi-entity"],
   },
   {
     label: "20 users",
+    markerLabel: "20",
     users: 20,
     documents: 1000,
     monthlyPrice: 60,
@@ -291,9 +300,11 @@ const pricingSliderSteps: Array<{
     accessBand: "Capture",
     tagline: "Higher user allowance inside the capture package band",
     unlockedWorkspaces: ["Costs", "Claims"],
+    lockedWorkspaces: ["Sales", "Vault", "Multi-entity"],
   },
   {
     label: "25 users",
+    markerLabel: "25",
     users: 25,
     documents: 1250,
     monthlyPrice: 75,
@@ -305,6 +316,55 @@ const pricingSliderSteps: Array<{
     accessBand: "Capture",
     tagline: "Top end of the capture package range",
     unlockedWorkspaces: ["Costs", "Claims"],
+    lockedWorkspaces: ["Sales", "Vault", "Multi-entity"],
+  },
+  {
+    label: "25 users",
+    markerLabel: "Control",
+    users: 25,
+    documents: 2500,
+    monthlyPrice: 75,
+    annualMonthlyPrice: 60,
+    bankStatementCredits: 120,
+    lineItemCredits: 60,
+    supplierStatementCredits: 25,
+    planId: "control",
+    accessBand: "Control",
+    tagline: "Costs, sales, claims, and approval-ready workflows",
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    lockedWorkspaces: ["Vault", "Multi-entity"],
+  },
+  {
+    label: "100 users",
+    markerLabel: "Operations",
+    users: 100,
+    documents: 10000,
+    monthlyPrice: 180,
+    annualMonthlyPrice: 144,
+    bankStatementCredits: 500,
+    lineItemCredits: 250,
+    supplierStatementCredits: 100,
+    planId: "operations",
+    accessBand: "Operations",
+    tagline: "Rules, vault storage, open banking, and reconciliation",
+    unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims"],
+    lockedWorkspaces: ["Multi-entity"],
+  },
+  {
+    label: "500 users",
+    markerLabel: "Enterprise",
+    users: 500,
+    documents: 50000,
+    monthlyPrice: 455.13,
+    annualMonthlyPrice: 364.1,
+    bankStatementCredits: 2485,
+    lineItemCredits: 2480,
+    supplierStatementCredits: 500,
+    planId: "enterprise",
+    accessBand: "Enterprise",
+    tagline: "Custom rollout for multi-entity finance teams",
+    unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims", "Multi-entity"],
+    lockedWorkspaces: [],
   },
 ];
 
@@ -5006,8 +5066,13 @@ function PricingSection() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(normalizePublicBillingCycle(params.get("billingCycle")));
-  const [sliderIndex, setSliderIndex] = useState(0);
+  const initialSliderIndex = Math.max(
+    0,
+    pricingSliderSteps.findIndex((step) => step.planId === normalizePublicPlan(params.get("plan"))),
+  );
+  const [sliderIndex, setSliderIndex] = useState(initialSliderIndex);
   const selectedStep = pricingSliderSteps[sliderIndex] ?? pricingSliderSteps[0]!;
+  const selectedPlan = pricingPlans.find((plan) => plan.id === selectedStep.planId) ?? pricingPlans[0]!;
   const selectedPrice =
     billingCycle === "annual" ? selectedStep.annualMonthlyPrice : selectedStep.monthlyPrice;
   const selectedCredits = [
@@ -5070,8 +5135,8 @@ function PricingSection() {
             aria-label="Pricing allowance slider"
           />
           <div className="slider-markers" aria-hidden="true">
-            {pricingSliderSteps.map((step) => (
-              <span key={step.label}>{step.label}</span>
+            {pricingSliderSteps.map((step, index) => (
+              <span key={`${step.planId}-${step.markerLabel}-${index}`}>{step.markerLabel}</span>
             ))}
           </div>
           <p className="slider-helper">Drag the slider to increase allowance.</p>
@@ -5087,7 +5152,7 @@ function PricingSection() {
                 includedUsers: selectedStep.planId === "capture" ? selectedStep.users : undefined,
               })}
             >
-              Start Trial
+              {selectedPlan.cta}
             </Link>
           )}
         </article>
@@ -5106,11 +5171,29 @@ function PricingSection() {
           <article className="slider-info-card slider-access-card">
             <h2>{selectedStep.accessBand} access band</h2>
             <p>{selectedStep.tagline}</p>
-            <div className="slider-access-tags">
-              {selectedStep.unlockedWorkspaces.map((item) => (
-                <span key={item}>{item}</span>
-              ))}
+            <div className="slider-access-group">
+              <strong>Unlocked</strong>
+              <div className="slider-access-tags">
+                {selectedStep.unlockedWorkspaces.map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
+              </div>
             </div>
+            {selectedStep.lockedWorkspaces.length ? (
+              <div className="slider-access-group">
+                <strong>Locked until next tier</strong>
+                <div className="slider-access-tags slider-access-tags-locked">
+                  {selectedStep.lockedWorkspaces.map((item) => (
+                    <span key={item}>{item}</span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <ul className="slider-feature-list">
+              {selectedPlan.features.map((feature) => (
+                <li key={feature}>{feature}</li>
+              ))}
+            </ul>
             <p className="slider-enterprise-note">
               {selectedStep.planId === "enterprise"
                 ? "For larger entity counts and tailored rollout scope, commercial setup is handled directly."

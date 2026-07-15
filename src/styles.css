@@ -2313,7 +2313,7 @@ input {
 
 .slider-markers {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 8px;
   font-size: 0.76rem;
   color: var(--muted);
@@ -2391,6 +2391,19 @@ input {
   margin-bottom: 14px;
 }
 
+.slider-access-group {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.slider-access-group strong {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
 .slider-access-tags span {
   border-radius: 999px;
   padding: 7px 12px;
@@ -2398,6 +2411,19 @@ input {
   color: var(--teal);
   font-size: 0.8rem;
   font-weight: 700;
+}
+
+.slider-access-tags-locked span {
+  background: rgba(119, 134, 160, 0.12);
+  color: var(--muted);
+}
+
+.slider-feature-list {
+  margin: 0 0 14px;
+  padding-left: 18px;
+  color: var(--muted);
+  display: grid;
+  gap: 8px;
 }
 
 .billing-cycle-toggle {
@@ -2564,10 +2590,7 @@ input {
     row-gap: 6px;
   }
 
-  .slider-markers span,
-  .slider-markers span:nth-child(2),
-  .slider-markers span:nth-child(3),
-  .slider-markers span:nth-child(4) {
+  .slider-markers span {
     text-align: left;
   }
 }
