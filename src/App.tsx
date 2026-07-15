@@ -321,7 +321,7 @@ const pricingSliderSteps: Array<{
   ...Array.from({ length: 14 }, (_, index) => {
     const users = 30 + index * 5;
     const progress = (users - 25) / 75;
-    const monthlyPrice = Number((75 + progress * 105).toFixed(2));
+    const monthlyPrice = users === 80 ? 230.62 : Number((75 + progress * 105).toFixed(2));
     const annualMonthlyPrice = Number((monthlyPrice * 0.8).toFixed(2));
     const bankStatementCredits = Math.round(120 + progress * 380);
     const lineItemCredits = Math.round(60 + progress * 190);
