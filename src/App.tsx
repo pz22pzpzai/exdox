@@ -4351,8 +4351,8 @@ function LoginState(props: {
             <span className="login-callout callout-total">Total Expense View</span>
           </section>
           <div className="login-panel">
-            <h1>Log in to your exdox Workspace</h1>
-            <p>Use the same details as your mobile app.</p>
+            <h1>Log in to Exdox</h1>
+            <p>Secure access for finance teams, approvers, and employee expense users.</p>
             <form
               className="login-form"
               onSubmit={async (event) => {
@@ -4384,7 +4384,7 @@ function LoginState(props: {
               </label>
               {props.error ? <div className="error-banner">{props.error}</div> : null}
               <button className="primary-action login-submit" type="submit" disabled={props.busy}>
-                {props.busy ? "Signing in..." : "Get Access"}
+                {props.busy ? "Signing in..." : "Log in"}
               </button>
             </form>
             <div className="login-links">
@@ -4458,11 +4458,11 @@ function RegisterState(props: {
             <span className="login-callout callout-total">Receipt Review Ready</span>
           </section>
           <div className="login-panel">
-            <h1>{invitedFlow ? "Activate your exdox account" : "Create your exdox workspace"}</h1>
+            <h1>{invitedFlow ? "Activate Exdox Access" : "Create an Exdox Workspace"}</h1>
             <p>
               {invitedFlow
-                ? "Finish setting your password so your invited workspace is ready on web and mobile."
-                : "Start a business-admin workspace that uses the same live API and data model as the mobile app."}
+                ? "Set a password to activate access to the invited workspace."
+                : "Create a business workspace for receipt capture, document review, claims, and finance control."}
             </p>
             <form
               className="login-form"
@@ -4502,7 +4502,7 @@ function RegisterState(props: {
                     />
                   </label>
                   <label>
-                    Selected plan
+                    Plan
                     <select value={billingPlan} onChange={(event) => setBillingPlan(event.target.value as BillingPlanId)}>
                       {pricingPlans.map((plan) => (
                         <option key={plan.id} value={plan.id}>
@@ -4512,7 +4512,7 @@ function RegisterState(props: {
                     </select>
                   </label>
                   <label>
-                    Billing cycle
+                    Billing Cycle
                     <select
                       value={billingCycle}
                       onChange={(event) => setBillingCycle(event.target.value as BillingCycle)}
@@ -4548,7 +4548,7 @@ function RegisterState(props: {
               </label>
               {props.error ? <div className="error-banner">{props.error}</div> : null}
               <button className="primary-action login-submit" type="submit" disabled={props.busy}>
-                {props.busy ? "Creating access..." : invitedFlow ? "Activate account" : "Create workspace"}
+                {props.busy ? "Creating access..." : invitedFlow ? "Activate access" : "Create workspace"}
               </button>
             </form>
             <div className="login-links">
@@ -4579,8 +4579,8 @@ function PublicSite() {
       <PublicLayout activePath="/platform">
         <PublicPageIntro
           kicker="Platform"
-          title="The finance workspace is split into the pages people actually expect."
-          body="Capture, review, claims, vault storage, rules, reconciliation, and data health all sit inside the same synced Exdox web surface."
+          title="A finance workspace built for operational review."
+          body="Receipt capture, invoice review, claims, vault storage, supplier rules, reconciliation, and data health sit inside one connected Exdox platform."
         />
         <PlatformCapabilitiesSection />
         <CoverageSection />
@@ -4596,7 +4596,7 @@ function PublicSite() {
         <PublicPageIntro
           kicker="Integrations"
           title="Keep evidence, review queues, and accounting handoff in one operational flow."
-          body="Exdox already supports the workflow around connected accounting systems with ready and published queues, protected source evidence, and bank-led reconciliation."
+          body="Exdox supports connected accounting workflows with ready and published queues, protected source evidence, and bank-led reconciliation."
         />
         <IntegrationSection />
         <FlowSection />
@@ -4618,8 +4618,8 @@ function PublicSite() {
       <PublicLayout activePath="/company">
         <PublicPageIntro
           kicker="Company"
-          title="Built so the app, website, and source evidence stay aligned."
-          body="The same organisation-scoped records flow across mobile capture, web review, archive retrieval, and finance controls."
+          title="Built to keep capture, review, and source evidence aligned."
+          body="Organisation-scoped records flow across mobile capture, web review, archive retrieval, and finance controls."
         />
         <CompanySection />
       </PublicLayout>
@@ -4632,11 +4632,11 @@ function PublicSite() {
         <div className="public-hero-copy">
           <h1>Capture, review and publish business spend without chasing paper.</h1>
           <p>
-            exdox gives your team the same synced workspace across mobile and web for receipt capture,
+            Exdox gives businesses one synced workspace across mobile and web for receipt capture,
             invoice review, document vault storage, expense claims, supplier rules and bank-led reconciliation.
           </p>
           <div className="hero-actions">
-            <Link className="public-primary" to="/register?plan=control&billingCycle=monthly">Start Your Free Trial</Link>
+            <Link className="public-primary" to="/register?plan=control&billingCycle=monthly">Start Free Trial</Link>
             <Link className="secondary-inline-link" to="/pricing">See pricing structure</Link>
           </div>
           <span>No credit card required to start the trial.</span>
@@ -4727,7 +4727,7 @@ function CoverageSection() {
           <h2>Built for the documents your finance team already works with</h2>
         </div>
         <p>
-          Exdox keeps the real submission mix visible in one place across mobile and web, from
+          Exdox keeps the submission mix visible in one place across mobile and web, from
           receipt capture and invoice handling to mileage claims, bank-led evidence, and archived support files.
         </p>
       </div>
@@ -4752,7 +4752,7 @@ function FlowSection() {
           <h2>Move from capture to publish without switching tools</h2>
         </div>
         <p>
-          Exdox already covers the real bookkeeping path your team works through every day:
+          Exdox covers the bookkeeping path finance teams work through every day:
           collect evidence, extract the data, review exceptions, retain the source file, and
           keep approvals moving in the same synced workspace.
         </p>
@@ -4783,7 +4783,7 @@ function WorkflowCoverageSection() {
       </div>
       <div className="workflow-grid">
         <Link className="workflow-card workflow-link" to="/register?plan=capture&billingCycle=monthly">
-          <strong>Capture any way your team works</strong>
+          <strong>Capture across every submission route</strong>
           <ul>
             <li>Mobile receipt capture in the app</li>
             <li>Drag-and-drop uploads in costs and sales inboxes</li>
@@ -4851,8 +4851,8 @@ function PricingTeaserSection() {
           <h2>Roll out Exdox by workflow, not by disconnected tools</h2>
         </div>
         <p>
-          Start with employee capture, then layer in supplier rules, claims, tax controls and
-          reconciliation as your finance process matures.
+          Start with employee capture, then add supplier rules, claims, tax controls and
+          reconciliation as finance operations mature.
         </p>
       </div>
       <div className="pricing-grid">
@@ -4870,7 +4870,7 @@ function PricingTeaserSection() {
       </div>
       <div className="section-actions">
         <Link className="public-button" to="/pricing">View pricing page</Link>
-        <Link className="secondary-inline-link" to={buildRegisterLink("control", "monthly")}>Start Free Trial</Link>
+        <Link className="secondary-inline-link" to={buildRegisterLink("control", "monthly")}>Start Trial</Link>
       </div>
     </section>
   );
@@ -4886,11 +4886,10 @@ function PricingSection() {
       <div className="section-heading">
         <div>
           <p className="section-kicker">Pricing</p>
-          <h1>Choose the workflow depth your finance team needs today.</h1>
+          <h1>Choose the workflow depth that fits the business.</h1>
         </div>
         <p>
-          We can already implement plan-based route lockouts, seat limits, document limits, and trial access.
-          Stripe checkout is wired so live payment can switch on as soon as the price ids are added.
+          Exdox plans are structured around document volume, users, control depth, and operational workflow coverage.
         </p>
       </div>
       <div className="billing-cycle-toggle" role="group" aria-label="Billing cycle">
@@ -4934,16 +4933,16 @@ function PricingSection() {
       </div>
       <div className="pricing-notes-grid">
         <article className="company-card">
-          <strong>What we already enforce</strong>
-          <p>Selected plans now control route access in the signed-in website, invite capacity, and monthly document-processing limits.</p>
+          <strong>Operational control</strong>
+          <p>Plans are structured around access depth, team capacity, and monthly document volume.</p>
         </article>
         <article className="company-card">
-          <strong>Annual billing support</strong>
-          <p>The pricing flow already supports monthly and annual plan selection so Stripe can be connected cleanly later without reworking the public site.</p>
+          <strong>Monthly or annual</strong>
+          <p>Teams can choose the billing cycle that fits procurement and budgeting requirements.</p>
         </article>
         <article className="company-card">
-          <strong>When limits are reached</strong>
-          <p>If a workspace hits its monthly document allowance, new extraction is paused until the next cycle or a plan upgrade.</p>
+          <strong>Scales with volume</strong>
+          <p>Higher tiers expand user capacity, document throughput, and finance workflow coverage.</p>
         </article>
       </div>
       <div className="workflow-grid pricing-faq-grid">
@@ -4952,23 +4951,23 @@ function PricingSection() {
           <ul>
             <li>Capture, Control, and Operations start with a 14-day trial</li>
             <li>Enterprise can use a longer onboarding window</li>
-            <li>No card is required to create the initial workspace</li>
+            <li>No card required to start the initial workspace</li>
           </ul>
         </article>
         <article className="workflow-card">
-          <strong>Feature lockouts</strong>
+          <strong>Workflow coverage</strong>
           <ul>
-            <li>Capture does not unlock supplier rules, vault, or reconciliation</li>
-            <li>Control adds sales and broader workflow coverage</li>
-            <li>Operations unlocks rules, vault, open banking, and reconciliation</li>
+            <li>Capture focuses on receipt and invoice intake</li>
+            <li>Control adds sales and broader approval workflow coverage</li>
+            <li>Operations adds rules, vault, open banking, and reconciliation</li>
           </ul>
         </article>
         <article className="workflow-card">
-          <strong>Stripe-ready next step</strong>
+          <strong>Enterprise rollout</strong>
           <ul>
-            <li>Checkout session and billing portal endpoints are in place</li>
-            <li>Plan/cycle selection is already sent through registration and billing</li>
-            <li>Adding Stripe keys and price ids will switch payments on</li>
+            <li>Custom document volume and user capacity</li>
+            <li>Priority rollout support</li>
+            <li>Multi-entity finance teams and tailored onboarding</li>
           </ul>
         </article>
       </div>
