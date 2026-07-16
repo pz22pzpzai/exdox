@@ -4535,7 +4535,7 @@ function LoginState(props: {
         </header>
         <main className="login-main">
           <section className="login-visual" aria-label="Secure receipt capture">
-            <img src="/branding/exdox-login-hero.png" alt="Cafe owner capturing a receipt with exdox" />
+            <img src="/branding/exdox-login-hero.webp" alt="Cafe owner capturing a receipt with exdox" />
             <span className="login-callout callout-snap">Snap &amp; Sync</span>
             <span className="login-callout callout-hmrc">HMRC-Compliant Capture</span>
             <span className="login-callout callout-total">Total Expense View</span>
