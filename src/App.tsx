@@ -5112,11 +5112,7 @@ function PricingSection() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(normalizePublicBillingCycle(params.get("billingCycle")));
-  const initialSliderIndex = Math.max(
-    0,
-    pricingSliderSteps.findIndex((step) => step.planId === normalizePublicPlan(params.get("plan"))),
-  );
-  const [sliderIndex, setSliderIndex] = useState(initialSliderIndex);
+  const [sliderIndex, setSliderIndex] = useState(0);
   const selectedStep = pricingSliderSteps[sliderIndex] ?? pricingSliderSteps[0]!;
   const selectedPlan = pricingPlans.find((plan) => plan.id === selectedStep.planId) ?? pricingPlans[0]!;
   const enterpriseSelected = selectedStep.planId === "enterprise";
