@@ -124,6 +124,8 @@ const pricingPlans: Array<{
   lineItemCredits?: number | null;
   supplierStatementCredits?: number | null;
   unlockedWorkspaces?: string[];
+  monthlyDocumentLimit?: number;
+  includedUsers?: number;
   features: string[];
 }> = [
   {
@@ -140,6 +142,8 @@ const pricingPlans: Array<{
     lineItemCredits: 5,
     supplierStatementCredits: 5,
     unlockedWorkspaces: ["Costs", "Claims"],
+    monthlyDocumentLimit: 250,
+    includedUsers: 5,
     features: [
       "Mobile receipt and invoice capture",
       "Web upload for finance review",
@@ -153,16 +157,18 @@ const pricingPlans: Array<{
     id: "control",
     name: "Control",
     tagline: "Costs, sales, claims, and approval-ready workflows",
-    monthlyDocuments: "2,500 documents / month",
-    users: "25 users included",
+    monthlyDocuments: "1,500 documents / month",
+    users: "30 users included",
     cta: "Start Control Trial",
     trialLabel: "14-day trial",
-    monthlyPrice: 75,
-    annualMonthlyPrice: 60,
+    monthlyPrice: 89,
+    annualMonthlyPrice: 71.2,
     bankStatementCredits: 120,
     lineItemCredits: 60,
     supplierStatementCredits: 25,
     unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    monthlyDocumentLimit: 1500,
+    includedUsers: 30,
     features: [
       "Everything in Capture",
       "Sales inbox",
@@ -176,16 +182,18 @@ const pricingPlans: Array<{
     id: "operations",
     name: "Operations",
     tagline: "Rules, vault storage, open banking, and reconciliation",
-    monthlyDocuments: "10,000 documents / month",
-    users: "100 users included",
+    monthlyDocuments: "3,000 documents / month",
+    users: "60 users included",
     cta: "Start Operations Trial",
     trialLabel: "14-day trial",
-    monthlyPrice: 180,
-    annualMonthlyPrice: 144,
+    monthlyPrice: 173,
+    annualMonthlyPrice: 138.4,
     bankStatementCredits: 500,
     lineItemCredits: 250,
     supplierStatementCredits: 100,
     unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims"],
+    monthlyDocumentLimit: 3000,
+    includedUsers: 60,
     features: [
       "Everything in Control",
       "Supplier rules",
@@ -5072,7 +5080,10 @@ function PricingTeaserSection() {
           <Link
             key={plan.id}
             className="pricing-card pricing-link"
-            to={buildRegisterLink(plan.id, "monthly")}
+            to={buildRegisterLink(plan.id, "monthly", {
+              monthlyDocumentLimit: plan.monthlyDocumentLimit,
+              includedUsers: plan.includedUsers,
+            })}
           >
             <span>{plan.name}</span>
             <strong>{plan.tagline}</strong>
@@ -5083,7 +5094,15 @@ function PricingTeaserSection() {
       </div>
       <div className="section-actions">
         <Link className="public-button" to="/pricing">View pricing page</Link>
-        <Link className="secondary-inline-link" to={buildRegisterLink("control", "monthly")}>Start Trial</Link>
+        <Link
+          className="secondary-inline-link"
+          to={buildRegisterLink("control", "monthly", {
+            monthlyDocumentLimit: 1500,
+            includedUsers: 30,
+          })}
+        >
+          Start Trial
+        </Link>
       </div>
     </section>
   );
@@ -5279,7 +5298,13 @@ function PricingSection() {
             {plan.id === "enterprise" ? (
               <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
             ) : (
-              <Link className="public-button" to={buildRegisterLink(plan.id, billingCycle)}>
+              <Link
+                className="public-button"
+                to={buildRegisterLink(plan.id, billingCycle, {
+                  monthlyDocumentLimit: plan.monthlyDocumentLimit,
+                  includedUsers: plan.includedUsers,
+                })}
+              >
                 {plan.cta}
               </Link>
             )}
