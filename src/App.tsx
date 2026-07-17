@@ -750,6 +750,7 @@ export function App() {
               initialBillingCycle={normalizePublicBillingCycle(new URLSearchParams(location.search).get("billingCycle"))}
               initialMonthlyDocumentLimit={Number(new URLSearchParams(location.search).get("monthlyDocumentLimit")) || undefined}
               initialIncludedUsers={Number(new URLSearchParams(location.search).get("includedUsers")) || undefined}
+              embeddedInPublicShell
               onRegister={async (input) => {
                 setAuthBusy(true);
                 setAuthError(null);
@@ -4623,6 +4624,7 @@ function RegisterState(props: {
   initialBillingCycle: BillingCycle;
   initialMonthlyDocumentLimit?: number;
   initialIncludedUsers?: number;
+  embeddedInPublicShell?: boolean;
   onRegister: (input: {
     email: string;
     password: string;
@@ -4655,12 +4657,14 @@ function RegisterState(props: {
   return (
     <div className="login-state">
       <div className="login-shell">
-        <header className="login-header">
-          <div className="login-brand">
-            <img src={brandMarkSrc} alt="" />
-            <strong>exdox</strong>
-          </div>
-        </header>
+        {props.embeddedInPublicShell ? null : (
+          <header className="login-header">
+            <div className="login-brand">
+              <img src={brandMarkSrc} alt="" />
+              <strong>Exdox</strong>
+            </div>
+          </header>
+        )}
         <main className="login-main">
           <section className="login-visual" aria-label="Receipt capture and finance review">
             <img src="/branding/exdox-platform-hero.png" alt="Exdox finance workspace with synced receipt controls" />
@@ -4780,15 +4784,17 @@ function RegisterState(props: {
             </div>
           </div>
         </main>
-        <footer className="login-footer">
-          <span>
-            <Link to="/pricing">Pricing</Link>
-            {" | "}
-            <a href="mailto:hello@exdox.co.uk?subject=Security%20request">Security</a>
-          </span>
-          <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
-          <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
-        </footer>
+        {props.embeddedInPublicShell ? null : (
+          <footer className="login-footer">
+            <span>
+              <Link to="/pricing">Pricing</Link>
+              {" | "}
+              <a href="mailto:hello@exdox.co.uk?subject=Security%20request">Security</a>
+            </span>
+            <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
+            <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
+          </footer>
+        )}
       </div>
     </div>
   );
@@ -4879,7 +4885,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
       <header className="public-header">
         <Link className="public-brand" to="/" aria-label="exdox home">
           <img className="public-brand-mark" src={publicBrandMarkSrc} alt="" />
-          <strong>exdox</strong>
+          <strong>Exdox</strong>
         </Link>
         <nav className="public-nav" aria-label="Website">
           {publicNavItems.map((item) => (
