@@ -396,7 +396,7 @@ const pricingSliderSteps: Array<{
 
 const brandLogoSrc = "/branding/exdox-logo.png";
 const brandMarkSrc = "/branding/exdox-mark.png";
-const publicBrandMarkSrc = "/branding/exdox-mark-clean.png";
+const publicBrandMarkSrc = "/branding/exdox-mark-header-v2.png";
 const websiteOrigin = "https://www.exdox.co.uk";
 
 type SeoConfig = {
@@ -4878,7 +4878,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
     <div className="public-home">
       <header className="public-header">
         <Link className="public-brand" to="/" aria-label="exdox home">
-          <img src={publicBrandMarkSrc} alt="" />
+          <img className="public-brand-mark" src={publicBrandMarkSrc} alt="" />
           <strong>exdox</strong>
         </Link>
         <nav className="public-nav" aria-label="Website">
