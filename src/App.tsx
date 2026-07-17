@@ -320,10 +320,17 @@ const pricingSliderSteps: Array<{
   },
   ...Array.from({ length: 14 }, (_, index) => {
     const users = 30 + index * 5;
-    const progress = (users - 25) / 75;
-    const monthlyPrice =
-      users === 60 ? 173 : users === 80 ? 230.62 : Number((75 + progress * 105).toFixed(2));
+    let monthlyPrice: number;
+    if (users <= 60) {
+      monthlyPrice = 75 + ((users - 25) / 5) * 14;
+    } else if (users <= 80) {
+      monthlyPrice = 173 + ((users - 60) / 5) * 14.405;
+    } else {
+      monthlyPrice = 230.62 + ((users - 80) / 5) * 14.405;
+    }
+    monthlyPrice = Number(monthlyPrice.toFixed(2));
     const annualMonthlyPrice = Number((monthlyPrice * 0.8).toFixed(2));
+    const progress = (users - 25) / 75;
     const bankStatementCredits = Math.round(120 + progress * 380);
     const lineItemCredits = Math.round(60 + progress * 190);
     const supplierStatementCredits = Math.round(25 + progress * 75);
@@ -351,8 +358,8 @@ const pricingSliderSteps: Array<{
     markerLabel: "Operations",
     users: 100,
     documents: 10000,
-    monthlyPrice: 180,
-    annualMonthlyPrice: 144,
+    monthlyPrice: 288.24,
+    annualMonthlyPrice: 230.59,
     bankStatementCredits: 500,
     lineItemCredits: 250,
     supplierStatementCredits: 100,
