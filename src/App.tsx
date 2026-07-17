@@ -4936,6 +4936,8 @@ function PublicSite() {
 }
 
 function PublicLayout(props: { activePath: string; children: React.ReactNode }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="public-home">
       <header className="public-header">
@@ -4954,10 +4956,41 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
             </NavLink>
           ))}
         </nav>
+        <button
+          className="public-menu-button"
+          type="button"
+          aria-label="Open website menu"
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen((current) => !current)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
         <div className="public-actions">
           <Link to="/login">Log In</Link>
           <a className="public-button" href="mailto:hello@exdox.co.uk">Request Demo</a>
         </div>
+        {mobileMenuOpen ? (
+          <div className="public-mobile-menu">
+            <nav className="public-mobile-nav" aria-label="Mobile website">
+              {publicNavItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  className={({ isActive }) => `public-mobile-nav-link${isActive || props.activePath === item.to ? " active" : ""}`}
+                  to={item.to}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </nav>
+            <div className="public-mobile-actions">
+              <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Log In</Link>
+              <a className="public-button" href="mailto:hello@exdox.co.uk">Request Demo</a>
+            </div>
+          </div>
+        ) : null}
       </header>
 
       <main>{props.children}</main>
