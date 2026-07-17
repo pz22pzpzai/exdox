@@ -740,30 +740,32 @@ export function App() {
       return (
         <>
           <SeoManager pathname={location.pathname} session={session} />
-          <RegisterState
-            busy={authBusy}
-            error={authError ?? error}
-            initialEmail={new URLSearchParams(location.search).get("email") ?? ""}
-            inviteToken={new URLSearchParams(location.search).get("inviteToken") ?? ""}
-            initialPlan={normalizePublicPlan(new URLSearchParams(location.search).get("plan"))}
-            initialBillingCycle={normalizePublicBillingCycle(new URLSearchParams(location.search).get("billingCycle"))}
-            initialMonthlyDocumentLimit={Number(new URLSearchParams(location.search).get("monthlyDocumentLimit")) || undefined}
-            initialIncludedUsers={Number(new URLSearchParams(location.search).get("includedUsers")) || undefined}
-            onRegister={async (input) => {
-              setAuthBusy(true);
-              setAuthError(null);
-              setError(null);
-              try {
-                const nextSession = await registerWithEmail(input);
-                await loadWorkspace(nextSession.token, nextSession);
-              } catch (registerError) {
-                setSession(null);
-                setAuthError(registerError instanceof Error ? registerError.message : "Registration failed.");
-              } finally {
-                setAuthBusy(false);
-              }
-            }}
-          />
+          <PublicLayout activePath="/pricing">
+            <RegisterState
+              busy={authBusy}
+              error={authError ?? error}
+              initialEmail={new URLSearchParams(location.search).get("email") ?? ""}
+              inviteToken={new URLSearchParams(location.search).get("inviteToken") ?? ""}
+              initialPlan={normalizePublicPlan(new URLSearchParams(location.search).get("plan"))}
+              initialBillingCycle={normalizePublicBillingCycle(new URLSearchParams(location.search).get("billingCycle"))}
+              initialMonthlyDocumentLimit={Number(new URLSearchParams(location.search).get("monthlyDocumentLimit")) || undefined}
+              initialIncludedUsers={Number(new URLSearchParams(location.search).get("includedUsers")) || undefined}
+              onRegister={async (input) => {
+                setAuthBusy(true);
+                setAuthError(null);
+                setError(null);
+                try {
+                  const nextSession = await registerWithEmail(input);
+                  await loadWorkspace(nextSession.token, nextSession);
+                } catch (registerError) {
+                  setSession(null);
+                  setAuthError(registerError instanceof Error ? registerError.message : "Registration failed.");
+                } finally {
+                  setAuthBusy(false);
+                }
+              }}
+            />
+          </PublicLayout>
         </>
       );
     }
