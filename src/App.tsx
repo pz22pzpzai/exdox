@@ -508,6 +508,36 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
         }),
       };
     }
+    if (normalizedPath === "/privacy") {
+      return {
+        title: "Privacy Policy | Exdox",
+        description:
+          "Read the Exdox privacy policy, including how we use cookies, analytics, contact data, and Google advertising services.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Privacy Policy",
+          pageDescription:
+            "Read the Exdox privacy policy, including how we use cookies, analytics, contact data, and Google advertising services.",
+        }),
+      };
+    }
+    if (normalizedPath === "/cookies") {
+      return {
+        title: "Cookie Policy | Exdox",
+        description:
+          "Read the Exdox cookie policy, including essential, analytics, advertising, and consent-management cookies.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Cookie Policy",
+          pageDescription:
+            "Read the Exdox cookie policy, including essential, analytics, advertising, and consent-management cookies.",
+        }),
+      };
+    }
     if (normalizedPath === "/login") {
       return {
         title: "Log In | Exdox",
@@ -4855,6 +4885,32 @@ function PublicSite() {
     );
   }
 
+  if (location.pathname === "/privacy") {
+    return (
+      <PublicLayout activePath="">
+        <PublicPageIntro
+          kicker="Privacy"
+          title="Privacy policy for Exdox website and marketing pages."
+          body="This page explains what information we collect on the Exdox public website, how we use it, and how advertising and consent tools may operate on the site."
+        />
+        <PrivacyPolicySection />
+      </PublicLayout>
+    );
+  }
+
+  if (location.pathname === "/cookies") {
+    return (
+      <PublicLayout activePath="">
+        <PublicPageIntro
+          kicker="Cookies"
+          title="Cookie policy for Exdox website and advertising services."
+          body="This page explains what cookies and similar technologies may be used on the Exdox public website, including analytics, consent, and Google advertising cookies."
+        />
+        <CookiePolicySection />
+      </PublicLayout>
+    );
+  }
+
   return (
     <PublicLayout activePath="/">
       <section className="public-hero">
@@ -4910,6 +4966,10 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
         <span>
           <Link to="/pricing">Pricing</Link>
           {" | "}
+          <Link to="/privacy">Privacy</Link>
+          {" | "}
+          <Link to="/cookies">Cookies</Link>
+          {" | "}
           <a href="mailto:hello@exdox.co.uk?subject=Security%20request">Security</a>
         </span>
       </footer>
@@ -4924,6 +4984,185 @@ function PublicPageIntro(props: { kicker: string; title: string; body: string })
       <h1>{props.title}</h1>
       <p>{props.body}</p>
     </section>
+  );
+}
+
+function PolicyLayout(props: { title: string; updatedOn: string; sections: Array<{ heading: string; body: React.ReactNode }> }) {
+  return (
+    <section className="company-band policy-band">
+      <div className="policy-meta">
+        <strong>{props.title}</strong>
+        <span>Last updated {props.updatedOn}</span>
+      </div>
+      <div className="policy-grid">
+        {props.sections.map((section) => (
+          <article key={section.heading} className="company-card policy-card">
+            <strong>{section.heading}</strong>
+            <div className="policy-copy">{section.body}</div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PrivacyPolicySection() {
+  return (
+    <PolicyLayout
+      title="Exdox Privacy Policy"
+      updatedOn="17 July 2026"
+      sections={[
+        {
+          heading: "Who this policy applies to",
+          body: (
+            <>
+              <p>This policy applies to the public Exdox website at <strong>exdox.co.uk</strong>, including marketing pages, contact routes, login, registration, and related public information pages.</p>
+              <p>If you use an authenticated Exdox product workspace, additional operational data may be processed as part of the service you sign up for.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Information we may collect",
+          body: (
+            <>
+              <p>We may collect information that you provide directly, such as your name, business name, email address, and any details you submit through registration, demo requests, or support contact.</p>
+              <p>We may also collect technical information such as IP address, browser type, device information, page views, referring pages, and interactions with consent tools, site analytics, or advertising components.</p>
+            </>
+          ),
+        },
+        {
+          heading: "How we use information",
+          body: (
+            <>
+              <p>We use information to operate the website, respond to enquiries, create and manage trial accounts, protect the site, measure performance, and improve content, routing, and commercial messaging.</p>
+              <p>Where advertising services are enabled, information may also be used to support ad delivery, frequency management, measurement, fraud prevention, and, where permitted, personalised advertising.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Google AdSense and advertising disclosures",
+          body: (
+            <>
+              <p>Exdox may use Google AdSense or other Google advertising products on public pages. Third-party vendors, including Google, may use cookies to serve ads based on a user&apos;s prior visits to this site or other websites.</p>
+              <p>Google&apos;s use of advertising cookies enables Google and its partners to serve ads based on visits to this site and other sites on the internet. Users can learn more about how Google uses data in advertising and manage ad personalisation through Google&apos;s Ad Settings.</p>
+              <p>If additional third-party ad networks or providers are used, their cookies or similar technologies may also be used for ad delivery and measurement. Where legally required, we ask for consent before non-essential advertising cookies are used.</p>
+            </>
+          ),
+        },
+        {
+          heading: "EEA, UK, and Switzerland consent",
+          body: (
+            <>
+              <p>For users in the EEA, the UK, and Switzerland, we may use a consent management platform to request consent for cookies or similar storage and for the collection, sharing, and use of personal data for advertising or measurement where required by law.</p>
+              <p>You can withdraw or update your choices through the consent options made available on the site or through your browser settings, subject to the limitations of browser-based controls.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Sharing information",
+          body: (
+            <>
+              <p>We may share information with service providers that support hosting, analytics, consent management, communications, security, or advertising. We may also share information where required for legal compliance, fraud prevention, or business protection.</p>
+              <p>We do not sell customer account data in the ordinary meaning of that term. Advertising and analytics providers may, however, process data as independent controllers for their own platform operations where their services are used.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Retention and security",
+          body: (
+            <>
+              <p>We keep information for as long as reasonably necessary for the purposes described in this policy, including account setup, support, security, legal compliance, and commercial record keeping.</p>
+              <p>We use technical and organisational measures intended to protect information against unauthorised access, loss, misuse, or disclosure, but no internet transmission or storage system is completely secure.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Your choices and contact",
+          body: (
+            <>
+              <p>You may be able to control cookies through our consent tools, your browser settings, and Google&apos;s advertising controls. You may also contact us to ask about access, correction, or deletion requests relating to information you have provided directly.</p>
+              <p>For privacy enquiries, contact <a href="mailto:hello@exdox.co.uk?subject=Privacy%20request">hello@exdox.co.uk</a>.</p>
+            </>
+          ),
+        },
+      ]}
+    />
+  );
+}
+
+function CookiePolicySection() {
+  return (
+    <PolicyLayout
+      title="Exdox Cookie Policy"
+      updatedOn="17 July 2026"
+      sections={[
+        {
+          heading: "What cookies are",
+          body: (
+            <>
+              <p>Cookies are small text files stored on a device when you visit a website. Similar technologies may include local storage, pixels, tags, SDK storage, or identifiers used to recognise a browser or device.</p>
+            </>
+          ),
+        },
+        {
+          heading: "How Exdox may use cookies",
+          body: (
+            <>
+              <p>We may use cookies and similar technologies to keep the site secure, remember preferences, support login and registration flows, measure site usage, manage consent choices, and support advertising or remarketing where enabled.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Essential cookies",
+          body: (
+            <>
+              <p>These are used for core site functions such as page delivery, load balancing, fraud prevention, security, session integrity, and form or authentication flows. These cookies are generally required for the site to function properly.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Analytics cookies",
+          body: (
+            <>
+              <p>Analytics tools may use cookies to measure visits, traffic sources, on-page behaviour, device patterns, and site performance. This helps us understand which pages are useful and where the public site needs improvement.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Advertising cookies",
+          body: (
+            <>
+              <p>If Google AdSense or related Google ad services are used, Google and its partners may use cookies to serve ads, limit how often a user sees the same ad, measure campaign performance, and, where allowed, support personalised advertising based on prior visits.</p>
+              <p>Users can find more information about Google&apos;s advertising technologies and controls through Google&apos;s ads and privacy resources. Where required by law, advertising cookies are only used after consent.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Consent and withdrawal",
+          body: (
+            <>
+              <p>For users in the EEA, the UK, and Switzerland, we may present a consent interface that allows acceptance, rejection, or configuration of non-essential cookies. You can change your choices later through available consent settings or browser controls.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Managing cookies in your browser",
+          body: (
+            <>
+              <p>Most browsers allow you to block, delete, or restrict cookies. Doing so may affect how some pages or features work, especially account, preference, consent, or embedded third-party functionality.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Contact",
+          body: (
+            <>
+              <p>If you have questions about cookies or tracking technologies on Exdox, contact <a href="mailto:hello@exdox.co.uk?subject=Cookie%20policy%20request">hello@exdox.co.uk</a>.</p>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 
