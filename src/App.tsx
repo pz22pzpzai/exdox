@@ -117,7 +117,6 @@ const pricingPlans: Array<{
   monthlyDocuments: string;
   users: string;
   cta: string;
-  featured?: boolean;
   trialLabel: string;
   monthlyPrice?: number;
   annualMonthlyPrice?: number;
@@ -158,7 +157,6 @@ const pricingPlans: Array<{
     users: "25 users included",
     cta: "Start Control Trial",
     trialLabel: "14-day trial",
-    featured: true,
     monthlyPrice: 75,
     annualMonthlyPrice: 60,
     bankStatementCredits: 120,
@@ -5073,7 +5071,7 @@ function PricingTeaserSection() {
         {pricingPlans.slice(0, 3).map((plan) => (
           <Link
             key={plan.id}
-            className={`pricing-card pricing-link${plan.featured ? " featured" : ""}`}
+            className="pricing-card pricing-link"
             to={buildRegisterLink(plan.id, "monthly")}
           >
             <span>{plan.name}</span>
@@ -5257,7 +5255,10 @@ function PricingSection() {
       </div>
       <div className="pricing-grid pricing-grid-expanded">
         {pricingPlans.map((plan) => (
-          <article key={plan.id} className={`pricing-card${plan.featured ? " featured" : ""}`}>
+          <article
+            key={plan.id}
+            className={`pricing-card${selectedStep.planId === plan.id ? " current-plan" : ""}`}
+          >
             <span>{plan.name}</span>
             <strong>{plan.tagline}</strong>
             <p>{plan.trialLabel}</p>
@@ -5447,7 +5448,7 @@ function BillingPage(props: { session: SessionState }) {
         {pricingPlans.map((plan) => {
           const active = billing.planId === plan.id;
           return (
-            <article key={plan.id} className={`pricing-card${plan.featured ? " featured" : ""}${active ? " current-plan" : ""}`}>
+            <article key={plan.id} className={`pricing-card${active ? " current-plan" : ""}`}>
               <span>{plan.name}</span>
               <strong>{plan.tagline}</strong>
               <p>{plan.monthlyPrice != null ? `${currency(plan.monthlyPrice)} per month` : "Custom pricing"}</p>
