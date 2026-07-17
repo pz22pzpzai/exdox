@@ -1825,6 +1825,15 @@ input {
   padding: 0 18px;
 }
 
+.public-button-disabled {
+  color: #5f6d85;
+  background: #e7edf4;
+  border: 1px solid #d3dce7;
+  box-shadow: none;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
 .public-hero {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(460px, 1.1fr);

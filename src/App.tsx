@@ -203,10 +203,8 @@ const pricingPlans: Array<{
     tagline: "Custom rollout for multi-entity finance teams",
     monthlyDocuments: "50,000 documents / month",
     users: "500 users included",
-    cta: "Talk to Sales",
-    trialLabel: "30-day rollout window",
-    monthlyPrice: 455.13,
-    annualMonthlyPrice: 364.1,
+    cta: "Coming soon",
+    trialLabel: "Coming soon",
     bankStatementCredits: 2485,
     lineItemCredits: 2480,
     supplierStatementCredits: 500,
@@ -5104,6 +5102,7 @@ function PricingSection() {
   const [sliderIndex, setSliderIndex] = useState(initialSliderIndex);
   const selectedStep = pricingSliderSteps[sliderIndex] ?? pricingSliderSteps[0]!;
   const selectedPlan = pricingPlans.find((plan) => plan.id === selectedStep.planId) ?? pricingPlans[0]!;
+  const enterpriseSelected = selectedStep.planId === "enterprise";
   const selectedPrice =
     billingCycle === "annual" ? selectedStep.annualMonthlyPrice : selectedStep.monthlyPrice;
   const selectedCredits = [
@@ -5149,10 +5148,12 @@ function PricingSection() {
           </div>
           <span className="slider-save-note">Save 20% with annual billing</span>
           <div className="slider-price-row">
-            <strong>{currency(selectedPrice)}</strong>
-            <span>Per Month</span>
+            <strong>{enterpriseSelected ? "Coming soon" : currency(selectedPrice)}</strong>
+            {enterpriseSelected ? null : <span>Per Month</span>}
           </div>
-          <span className="slider-vat-note">GBP, excludes VAT</span>
+          <span className="slider-vat-note">
+            {enterpriseSelected ? "Enterprise pricing is not available yet." : "GBP, excludes VAT"}
+          </span>
           <div className="slider-capacity-copy">
             <strong>{selectedStep.documents.toLocaleString()}</strong>
             <span>Documents Per Month</span>
@@ -5183,9 +5184,9 @@ function PricingSection() {
           </div>
           <p className="slider-helper">Drag the slider to increase allowance.</p>
           {selectedStep.planId === "enterprise" ? (
-            <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Enterprise%20pricing%20request">
-              Talk to Sales
-            </a>
+            <span className="public-button public-button-disabled" aria-disabled="true">
+              Coming soon
+            </span>
           ) : (
             <Link
               className="public-button"
@@ -5260,7 +5261,13 @@ function PricingSection() {
             <span>{plan.name}</span>
             <strong>{plan.tagline}</strong>
             <p>{plan.trialLabel}</p>
-            <p>{plan.monthlyPrice != null ? `${currency(billingCycle === "annual" ? plan.annualMonthlyPrice ?? plan.monthlyPrice : plan.monthlyPrice)} per month` : "Custom pricing"}</p>
+            <p>
+              {plan.id === "enterprise"
+                ? "Coming soon"
+                : plan.monthlyPrice != null
+                  ? `${currency(billingCycle === "annual" ? plan.annualMonthlyPrice ?? plan.monthlyPrice : plan.monthlyPrice)} per month`
+                  : "Custom pricing"}
+            </p>
             <p>{plan.monthlyDocuments}</p>
             <p>{plan.users}</p>
             <ul className="pricing-feature-list">
@@ -5269,7 +5276,7 @@ function PricingSection() {
               ))}
             </ul>
             {plan.id === "enterprise" ? (
-              <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Enterprise%20pricing%20request">Talk to Sales</a>
+              <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
             ) : (
               <Link className="public-button" to={buildRegisterLink(plan.id, billingCycle)}>
                 {plan.cta}
