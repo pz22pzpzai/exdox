@@ -346,11 +346,14 @@ const pricingSliderSteps: Array<{
       bankStatementCredits,
       lineItemCredits,
       supplierStatementCredits,
-      planId: "control" as BillingPlanId,
-      accessBand: "Control",
-      tagline: "Costs, sales, claims, and approval-ready workflows",
-      unlockedWorkspaces: ["Costs", "Sales", "Claims"],
-      lockedWorkspaces: ["Vault", "Multi-entity"],
+      planId: (users >= 60 ? "operations" : "control") as BillingPlanId,
+      accessBand: users >= 60 ? "Operations" : "Control",
+      tagline:
+        users >= 60
+          ? "Rules, vault storage, open banking, and reconciliation"
+          : "Costs, sales, claims, and approval-ready workflows",
+      unlockedWorkspaces: users >= 60 ? ["Costs", "Sales", "Vault", "Claims"] : ["Costs", "Sales", "Claims"],
+      lockedWorkspaces: users >= 60 ? ["Multi-entity"] : ["Vault", "Multi-entity"],
     };
   }),
   {
@@ -4680,13 +4683,13 @@ function RegisterState(props: {
                   monthlyDocumentLimit:
                     invitedFlow ||
                     billingPlan !== props.initialPlan ||
-                    (billingPlan !== "capture" && billingPlan !== "control")
+                    (billingPlan !== "capture" && billingPlan !== "control" && billingPlan !== "operations")
                       ? undefined
                       : props.initialMonthlyDocumentLimit,
                   includedUsers:
                     invitedFlow ||
                     billingPlan !== props.initialPlan ||
-                    (billingPlan !== "capture" && billingPlan !== "control")
+                    (billingPlan !== "capture" && billingPlan !== "control" && billingPlan !== "operations")
                       ? undefined
                       : props.initialIncludedUsers,
                 });
@@ -5188,11 +5191,15 @@ function PricingSection() {
               className="public-button"
               to={buildRegisterLink(selectedStep.planId, billingCycle === "annual" ? "annual" : "monthly", {
                 monthlyDocumentLimit:
-                  selectedStep.planId === "capture" || selectedStep.planId === "control"
+                  selectedStep.planId === "capture" ||
+                  selectedStep.planId === "control" ||
+                  selectedStep.planId === "operations"
                     ? selectedStep.documents
                     : undefined,
                 includedUsers:
-                  selectedStep.planId === "capture" || selectedStep.planId === "control"
+                  selectedStep.planId === "capture" ||
+                  selectedStep.planId === "control" ||
+                  selectedStep.planId === "operations"
                     ? selectedStep.users
                     : undefined,
               })}
