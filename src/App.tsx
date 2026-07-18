@@ -2466,6 +2466,7 @@ function InboxPage({
   const [sourceFilter, setSourceFilter] = useState<ReceiptRecord["receiptSource"] | "All">("All");
   const [documentTypeFilter, setDocumentTypeFilter] = useState<ReceiptRecord["documentType"] | "All">("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total" | "lowest_confidence">("newest");
+  const [feedback, setFeedback] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
   const navigate = useNavigate();
 
@@ -2591,17 +2592,20 @@ function InboxPage({
             className="secondary-action"
             type="button"
             disabled={!filtered.length}
+            title={filtered.length ? "Download the current inbox view as CSV" : "No documents match the current filters yet"}
             onClick={() => {
               downloadCsv(
                 `${basePath.replace("/", "") || "inbox"}-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildInboxExportRows(filtered),
               );
+              setFeedback("Inbox CSV downloaded.");
             }}
           >
             Export CSV
           </button>
         </div>
       </section>
+      {feedback ? <div className="success-banner">{feedback}</div> : null}
 
       <UploadDropZone
         title={
@@ -2757,6 +2761,8 @@ function DocumentWorkspacePage(props: {
   const taxBreakdown = receipt.taxBreakdown ?? [];
   const notes = receipt.notes ?? [];
   const isVaultRecord = props.mode === "vault";
+  const receiptPublished = receipt.status === "Published";
+  const claimAttachmentAllowed = receipt.paymentMethod === "cash_personal";
 
   return (
     <div className="workspace-split">
@@ -2936,18 +2942,19 @@ function DocumentWorkspacePage(props: {
             <h2>Extraction detail</h2>
             <div className="toolbar">
               <span>{documentTypeLabel(receipt.documentType)} document</span>
-              <button
-                className="secondary-action"
-                type="button"
-                onClick={() =>
-                  downloadCsv(
-                    `document-${receipt.id}-summary-${new Date().toISOString().slice(0, 10)}.csv`,
-                    buildReceiptSummaryExportRows(receipt),
-                  )
-                }
-              >
-                Export summary CSV
-              </button>
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={() => {
+                    downloadCsv(
+                      `document-${receipt.id}-summary-${new Date().toISOString().slice(0, 10)}.csv`,
+                      buildReceiptSummaryExportRows(receipt),
+                    );
+                    setFeedback("Receipt summary CSV downloaded.");
+                  }}
+                >
+                  Export summary CSV
+                </button>
             </div>
           </div>
           <div className="summary-list">
@@ -2979,12 +2986,13 @@ function DocumentWorkspacePage(props: {
                 <button
                   className="secondary-action"
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
                     downloadCsv(
                       `document-${receipt.id}-line-items-${new Date().toISOString().slice(0, 10)}.csv`,
                       buildLineItemExportRows(receipt),
-                    )
-                  }
+                    );
+                    setFeedback("Line items CSV downloaded.");
+                  }}
                 >
                   Export line items CSV
                 </button>
@@ -3026,12 +3034,13 @@ function DocumentWorkspacePage(props: {
                 <button
                   className="secondary-action"
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
                     downloadCsv(
                       `document-${receipt.id}-tax-breakdown-${new Date().toISOString().slice(0, 10)}.csv`,
                       buildTaxBreakdownExportRows(receipt),
-                    )
-                  }
+                    );
+                    setFeedback("Tax breakdown CSV downloaded.");
+                  }}
                 >
                   Export tax CSV
                 </button>
@@ -3119,13 +3128,13 @@ function DocumentWorkspacePage(props: {
             Delete Document
           </button>
           {!isVaultRecord ? (
-            <button
-              className="secondary-action"
-              type="button"
-              disabled={saving}
-              onClick={async () => {
-                setSaving(true);
-                setFeedback(null);
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={saving || receiptPublished}
+            onClick={async () => {
+              setSaving(true);
+              setFeedback(null);
                 setError(null);
                 try {
                   const nextReceipt = { ...receipt, status: "Published" as ReceiptRecord["status"] };
@@ -3139,32 +3148,43 @@ function DocumentWorkspacePage(props: {
                 }
               }}
             >
-              Publish to Accounting Tool
+              {receiptPublished ? "Already Published" : "Publish to Accounting Tool"}
             </button>
           ) : null}
           {props.mode === "cost" ? (
-            <button
-              className="secondary-action"
-              type="button"
-              disabled={saving || !selectedClaimId}
-              onClick={async () => {
-                setSaving(true);
-                setFeedback(null);
-                setError(null);
-                try {
-                  const updatedReceipt = await props.onAttachToClaim(receipt.id, Number(selectedClaimId));
-                  setReceipt(updatedReceipt);
-                  setSelectedClaimId(updatedReceipt.claimId ? String(updatedReceipt.claimId) : selectedClaimId);
-                  setFeedback("Receipt attached to the selected claim.");
-                } catch (attachError) {
-                  setError(attachError instanceof Error ? attachError.message : "Could not attach this receipt to a claim.");
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              Attach to Claim
-            </button>
+            <>
+              <button
+                className="secondary-action"
+                type="button"
+                disabled={saving || !selectedClaimId || !claimAttachmentAllowed}
+                title={claimAttachmentAllowed ? "Attach this receipt to the selected claim" : "Only personal spend receipts can be attached to an expense claim"}
+                onClick={async () => {
+                  if (!claimAttachmentAllowed) {
+                    setError("Only personal spend receipts can be attached to an expense claim.");
+                    setFeedback(null);
+                    return;
+                  }
+                  setSaving(true);
+                  setFeedback(null);
+                  setError(null);
+                  try {
+                    const updatedReceipt = await props.onAttachToClaim(receipt.id, Number(selectedClaimId));
+                    setReceipt(updatedReceipt);
+                    setSelectedClaimId(updatedReceipt.claimId ? String(updatedReceipt.claimId) : selectedClaimId);
+                    setFeedback("Receipt attached to the selected claim.");
+                  } catch (attachError) {
+                    setError(attachError instanceof Error ? attachError.message : "Could not attach this receipt to a claim.");
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                Attach to Claim
+              </button>
+              {!claimAttachmentAllowed ? (
+                <span className="field-hint">Only personal spend receipts can be attached to expense claims.</span>
+              ) : null}
+            </>
           ) : null}
         </div>
       </section>
@@ -3244,12 +3264,15 @@ function ClaimsPage({
             className="secondary-action"
             type="button"
             disabled={!filteredClaims.length}
-            onClick={() =>
+            title={filteredClaims.length ? "Download the current claims view as CSV" : "No claims match the current filters yet"}
+            onClick={() => {
               downloadCsv(
                 `claims-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildClaimsListExportRows(filteredClaims),
-              )
-            }
+              );
+              setFeedback("Claims CSV downloaded.");
+              setError(null);
+            }}
           >
             Export claims CSV
           </button>
@@ -3282,6 +3305,11 @@ function ClaimsPage({
             type="button"
             disabled={busy}
             onClick={async () => {
+              if (!draft.name.trim()) {
+                setError("Enter a claim name before creating the claim.");
+                setFeedback(null);
+                return;
+              }
               setBusy(true);
               setError(null);
               setFeedback(null);
@@ -3535,12 +3563,15 @@ function ClaimDetailPage(props: {
             className="secondary-action"
             type="button"
             disabled={!filteredReceipts.length}
-            onClick={() =>
+            title={filteredReceipts.length ? "Download the current claim receipt view as CSV" : "This claim has no receipts in the current view yet"}
+            onClick={() => {
               downloadCsv(
                 `claim-${claim.id}-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildClaimExportRows(claim, filteredReceipts),
-              )
-            }
+              );
+              setFeedback("Claim CSV downloaded.");
+              setError(null);
+            }}
           >
             Export claim CSV
           </button>
@@ -3840,12 +3871,15 @@ function RulesPage(props: {
             className="secondary-action"
             type="button"
             disabled={!filteredRules.length}
-            onClick={() =>
+            title={filteredRules.length ? "Download the current supplier rules view as CSV" : "No supplier rules match the current filters yet"}
+            onClick={() => {
               downloadCsv(
                 `supplier-rules-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildRuleExportRows(filteredRules),
-              )
-            }
+              );
+              setFeedback("Rules CSV downloaded.");
+              setError(null);
+            }}
           >
             Export rules CSV
           </button>
@@ -4015,12 +4049,15 @@ function ReconciliationPage(props: {
             className="secondary-action"
             type="button"
             disabled={!filteredLines.length}
-            onClick={() =>
+            title={filteredLines.length ? "Download the current reconciliation view as CSV" : "No bank lines match the current filters yet"}
+            onClick={() => {
               downloadCsv(
                 `reconciliation-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildReconciliationExportRows(filteredLines),
-              )
-            }
+              );
+              setFeedback("Reconciliation CSV downloaded.");
+              setError(null);
+            }}
           >
             Export CSV
           </button>
@@ -4202,7 +4239,7 @@ function RequisitionPage(props: {
         </label>
         <label>
           Institution Id
-          <input value={institutionId} onChange={(event) => setInstitutionId(event.target.value)} placeholder="optional bank institution id" />
+          <input value={institutionId} onChange={(event) => setInstitutionId(event.target.value)} placeholder="required bank institution id" />
         </label>
       </div>
       <div className="toolbar">
@@ -4211,11 +4248,16 @@ function RequisitionPage(props: {
           type="button"
           disabled={busy}
           onClick={async () => {
+            if (!institutionId.trim()) {
+              setError("Enter an institution id before starting bank OAuth.");
+              setFeedback(null);
+              return;
+            }
             setBusy(true);
             setError(null);
             setFeedback(null);
             try {
-              const requisition = await props.onCreateRequisition({ provider, institutionId });
+              const requisition = await props.onCreateRequisition({ provider, institutionId: institutionId.trim() });
               window.location.href = requisition.redirectUrl;
             } catch (createError) {
               setError(createError instanceof Error ? createError.message : "Could not start this requisition.");
@@ -4819,16 +4861,17 @@ function RegisterState(props: {
   const [organisationName, setOrganisationName] = useState("");
   const [email, setEmail] = useState(props.initialEmail);
   const [password, setPassword] = useState("");
-  const [billingPlan, setBillingPlan] = useState<BillingPlanId>(props.initialPlan);
+  const [billingPlan, setBillingPlan] = useState<BillingPlanId>(normalizeRegisterPlan(props.initialPlan));
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(props.initialBillingCycle);
   const invitedFlow = Boolean(props.inviteToken);
+  const enterpriseSignupRequested = !invitedFlow && props.initialPlan === "enterprise";
 
   useEffect(() => {
     setEmail(props.initialEmail);
   }, [props.initialEmail]);
 
   useEffect(() => {
-    setBillingPlan(props.initialPlan);
+    setBillingPlan(normalizeRegisterPlan(props.initialPlan));
     setBillingCycle(props.initialBillingCycle);
   }, [props.initialBillingCycle, props.initialPlan]);
 
@@ -4857,6 +4900,11 @@ function RegisterState(props: {
                 ? "Set a password to activate access to the invited workspace."
                 : "Create a business workspace for receipt capture, document review, claims, and finance control."}
             </p>
+            {enterpriseSignupRequested ? (
+              <div className="success-banner">
+                Enterprise rollout is coming soon. Capture, Control, and Operations can be started online today.
+              </div>
+            ) : null}
             <form
               className="login-form"
               onSubmit={async (event) => {
@@ -4867,18 +4915,20 @@ function RegisterState(props: {
                   fullName: fullName || undefined,
                   organisationName: invitedFlow ? undefined : organisationName || undefined,
                   inviteToken: props.inviteToken || undefined,
-                  billingPlan: invitedFlow ? undefined : billingPlan,
+                  billingPlan: invitedFlow ? undefined : normalizeRegisterPlan(billingPlan),
                   billingCycle: invitedFlow ? undefined : billingCycle,
                   monthlyDocumentLimit:
                     invitedFlow ||
-                    billingPlan !== props.initialPlan ||
-                    (billingPlan !== "capture" && billingPlan !== "control" && billingPlan !== "operations")
+                    !isSelfServePlanId(props.initialPlan) ||
+                    normalizeRegisterPlan(billingPlan) !== normalizeRegisterPlan(props.initialPlan) ||
+                    !isSelfServePlanId(normalizeRegisterPlan(billingPlan))
                       ? undefined
                       : props.initialMonthlyDocumentLimit,
                   includedUsers:
                     invitedFlow ||
-                    billingPlan !== props.initialPlan ||
-                    (billingPlan !== "capture" && billingPlan !== "control" && billingPlan !== "operations")
+                    !isSelfServePlanId(props.initialPlan) ||
+                    normalizeRegisterPlan(billingPlan) !== normalizeRegisterPlan(props.initialPlan) ||
+                    !isSelfServePlanId(normalizeRegisterPlan(billingPlan))
                       ? undefined
                       : props.initialIncludedUsers,
                 });
@@ -4909,7 +4959,7 @@ function RegisterState(props: {
                   <label>
                     Plan
                     <select value={billingPlan} onChange={(event) => setBillingPlan(event.target.value as BillingPlanId)}>
-                      {pricingPlans.map((plan) => (
+                      {pricingPlans.filter((plan) => isSelfServePlanId(plan.id)).map((plan) => (
                         <option key={plan.id} value={plan.id}>
                           {plan.name}
                         </option>
@@ -5361,7 +5411,7 @@ function PlatformCapabilitiesSection() {
         <Link className="capability-card" to="/register?plan=operations&billingCycle=monthly"><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></Link>
         <Link className="capability-card" to="/register?plan=operations&billingCycle=monthly"><NavIcon name="integrations" /><strong>Bank & Statement Review</strong><span>Imported bank activity and evidence-led review</span></Link>
         <Link className="capability-card" to="/register?plan=control&billingCycle=monthly"><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></Link>
-        <Link className="capability-card" to="/register?plan=enterprise&billingCycle=annual"><NavIcon name="overview" /><strong>Organisation Switching</strong><span>Move between business contexts without leaving the workspace</span></Link>
+        <Link className="capability-card" to="/pricing"><NavIcon name="overview" /><strong>Organisation Switching</strong><span>Move between business contexts without leaving the workspace</span></Link>
       </div>
     </section>
   );
@@ -5565,7 +5615,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
       <div className="section-heading">
         <div>
           <p className="section-kicker">Pricing</p>
-          <h1>Choose the workflow depth that fits the business.</h1>
+          {signedIn ? <h2>Choose the workflow depth that fits the business.</h2> : <h1>Choose the workflow depth that fits the business.</h1>}
         </div>
         <p>
           Exdox plans are structured around document volume, users, control depth, and operational workflow coverage.
@@ -5811,7 +5861,7 @@ function CompanySection() {
           <strong>Review-ready audit trail</strong>
           <p>Receipts, vault files, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
         </Link>
-        <Link className="company-card company-link" to="/register?plan=enterprise&billingCycle=annual">
+        <Link className="company-card company-link" to="/pricing">
           <strong>Built for finance teams</strong>
           <p>Business admins get the full control surface, employees can still submit directly, and the active organisation context stays visible across the workspace.</p>
         </Link>
@@ -6823,6 +6873,14 @@ function normalizePublicPlan(value: string | null): BillingPlanId {
   return value === "capture" || value === "control" || value === "operations" || value === "enterprise"
     ? value
     : "control";
+}
+
+function isSelfServePlanId(planId: BillingPlanId): planId is "capture" | "control" | "operations" {
+  return planId === "capture" || planId === "control" || planId === "operations";
+}
+
+function normalizeRegisterPlan(planId: BillingPlanId): BillingPlanId {
+  return isSelfServePlanId(planId) ? planId : "control";
 }
 
 function normalizePublicBillingCycle(value: string | null): BillingCycle {
