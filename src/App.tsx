@@ -102,6 +102,25 @@ const navItems = [
   { to: "/billing", label: "Billing", icon: "billing" },
 ];
 
+const privateAppRoutePrefixes = [
+  "/overview",
+  "/costs",
+  "/sales",
+  "/vault",
+  "/claims",
+  "/rules",
+  "/reconciliation",
+  "/settings",
+  "/requisitions",
+  "/billing",
+  "/dropbox",
+  "/bank-callback",
+];
+
+function isPrivateAppPath(pathname: string) {
+  return privateAppRoutePrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
 const publicNavItems = [
   { to: "/", label: "Home" },
   { to: "/platform", label: "Platform" },
@@ -800,6 +819,9 @@ export function App() {
         </>
       );
     }
+    if (isPrivateAppPath(location.pathname)) {
+      return <Navigate to="/login" replace />;
+    }
     return (
       <>
         <SeoManager pathname={location.pathname} session={session} />
@@ -843,14 +865,6 @@ export function App() {
         <Route
           path="/"
           element={<Navigate to={defaultRoute} replace />}
-        />
-        <Route
-          path="/pricing"
-          element={
-            <PublicLayout activePath="/pricing">
-              <PricingSection session={session} />
-            </PublicLayout>
-          }
         />
         <Route
           path="/*"
@@ -1223,6 +1237,9 @@ function DashboardShell(props: {
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/attention" element={<AttentionPage session={props.session} store={props.store} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/overview") || isRouteAllowed(props.session, "/billing") ? (
+                <Route path="/pricing" element={<PricingSection session={props.session} />} />
               ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
@@ -1937,7 +1954,7 @@ function IntegrationsPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Open")}>
                 <strong>Open reconciliation lines</strong>
-                <span>{openBankMatches} imported bank line{openBankMatches === 1 ? "" : "s"} still need a matched document or audit action.</span>
+                <span>{openBankMatches} imported bank line{openBankMatches === 1 ? " still needs" : " still need"} a matched document or audit action.</span>
               </button>
             </li>
             <li>
@@ -2070,7 +2087,7 @@ function WorkflowPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Open")}>
                 <strong>Reconciliation audit lane</strong>
-                <span>{store.reconciliation.filter((line) => line.status === "Open").length} imported bank line{store.reconciliation.filter((line) => line.status === "Open").length === 1 ? "" : "s"} still need clearing.</span>
+                <span>{store.reconciliation.filter((line) => line.status === "Open").length} imported bank line{store.reconciliation.filter((line) => line.status === "Open").length === 1 ? " still needs" : " still need"} clearing.</span>
               </button>
             </li>
           </ul>
@@ -2132,13 +2149,13 @@ function WorkflowPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=approved")}>
                 <strong>Approved claims</strong>
-                <span>{store.claims.filter((claim) => claim.status === "approved").length} approved claim{store.claims.filter((claim) => claim.status === "approved").length === 1 ? "" : "s"} are waiting on payment or close-out.</span>
+                <span>{store.claims.filter((claim) => claim.status === "approved").length} approved claim{store.claims.filter((claim) => claim.status === "approved").length === 1 ? " is" : "s are"} waiting on payment or close-out.</span>
               </button>
             </li>
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=paid")}>
                 <strong>Paid claims</strong>
-                <span>{store.claims.filter((claim) => claim.status === "paid").length} claim{store.claims.filter((claim) => claim.status === "paid").length === 1 ? "" : "s"} have fully completed the reimbursement workflow.</span>
+                <span>{store.claims.filter((claim) => claim.status === "paid").length} claim{store.claims.filter((claim) => claim.status === "paid").length === 1 ? " has" : "s have"} fully completed the reimbursement workflow.</span>
               </button>
             </li>
           </ul>
@@ -2209,13 +2226,13 @@ function ProductivityPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=pending")}>
                 <strong>Approval queue</strong>
-                <span>{store.claims.filter((claim) => claim.status === "pending").length} claim{store.claims.filter((claim) => claim.status === "pending").length === 1 ? "" : "s"} are waiting on approval.</span>
+                <span>{store.claims.filter((claim) => claim.status === "pending").length} claim{store.claims.filter((claim) => claim.status === "pending").length === 1 ? " is" : "s are"} waiting on approval.</span>
               </button>
             </li>
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Open")}>
                 <strong>Open bank audit queue</strong>
-                <span>{store.reconciliation.filter((line) => line.status === "Open").length} bank line{store.reconciliation.filter((line) => line.status === "Open").length === 1 ? "" : "s"} still need matching or audit closure.</span>
+                <span>{store.reconciliation.filter((line) => line.status === "Open").length} bank line{store.reconciliation.filter((line) => line.status === "Open").length === 1 ? " still needs" : "s still need"} matching or audit closure.</span>
               </button>
             </li>
           </ul>
@@ -2230,7 +2247,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/rules")}>
                 <strong>Supplier rules in place</strong>
-                <span>{store.rules.length} rule{store.rules.length === 1 ? "" : "s"} are available to standardise category, tax, and payment defaults.</span>
+                <span>{store.rules.length} rule{store.rules.length === 1 ? " is" : "s are"} available to standardise category, tax, and payment defaults.</span>
               </button>
             </li>
             <li>
@@ -2332,7 +2349,7 @@ function AutomationPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/rules")}>
                 <strong>Supplier rules</strong>
-                <span>{activeRules.length} active rule{activeRules.length === 1 ? "" : "s"} currently standardise category, tax, and payment choices.</span>
+                <span>{activeRules.length} active rule{activeRules.length === 1 ? " currently standardises" : "s currently standardise"} category, tax, and payment choices.</span>
               </button>
             </li>
             <li>
@@ -4226,10 +4243,13 @@ function RequisitionPage(props: {
           className="secondary-action"
           type="button"
           onClick={async () => {
+            if (!institutionId.trim()) {
+              setFeedback("Enter an institution id before copying it.");
+              return;
+            }
             const copied = await copyText(institutionId.trim());
             setFeedback(copied ? "Institution id copied." : "Could not copy the institution id.");
           }}
-          disabled={!institutionId.trim()}
         >
           Copy institution id
         </button>
@@ -4439,12 +4459,13 @@ function SettingsPage(props: {
         <button
           className="secondary-action"
           type="button"
-          onClick={() =>
+          onClick={() => {
             downloadCsv(
               `organisation-settings-${new Date().toISOString().slice(0, 10)}.csv`,
               buildOrganisationSettingsExportRows(draft),
-            )
-          }
+            );
+            setCopyFeedback("Settings CSV downloaded.");
+          }}
         >
           Export settings CSV
         </button>
@@ -4485,11 +4506,15 @@ function SettingsPage(props: {
         <button
           className="primary-action"
           type="button"
-          disabled={inviteBusy || !inviteEmail.trim()}
+          disabled={inviteBusy}
           onClick={async () => {
-            setInviteBusy(true);
             setInviteError(null);
             setInviteFeedback(null);
+            if (!inviteEmail.trim()) {
+              setInviteError("Enter an employee email before sending the invite.");
+              return;
+            }
+            setInviteBusy(true);
             try {
               const invite = await props.onInviteEmployee({
                 email: inviteEmail.trim(),
@@ -6082,7 +6107,7 @@ function buildWorkspaceHealthIssues(store: AppStore, limit = 4) {
 
   if (pendingReviewCount) {
     issues.push({
-      label: `${pendingReviewCount} document${pendingReviewCount === 1 ? "" : "s"} need review`,
+      label: `${pendingReviewCount} document${pendingReviewCount === 1 ? " needs" : "s need"} review`,
       detail: "Review-required items are still waiting on tax, coding, claim, or publish decisions.",
       route: firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"),
     });
@@ -6730,6 +6755,21 @@ function routeTitle(pathname: string) {
   if (pathname.startsWith("/overview/attention")) {
     return "Attention";
   }
+  if (pathname.startsWith("/overview/data-health")) {
+    return "Data Health";
+  }
+  if (pathname.startsWith("/overview/integrations")) {
+    return "Integrations";
+  }
+  if (pathname.startsWith("/overview/workflows")) {
+    return "Workflows";
+  }
+  if (pathname.startsWith("/overview/productivity")) {
+    return "Productivity";
+  }
+  if (pathname.startsWith("/overview/automation")) {
+    return "Automation";
+  }
   if (pathname.startsWith("/costs/")) {
     return "Cost Workspace";
   }
@@ -6748,8 +6788,13 @@ function routeTitle(pathname: string) {
   if (pathname.startsWith("/billing")) {
     return "Billing";
   }
+  if (pathname.startsWith("/pricing")) {
+    return "Pricing";
+  }
 
-  const matched = navItems.find((item) => pathname.startsWith(item.to));
+  const matched = [...navItems]
+    .sort((left, right) => right.to.length - left.to.length)
+    .find((item) => pathname.startsWith(item.to));
   return matched?.label ?? "Overview";
 }
 
