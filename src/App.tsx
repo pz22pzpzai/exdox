@@ -845,6 +845,14 @@ export function App() {
           element={<Navigate to={defaultRoute} replace />}
         />
         <Route
+          path="/pricing"
+          element={
+            <PublicLayout activePath="/pricing">
+              <PricingSection session={session} />
+            </PublicLayout>
+          }
+        />
+        <Route
           path="/*"
           element={
             <DashboardShell
@@ -1125,9 +1133,9 @@ function DashboardShell(props: {
             <button
               className="icon-button"
               type="button"
-              aria-label={`Notifications: ${notificationCount}`}
+              aria-label={`Attention items: ${notificationCount}`}
               title={`${notificationCount} items need attention`}
-              onClick={() => navigate(getAttentionRoute(props.session, props.store))}
+              onClick={() => navigate("/overview/attention")}
             >
               {notificationCount}
             </button>
@@ -1212,6 +1220,9 @@ function DashboardShell(props: {
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/automation" element={<AutomationPage store={props.store} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/overview") ? (
+                <Route path="/overview/attention" element={<AttentionPage session={props.session} store={props.store} />} />
               ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
@@ -1560,6 +1571,114 @@ function OverviewPage({ store }: { store: AppStore }) {
             </button>
           </div>
         </article>
+      </section>
+    </div>
+  );
+}
+
+function AttentionPage({ session, store }: { session: SessionState; store: AppStore }) {
+  const navigate = useNavigate();
+  const isAdmin = isBusinessAdmin(session);
+  const items: Array<{ title: string; detail: string; route: string; count?: number }> = [];
+
+  if (isAdmin && session.billing && !isBillingStatusActive(session.billing.status)) {
+    items.push({
+      title: "Billing needs attention",
+      detail: "The current workspace plan is not active.",
+      route: "/billing",
+    });
+  }
+  if (isAdmin) {
+    const costReview = store.costs.filter((receipt) => receipt.needsReview).length;
+    if (costReview > 0) {
+      items.push({
+        title: "Costs need review",
+        detail: `${costReview} cost records still need coding or final checks.`,
+        route: "/costs?issue=Needs%20review",
+        count: costReview,
+      });
+    }
+    const salesReview = store.sales.filter((receipt) => receipt.needsReview).length;
+    if (salesReview > 0) {
+      items.push({
+        title: "Sales need review",
+        detail: `${salesReview} sales records still need coding or final checks.`,
+        route: "/sales?issue=Needs%20review",
+        count: salesReview,
+      });
+    }
+    const vaultAttention = store.vault.filter((receipt) => receipt.needsReview || receipt.status === "Processing").length;
+    if (vaultAttention > 0) {
+      items.push({
+        title: "Vault uploads need attention",
+        detail: `${vaultAttention} archived files still need review or are still processing.`,
+        route: "/vault",
+        count: vaultAttention,
+      });
+    }
+    const pendingClaims = store.claims.filter((claim) => claim.status === "pending").length;
+    if (pendingClaims > 0) {
+      items.push({
+        title: "Claims are pending",
+        detail: `${pendingClaims} claims are still waiting for approval or payment.`,
+        route: "/claims?status=pending",
+        count: pendingClaims,
+      });
+    }
+    const openMatches = store.reconciliation.filter((line) => line.status === "Open").length;
+    if (openMatches > 0) {
+      items.push({
+        title: "Bank matches are open",
+        detail: `${openMatches} bank lines are still waiting for reconciliation review.`,
+        route: "/reconciliation?status=Open",
+        count: openMatches,
+      });
+    }
+  } else if (store.claims.some((claim) => claim.status === "pending")) {
+    const pendingClaims = store.claims.filter((claim) => claim.status === "pending").length;
+    items.push({
+      title: "Claims are pending",
+      detail: `${pendingClaims} claims are still waiting for approval or payment.`,
+      route: "/claims?status=pending",
+      count: pendingClaims,
+    });
+  }
+
+  return (
+    <div className="stack-page">
+      <section className="panel">
+        <div className="panel-heading">
+          <h2>Attention queue</h2>
+          <span>{items.length} active items</span>
+        </div>
+        <p className="muted-copy">
+          Review the live items that still need action across the workspace.
+        </p>
+      </section>
+      <section className="panel">
+        {items.length ? (
+          <div className="summary-list">
+            {items.map((item) => (
+              <button
+                key={`${item.title}-${item.route}`}
+                className="summary-action-row"
+                type="button"
+                onClick={() => navigate(item.route)}
+              >
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{item.detail}</span>
+                </div>
+                <span>{item.count ?? "Open"}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">
+            <strong>No attention items right now</strong>
+            <p>The workspace is clear of review, claims, and reconciliation follow-up.</p>
+          </div>
+        )}
       </section>
     </div>
   );
@@ -2964,6 +3083,9 @@ function DocumentWorkspacePage(props: {
             type="button"
             disabled={saving}
             onClick={async () => {
+              if (!window.confirm("Delete this document? This action cannot be undone.")) {
+                return;
+              }
               setSaving(true);
               setFeedback(null);
               setError(null);
@@ -4090,12 +4212,13 @@ function RequisitionPage(props: {
         <button
           className="secondary-action"
           type="button"
-          onClick={() =>
+          onClick={() => {
             downloadCsv(
               `requisition-draft-${new Date().toISOString().slice(0, 10)}.csv`,
               buildRequisitionDraftExportRows(provider, institutionId),
-            )
-          }
+            );
+            setFeedback("Setup CSV downloaded.");
+          }}
         >
           Export setup CSV
         </button>
@@ -5389,11 +5512,12 @@ function PricingTeaserSection() {
   );
 }
 
-function PricingSection() {
+function PricingSection({ session = null }: { session?: SessionState | null }) {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(normalizePublicBillingCycle(params.get("billingCycle")));
   const [sliderIndex, setSliderIndex] = useState(0);
+  const signedIn = Boolean(session);
   const selectedStep = pricingSliderSteps[sliderIndex] ?? pricingSliderSteps[0]!;
   const selectedPlan = pricingPlans.find((plan) => plan.id === selectedStep.planId) ?? pricingPlans[0]!;
   const enterpriseSelected = selectedStep.planId === "enterprise";
@@ -5481,6 +5605,10 @@ function PricingSection() {
             <span className="public-button public-button-disabled" aria-disabled="true">
               Coming soon
             </span>
+          ) : signedIn ? (
+            <Link className="public-button" to="/billing">
+              Manage in Billing
+            </Link>
           ) : (
             <Link
               className="public-button"
@@ -5574,6 +5702,10 @@ function PricingSection() {
             </ul>
             {plan.id === "enterprise" ? (
               <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
+            ) : signedIn ? (
+              <Link className="public-button" to="/billing">
+                Manage in Billing
+              </Link>
             ) : (
               <Link
                 className="public-button"
@@ -5715,33 +5847,39 @@ function BillingPage(props: { session: SessionState }) {
         <p className="muted-copy">
           {billing.stripeConfigured
             ? "Stripe checkout is ready. Choose a plan below to open checkout, or use the billing portal if this workspace already has a Stripe customer."
-            : "Stripe checkout endpoints are wired, but the live Stripe secret key and price ids have not been added yet."}
+            : "Online plan changes are not live in this workspace yet. Compare plans below and contact hello@exdox.co.uk to request a billing change."}
         </p>
         <div className="section-actions">
           <button className="secondary-action" type="button" onClick={() => navigate("/pricing")}>
             Compare plans
           </button>
-          <button
-            className="secondary-action"
-            type="button"
-            disabled={!billing.stripeConfigured || !billing.stripeCustomerId || busyPlan !== null}
-            onClick={async () => {
-              setBusyPlan("portal");
-              setMessage(null);
-              try {
-                const response = await createBillingPortalSession(props.session.token);
-                if (response.portalUrl) {
-                  window.location.href = response.portalUrl;
+          {billing.stripeConfigured ? (
+            <button
+              className="secondary-action"
+              type="button"
+              disabled={!billing.stripeCustomerId || busyPlan !== null}
+              onClick={async () => {
+                setBusyPlan("portal");
+                setMessage(null);
+                try {
+                  const response = await createBillingPortalSession(props.session.token);
+                  if (response.portalUrl) {
+                    window.location.href = response.portalUrl;
+                  }
+                } catch (error) {
+                  setMessage(error instanceof Error ? error.message : "Could not open billing portal.");
+                } finally {
+                  setBusyPlan(null);
                 }
-              } catch (error) {
-                setMessage(error instanceof Error ? error.message : "Could not open billing portal.");
-              } finally {
-                setBusyPlan(null);
-              }
-            }}
-          >
-            Open billing portal
-          </button>
+              }}
+            >
+              Open billing portal
+            </button>
+          ) : (
+            <a className="secondary-action" href="mailto:hello@exdox.co.uk?subject=Exdox%20billing%20support">
+              Contact billing
+            </a>
+          )}
         </div>
         {message ? <div className="error-banner">{message}</div> : null}
       </div>
@@ -5768,6 +5906,13 @@ function BillingPage(props: { session: SessionState }) {
               ) : plan.id === "enterprise" ? (
                 <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Enterprise%20upgrade%20request">
                   Talk to sales
+                </a>
+              ) : !billing.stripeConfigured ? (
+                <a
+                  className="public-button"
+                  href={`mailto:hello@exdox.co.uk?subject=${encodeURIComponent(`Exdox ${plan.name} plan change`)}`}
+                >
+                  Contact sales
                 </a>
               ) : (
                 <button
@@ -6582,6 +6727,9 @@ function getAttentionRoute(session: SessionState, store: AppStore) {
 }
 
 function routeTitle(pathname: string) {
+  if (pathname.startsWith("/overview/attention")) {
+    return "Attention";
+  }
   if (pathname.startsWith("/costs/")) {
     return "Cost Workspace";
   }
