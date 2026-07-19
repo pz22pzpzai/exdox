@@ -4775,10 +4775,12 @@ function LoginState(props: {
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
+  const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
 
   return (
-    <div className="login-state">
-      <div className="login-shell">
+    <div className={loginStateClassName}>
+      <div className={loginShellClassName}>
         {props.embeddedInPublicShell ? null : (
           <header className="login-header">
             <div className="login-brand">
@@ -4897,9 +4899,12 @@ function RegisterState(props: {
     setBillingCycle(props.initialBillingCycle);
   }, [props.initialBillingCycle, props.initialPlan]);
 
+  const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
+  const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
+
   return (
-    <div className="login-state">
-      <div className="login-shell">
+    <div className={loginStateClassName}>
+      <div className={loginShellClassName}>
         {props.embeddedInPublicShell ? null : (
           <header className="login-header">
             <div className="login-brand">

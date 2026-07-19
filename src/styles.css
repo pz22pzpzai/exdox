@@ -1361,12 +1361,22 @@ input {
     white;
 }
 
+.login-state-embedded {
+  min-height: 0;
+  padding: 26px 0 42px;
+}
+
 .login-shell {
   width: min(1120px, calc(100% - 48px));
   min-height: 100vh;
   margin: 0 auto;
   display: grid;
   grid-template-rows: 118px 1fr 70px;
+}
+
+.login-shell-embedded {
+  min-height: 0;
+  grid-template-rows: 1fr;
 }
 
 .login-header {
@@ -1633,6 +1643,10 @@ input {
 
   .login-state {
     background: #f2f7fb;
+  }
+
+  .login-state-embedded {
+    padding: 18px 0 28px;
   }
 
   .login-shell {
