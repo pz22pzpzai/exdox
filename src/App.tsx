@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useState } from "react";
+import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   Link,
   NavLink,
@@ -702,7 +702,8 @@ function updateStructuredData(structuredData?: Record<string, unknown> | Array<R
 
 export function App() {
   const location = useLocation();
-  const [session, setSession] = useState<SessionState | null>(null);
+  const initialStoredSession = useMemo(() => loadStoredSession(), []);
+  const [session, setSession] = useState<SessionState | null>(initialStoredSession);
   const [store, setStore] = useState<AppStore>({
     costs: [],
     sales: [],
@@ -712,7 +713,7 @@ export function App() {
     reconciliation: [],
     settings: null,
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(initialStoredSession));
   const [error, setError] = useState<string | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -750,13 +751,12 @@ export function App() {
   };
 
   useEffect(() => {
-    const stored = loadStoredSession();
-    if (!stored) {
+    if (!initialStoredSession) {
       setLoading(false);
       return;
     }
 
-    loadWorkspace(stored.token, stored)
+    loadWorkspace(initialStoredSession.token, initialStoredSession)
       .catch((nextError: Error) => {
         clearStoredSession();
         setError(nextError.message);
@@ -765,9 +765,9 @@ export function App() {
       .finally(() => {
         setLoading(false);
       });
-  }, []);
+  }, [initialStoredSession]);
 
-  if (loading) {
+  if (loading && !session) {
     return (
       <>
         <SeoManager pathname={location.pathname} session={session} />
@@ -1921,13 +1921,13 @@ function IntegrationsPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Ready")}>
                 <strong>Costs ready for export or publish</strong>
-                <span>{readyCosts} cost document{readyCosts === 1 ? "" : "s"} are sitting in Ready.</span>
+                <span>{readyCosts} cost document{readyCosts === 1 ? " is" : "s are"} sitting in Ready.</span>
               </button>
             </li>
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/sales?status=Ready")}>
                 <strong>Sales invoices ready for handoff</strong>
-                <span>{readySales} sales document{readySales === 1 ? "" : "s"} are ready for the accounting workflow.</span>
+                <span>{readySales} sales document{readySales === 1 ? " is" : "s are"} ready for the accounting workflow.</span>
               </button>
             </li>
             <li>
@@ -1960,7 +1960,7 @@ function IntegrationsPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Audited")}>
                 <strong>Audited bank matches</strong>
-                <span>{auditedBankMatches} line{auditedBankMatches === 1 ? "" : "s"} have already been cleared through reconciliation.</span>
+                <span>{auditedBankMatches} line{auditedBankMatches === 1 ? " has" : "s have"} already been cleared through reconciliation.</span>
               </button>
             </li>
             <li>
@@ -2075,13 +2075,13 @@ function WorkflowPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Ready")}>
                 <strong>Costs publish lane</strong>
-                <span>{costReady.length} cost document{costReady.length === 1 ? "" : "s"} are ready for accounting handoff.</span>
+                <span>{costReady.length} cost document{costReady.length === 1 ? " is" : "s are"} ready for accounting handoff.</span>
               </button>
             </li>
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/sales?status=Ready")}>
                 <strong>Sales publish lane</strong>
-                <span>{salesReady.length} sales document{salesReady.length === 1 ? "" : "s"} are ready for the next step.</span>
+                <span>{salesReady.length} sales document{salesReady.length === 1 ? " is" : "s are"} ready for the next step.</span>
               </button>
             </li>
             <li>
@@ -2143,7 +2143,7 @@ function WorkflowPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForStatus(store, "Published"))}>
                 <strong>Published document trail</strong>
-                <span>{publishedDocuments.length} published document{publishedDocuments.length === 1 ? "" : "s"} are already in the downstream handoff state.</span>
+                <span>{publishedDocuments.length} published document{publishedDocuments.length === 1 ? " is" : "s are"} already in the downstream handoff state.</span>
               </button>
             </li>
             <li>
@@ -2214,13 +2214,13 @@ function ProductivityPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.status === "Processing", "Processing"))}>
                 <strong>Processing backlog</strong>
-                <span>{processingDocuments.length} document{processingDocuments.length === 1 ? "" : "s"} are still settling into the review flow.</span>
+                <span>{processingDocuments.length} document{processingDocuments.length === 1 ? " is" : "s are"} still settling into the review flow.</span>
               </button>
             </li>
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))}>
                 <strong>Manual review load</strong>
-                <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? "" : "s"} still need coding, tax, or publish decisions.</span>
+                <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? " still needs" : "s still need"} coding, tax, or publish decisions.</span>
               </button>
             </li>
             <li>
@@ -2253,7 +2253,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/overview/data-health")}>
                 <strong>Data-health blockers</strong>
-                <span>{lowConfidenceDocuments.length + duplicateGroups} active quality blockers are still reducing hands-off throughput.</span>
+                <span>{lowConfidenceDocuments.length + duplicateGroups} active quality blocker{lowConfidenceDocuments.length + duplicateGroups === 1 ? " is" : "s are"} still reducing hands-off throughput.</span>
               </button>
             </li>
             <li>
@@ -2275,7 +2275,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
               <li key={source.label}>
                 <button className="summary-action-row" type="button" onClick={() => navigate(source.route)}>
                   <strong>{source.label}</strong>
-                  <span>{source.count} document{source.count === 1 ? "" : "s"} currently originate from this channel.</span>
+                  <span>{source.count} document{source.count === 1 ? " currently originates" : "s currently originate"} from this channel.</span>
                 </button>
               </li>
             ))}
@@ -2297,13 +2297,13 @@ function ProductivityPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/overview/integrations")}>
                 <strong>Accounting handoff posture</strong>
-                <span>{readyDocuments.length} record{readyDocuments.length === 1 ? "" : "s"} are sitting in Ready and {publishedDocuments.length} have already been published onward.</span>
+                <span>{readyDocuments.length} record{readyDocuments.length === 1 ? " is" : "s are"} sitting in Ready and {publishedDocuments.length} {publishedDocuments.length === 1 ? "has" : "have"} already been published onward.</span>
               </button>
             </li>
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/vault")}>
                 <strong>Archive retrieval</strong>
-                <span>{store.vault.length} vault file{store.vault.length === 1 ? "" : "s"} are available as stored reference evidence for audit and retrieval.</span>
+                <span>{store.vault.length} vault file{store.vault.length === 1 ? " is" : "s are"} available as stored reference evidence for audit and retrieval.</span>
               </button>
             </li>
           </ul>
@@ -2376,13 +2376,13 @@ function AutomationPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))}>
                 <strong>Manual review fallback</strong>
-                <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? "" : "s"} still need human coding, tax, or publish decisions.</span>
+                <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? " still needs" : "s still need"} human coding, tax, or publish decisions.</span>
               </button>
             </li>
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))}>
                 <strong>Extraction uncertainty</strong>
-                <span>{lowConfidenceDocuments.length} low-confidence document{lowConfidenceDocuments.length === 1 ? "" : "s"} are slowing automation confidence.</span>
+                <span>{lowConfidenceDocuments.length} low-confidence document{lowConfidenceDocuments.length === 1 ? " is" : "s are"} slowing automation confidence.</span>
               </button>
             </li>
             <li>
@@ -2409,7 +2409,7 @@ function AutomationPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/sales?status=Ready")}>
                 <strong>Sales ready for handoff</strong>
-                <span>{store.sales.filter((record) => record.status === "Ready").length} sales document{store.sales.filter((record) => record.status === "Ready").length === 1 ? "" : "s"} are ready for the next step.</span>
+                <span>{store.sales.filter((record) => record.status === "Ready").length} sales document{store.sales.filter((record) => record.status === "Ready").length === 1 ? " is" : "s are"} ready for the next step.</span>
               </button>
             </li>
             <li>
@@ -2505,6 +2505,9 @@ function InboxPage({
   const search = deferredQuery.trim().toLowerCase();
   const isVaultInbox = basePath === "/vault";
   const duplicateInsights = buildDuplicateInsights(records);
+  const hasActiveFilters = Boolean(
+    search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || documentTypeFilter !== "All",
+  );
   const filtered = records.filter((record) => {
     const matchesSearch =
       !search ||
@@ -2694,9 +2697,11 @@ function InboxPage({
           </table>
         ) : (
           <div className="empty-inline-state">
-            <strong>{search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || documentTypeFilter !== "All" ? "No documents match the current filters." : isVaultInbox ? "No vault files stored yet." : "No documents uploaded yet."}</strong>
+            <strong>{hasActiveFilters ? "No documents match the current filters." : isVaultInbox ? "No vault files stored yet." : "No documents uploaded yet."}</strong>
             <p>
-              {isVaultInbox
+              {hasActiveFilters
+                ? "Clear or adjust the current filters to bring matching documents back into view."
+                : isVaultInbox
                 ? "Upload reference files into the vault to keep archive-only evidence separate from costs and sales workflows."
                 : "Use the upload area above to add receipts or invoices into this workspace."}
             </p>
@@ -2929,7 +2934,7 @@ function DocumentWorkspacePage(props: {
                 <option value="">Select claim</option>
                 {eligibleClaims.map((claim) => (
                   <option key={claim.id} value={claim.id}>
-                    {claim.name} ({claimStatusLabel(claim.status)})
+                    {formatClaimOptionLabel(claim)}
                   </option>
                 ))}
               </select>
@@ -3072,7 +3077,7 @@ function DocumentWorkspacePage(props: {
         {notes.length ? (
           <section className="workspace-detail-section">
             <div className="panel-heading">
-              <h2>Model notes</h2>
+              <h2>Review notes</h2>
               <span>{notes.length} checks</span>
             </div>
             <ul className="note-list">
@@ -3337,7 +3342,8 @@ function ClaimsPage({
         {filteredClaims.length ? (
           filteredClaims.map((claim) => (
             <button className="claim-card" key={claim.id} type="button" onClick={() => navigate(`/claims/${claim.id}`)}>
-              <strong>{claim.name}</strong>
+              <strong>{formatClaimHeading(claim)}</strong>
+              <span>Reference: {formatClaimReference(claim)}</span>
               <span>Total value: {currency(claim.totalAmount)}</span>
               <span>Claiming employee: {claimEmployeeLabel(claim)}</span>
               <span>Submission date: {claim.createdAt.slice(0, 10)}</span>
@@ -3367,6 +3373,7 @@ function EmployeeDropboxPage(props: {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
+  const [feedback, setFeedback] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -3435,17 +3442,19 @@ function EmployeeDropboxPage(props: {
             className="secondary-action"
             type="button"
             disabled={!filteredReceipts.length}
-            onClick={() =>
+            onClick={() => {
               downloadCsv(
                 `employee-dropbox-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildInboxExportRows(filteredReceipts),
-              )
-            }
+              );
+              setFeedback("Employee drop box CSV downloaded.");
+            }}
           >
             Export CSV
           </button>
         </div>
       </section>
+      {feedback ? <div className="success-banner">{feedback}</div> : null}
       <UploadDropZone
         title="Drop receipts into your employee queue"
         subtitle="Send multiple files into processing while keeping company-wide dashboards, settings, and peer uploads hidden from employee sessions."
@@ -3555,7 +3564,7 @@ function ClaimDetailPage(props: {
     <div className="stack-page">
       <section className="page-hero">
         <div>
-          <h2>{claim.name}</h2>
+          <h2>{formatClaimHeading(claim)}</h2>
           <p>{claim.description ?? "Employee reimbursement folder"}</p>
         </div>
         <div className="filter-row">
@@ -4615,12 +4624,13 @@ function SettingsPage(props: {
           <button
             className="secondary-action"
             type="button"
-            onClick={() =>
+            onClick={() => {
               downloadCsv(
                 `latest-invite-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildInviteExportRows(lastInvite),
-              )
-            }
+              );
+              setCopyFeedback("Invite CSV downloaded.");
+            }}
           >
             Export invite CSV
           </button>
@@ -4816,16 +4826,20 @@ function LoginState(props: {
               </button>
             </form>
             <div className="login-links">
-              <a href="mailto:hello@exdox.co.uk?subject=Password%20reset%20request">Forgot Password?</a>
-              <a href="mailto:hello@exdox.co.uk?subject=Demo%20access%20request">Request Demo Access</a>
+              <Link to="/company">Forgot Password?</Link>
+              <Link to="/pricing">Request Demo Access</Link>
             </div>
           </div>
         </main>
         <footer className="login-footer">
           <span>
-            <Link to="/#company">Company</Link>
+            <Link to="/pricing">Pricing</Link>
             {" | "}
-            <a href="mailto:hello@exdox.co.uk?subject=Privacy%20request">Privacy</a>
+            <Link to="/privacy">Privacy</Link>
+            {" | "}
+            <Link to="/cookies">Cookies</Link>
+            {" | "}
+            <Link to="/company">Company</Link>
           </span>
           <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
           <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
@@ -5008,7 +5022,7 @@ function RegisterState(props: {
             </form>
             <div className="login-links">
               <Link to="/login">Already have an account? Log in</Link>
-              <a href="mailto:hello@exdox.co.uk?subject=Exdox%20support%20request">Need help activating?</a>
+              <Link to="/company">Need help activating?</Link>
             </div>
           </div>
         </main>
@@ -5017,7 +5031,11 @@ function RegisterState(props: {
             <span>
               <Link to="/pricing">Pricing</Link>
               {" | "}
-              <a href="mailto:hello@exdox.co.uk?subject=Security%20request">Security</a>
+              <Link to="/privacy">Privacy</Link>
+              {" | "}
+              <Link to="/cookies">Cookies</Link>
+              {" | "}
+              <Link to="/company">Company</Link>
             </span>
             <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
             <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
@@ -5167,7 +5185,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
         </button>
         <div className="public-actions">
           <Link to="/login">Log In</Link>
-          <a className="public-button" href="mailto:hello@exdox.co.uk">Request Demo</a>
+          <Link className="public-button" to="/pricing">Request Demo</Link>
         </div>
         {mobileMenuOpen ? (
           <div className="public-mobile-menu">
@@ -5185,7 +5203,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
             </nav>
             <div className="public-mobile-actions">
               <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Log In</Link>
-              <a className="public-button" href="mailto:hello@exdox.co.uk">Request Demo</a>
+              <Link className="public-button" to="/pricing" onClick={() => setMobileMenuOpen(false)}>Request Demo</Link>
             </div>
           </div>
         ) : null}
@@ -5746,7 +5764,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
             </ul>
             <p className="slider-enterprise-note">
               {selectedStep.planId === "enterprise"
-                ? "For larger entity counts and tailored rollout scope, commercial setup is handled directly."
+                ? "Enterprise rollout opens next, with tailored onboarding and commercial setup following the self-serve tiers."
                 : "Route access, users, and document allowance scale with the selected package band."}
             </p>
           </article>
@@ -5763,7 +5781,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
             <p>{plan.trialLabel}</p>
             <p>
               {plan.id === "enterprise"
-                ? "Coming soon"
+                ? "Private rollout pricing"
                 : plan.monthlyPrice != null
                   ? `${currency(billingCycle === "annual" ? plan.annualMonthlyPrice ?? plan.monthlyPrice : plan.monthlyPrice)} per month`
                   : "Custom pricing"}
@@ -5779,7 +5797,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
             ) : signedIn ? (
               <Link className="public-button" to="/billing">
-                Manage in Billing
+                Review in Billing
               </Link>
             ) : (
               <Link
@@ -5922,7 +5940,7 @@ function BillingPage(props: { session: SessionState }) {
         <p className="muted-copy">
           {billing.stripeConfigured
             ? "Stripe checkout is ready. Choose a plan below to open checkout, or use the billing portal if this workspace already has a Stripe customer."
-            : "Online plan changes are not live in this workspace yet. Compare plans below and contact hello@exdox.co.uk to request a billing change."}
+            : "Online plan changes are not live in this workspace yet. Compare plans below and use the pricing route to choose the next package band."}
         </p>
         <div className="section-actions">
           <button className="secondary-action" type="button" onClick={() => navigate("/pricing")}>
@@ -5951,9 +5969,9 @@ function BillingPage(props: { session: SessionState }) {
               Open billing portal
             </button>
           ) : (
-            <a className="secondary-action" href="mailto:hello@exdox.co.uk?subject=Exdox%20billing%20support">
+            <button className="secondary-action" type="button" onClick={() => navigate("/pricing")}>
               Contact billing
-            </a>
+            </button>
           )}
         </div>
         {message ? <div className="error-banner">{message}</div> : null}
@@ -5966,7 +5984,7 @@ function BillingPage(props: { session: SessionState }) {
             <article key={plan.id} className={`pricing-card${active ? " current-plan" : ""}`}>
               <span>{plan.name}</span>
               <strong>{plan.tagline}</strong>
-              <p>{plan.monthlyPrice != null ? `${currency(plan.monthlyPrice)} per month` : "Custom pricing"}</p>
+              <p>{plan.id === "enterprise" ? "Private rollout pricing" : plan.monthlyPrice != null ? `${currency(plan.monthlyPrice)} per month` : "Custom pricing"}</p>
               <p>{plan.monthlyDocuments}</p>
               <p>{plan.users}</p>
               <ul className="pricing-feature-list">
@@ -5979,16 +5997,11 @@ function BillingPage(props: { session: SessionState }) {
                   Current plan
                 </button>
               ) : plan.id === "enterprise" ? (
-                <a className="public-button" href="mailto:hello@exdox.co.uk?subject=Enterprise%20upgrade%20request">
-                  Talk to sales
-                </a>
+                <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
               ) : !billing.stripeConfigured ? (
-                <a
-                  className="public-button"
-                  href={`mailto:hello@exdox.co.uk?subject=${encodeURIComponent(`Exdox ${plan.name} plan change`)}`}
-                >
+                <button className="public-button" type="button" onClick={() => navigate("/pricing")}>
                   Contact sales
-                </a>
+                </button>
               ) : (
                 <button
                   className="public-button"
@@ -6720,6 +6733,18 @@ function buildPendingReceipts(
 
 function claimEmployeeLabel(claim: ClaimRecord) {
   return claim.createdByUserId ? `User ${claim.createdByUserId}` : "Employee pending";
+}
+
+function formatClaimReference(claim: ClaimRecord) {
+  return `CLM-${String(claim.id).padStart(4, "0")}`;
+}
+
+function formatClaimHeading(claim: ClaimRecord) {
+  return `${claim.name} · ${claim.createdAt.slice(0, 10)}`;
+}
+
+function formatClaimOptionLabel(claim: ClaimRecord) {
+  return `${formatClaimReference(claim)} · ${formatClaimHeading(claim)} · ${claimEmployeeLabel(claim)} (${claimStatusLabel(claim.status)})`;
 }
 
 function claimStatusLabel(status: ClaimRecord["status"]) {
