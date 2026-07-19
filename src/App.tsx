@@ -4886,7 +4886,7 @@ function LoginState(props: {
             </form>
             <div className="login-links">
               <Link to={supportPagePath}>Forgot Password?</Link>
-              <Link to={supportPagePath}>Request Demo Access</Link>
+              <Link to="/register">Register</Link>
             </div>
           </div>
         </main>
@@ -5249,7 +5249,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
         </button>
         <div className="public-actions">
           <Link to="/login">Log In</Link>
-          <Link className="public-button" to="/pricing">Request Demo</Link>
+          <Link className="public-button" to="/register">Register</Link>
         </div>
         {mobileMenuOpen ? (
           <div className="public-mobile-menu">
@@ -5267,7 +5267,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
             </nav>
             <div className="public-mobile-actions">
               <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Log In</Link>
-              <Link className="public-button" to="/pricing" onClick={() => setMobileMenuOpen(false)}>Request Demo</Link>
+              <Link className="public-button" to="/register" onClick={() => setMobileMenuOpen(false)}>Register</Link>
             </div>
           </div>
         ) : null}
