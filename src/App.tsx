@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   Link,
   NavLink,
@@ -128,6 +128,7 @@ const publicNavItems = [
   { to: "/pricing", label: "Pricing" },
   { to: "/company", label: "Company" },
 ] as const;
+const supportPagePath = "/company#support";
 
 const pricingPlans: Array<{
   id: BillingPlanId;
@@ -437,6 +438,27 @@ type AppStore = {
   settings: OrganisationSettings | null;
 };
 
+function buildFallbackOrganisationSettings(session: SessionState): OrganisationSettings {
+  const activeOrganisation =
+    session.organisations.find((organisation) => organisation.id === session.activeOrganisationId) ??
+    session.organisations[0];
+
+  return {
+    organisationId: activeOrganisation?.id ?? session.activeOrganisationId ?? session.user.organisationId,
+    organisationName: activeOrganisation?.name ?? "Active organisation",
+    isVatRegistered: true,
+    defaultTaxRate: "20% Standard",
+  };
+}
+
+function isSignedInPublicPage(pathname: string) {
+  return pathname === "/platform"
+    || pathname === "/integrations"
+    || pathname === "/company"
+    || pathname === "/privacy"
+    || pathname === "/cookies";
+}
+
 function SeoManager({ pathname, session }: { pathname: string; session: SessionState | null }) {
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -744,7 +766,7 @@ export function App() {
       claims,
       rules,
       reconciliation,
-      settings,
+      settings: settings ?? (businessAdmin ? buildFallbackOrganisationSettings(nextSession) : null),
     });
     setError(null);
     setAuthError(null);
@@ -855,6 +877,15 @@ export function App() {
             }}
           />
         </PublicLayout>
+      </>
+    );
+  }
+
+  if (isSignedInPublicPage(location.pathname)) {
+    return (
+      <>
+        <SeoManager pathname={location.pathname} session={session} />
+        <PublicSite />
       </>
     );
   }
@@ -1104,7 +1135,7 @@ function DashboardShell(props: {
         <div>
           <div className="brand-lockup">
             <img className="brand-mark" src={brandMarkSrc} alt="" />
-            <strong>exdox</strong>
+            <strong>Exdox</strong>
           </div>
           <nav className="sidebar-nav" aria-label="Primary">
             {visibleNavItems.map((item) => (
@@ -1343,6 +1374,8 @@ function DashboardShell(props: {
                   element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} loadClaim={props.loadClaim} />}
                 />
               ) : null}
+              <Route path="/dropbox" element={<Navigate to="/costs" replace />} />
+              <Route path="/dropbox/:id" element={<DropboxDetailRedirect />} />
               {isRouteAllowed(props.session, "/rules") ? (
                 <Route
                   path="/rules"
@@ -4644,10 +4677,21 @@ function SettingsPage(props: {
 }
 
 function UploadButton(props: { busy: boolean; label: string; onFiles: (files: File[]) => Promise<void> }) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
   return (
-    <label className="upload-button">
-      {props.busy ? "Uploading..." : props.label}
+    <>
+      <button
+        className="upload-button"
+        type="button"
+        disabled={props.busy}
+        aria-label={props.label}
+        onClick={() => inputRef.current?.click()}
+      >
+        {props.busy ? "Uploading..." : props.label}
+      </button>
       <input
+        ref={inputRef}
         type="file"
         multiple
         hidden
@@ -4659,7 +4703,7 @@ function UploadButton(props: { busy: boolean; label: string; onFiles: (files: Fi
           event.target.value = "";
         }}
       />
-    </label>
+    </>
   );
 }
 
@@ -4834,8 +4878,8 @@ function LoginState(props: {
               </button>
             </form>
             <div className="login-links">
-              <Link to="/company">Forgot Password?</Link>
-              <Link to="/pricing">Request Demo Access</Link>
+              <Link to={supportPagePath}>Forgot Password?</Link>
+              <Link to={supportPagePath}>Request Demo Access</Link>
             </div>
           </div>
         </main>
@@ -5035,7 +5079,7 @@ function RegisterState(props: {
             </form>
             <div className="login-links">
               <Link to="/login">Already have an account? Log in</Link>
-              <Link to="/company">Need help activating?</Link>
+              <Link to={supportPagePath}>Need help activating?</Link>
             </div>
           </div>
         </main>
@@ -5232,7 +5276,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
           {" | "}
           <Link to="/cookies">Cookies</Link>
           {" | "}
-          <a href="mailto:hello@exdox.co.uk?subject=Security%20request">Security</a>
+          <Link to={supportPagePath}>Security</Link>
         </span>
       </footer>
     </div>
@@ -5897,6 +5941,30 @@ function CompanySection() {
           <p>Business admins get the full control surface, employees can still submit directly, and the active organisation context stays visible across the workspace.</p>
         </Link>
       </div>
+      <div className="section-heading" id="support">
+        <div>
+          <p className="section-kicker">Support</p>
+          <h2>Access, billing and security contact points in one place</h2>
+        </div>
+        <p>
+          Use the right route for workspace activation, billing coordination, password support, and security requests
+          without bouncing between unrelated pages.
+        </p>
+      </div>
+      <div className="company-grid">
+        <a className="company-card company-link" href="mailto:hello@exdox.co.uk?subject=Access%20support">
+          <strong>Access support</strong>
+          <p>Use this for login help, password resets, invite issues, and activation support.</p>
+        </a>
+        <a className="company-card company-link" href="mailto:hello@exdox.co.uk?subject=Billing%20support">
+          <strong>Billing support</strong>
+          <p>Use this for plan questions, workspace unlock requests, and commercial billing changes.</p>
+        </a>
+        <a className="company-card company-link" href="mailto:hello@exdox.co.uk?subject=Security%20request">
+          <strong>Security contact</strong>
+          <p>Use this for security requests, responsible disclosure, and document-handling concerns.</p>
+        </a>
+      </div>
     </section>
   );
 }
@@ -5906,6 +5974,7 @@ function BillingPage(props: { session: SessionState }) {
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const lockedRoute = new URLSearchParams(useLocation().search).get("locked");
+  const lockedRouteLabel = lockedRoute ? routeTitle(lockedRoute) : null;
   const billing = props.session.billing;
 
   if (!billing) {
@@ -5929,7 +5998,7 @@ function BillingPage(props: { session: SessionState }) {
           </div>
           <span className="status-chip">{billing.status.replace(/_/g, " ")}</span>
         </div>
-        {lockedRoute ? <p className="locked-explainer">That workspace area is locked on your current plan: {lockedRoute}</p> : null}
+        {lockedRouteLabel ? <p className="locked-explainer">That workspace area is locked on your current plan: {lockedRouteLabel}</p> : null}
         <div className="billing-metrics">
           <div className="metric-card">
             <span>Billing cycle</span>
@@ -5953,7 +6022,7 @@ function BillingPage(props: { session: SessionState }) {
         <p className="muted-copy">
           {billing.stripeConfigured
             ? "Stripe checkout is ready. Choose a plan below to open checkout, or use the billing portal if this workspace already has a Stripe customer."
-            : "Online plan changes are not live in this workspace yet. Compare plans below and use the pricing route to choose the next package band."}
+            : "Online plan changes are not live in this workspace yet. Compare plans below, then use billing support to coordinate the next package band."}
         </p>
         <div className="section-actions">
           <button className="secondary-action" type="button" onClick={() => navigate("/pricing")}>
@@ -5982,7 +6051,7 @@ function BillingPage(props: { session: SessionState }) {
               Open billing portal
             </button>
           ) : (
-            <button className="secondary-action" type="button" onClick={() => navigate("/pricing")}>
+            <button className="secondary-action" type="button" onClick={() => navigate(supportPagePath)}>
               Contact billing
             </button>
           )}
@@ -6012,9 +6081,7 @@ function BillingPage(props: { session: SessionState }) {
               ) : plan.id === "enterprise" ? (
                 <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
               ) : !billing.stripeConfigured ? (
-                <button className="public-button" type="button" onClick={() => navigate("/pricing")}>
-                  Contact sales
-                </button>
+                <span className="public-button public-button-disabled" aria-disabled="true">Billing support</span>
               ) : (
                 <button
                   className="public-button"
@@ -6884,6 +6951,11 @@ function routeTitle(pathname: string) {
     .sort((left, right) => right.to.length - left.to.length)
     .find((item) => pathname.startsWith(item.to));
   return matched?.label ?? "Overview";
+}
+
+function DropboxDetailRedirect() {
+  const params = useParams();
+  return <Navigate to={params.id ? `/costs/${params.id}` : "/costs"} replace />;
 }
 
 function buildRegisterLink(
