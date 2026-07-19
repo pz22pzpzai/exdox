@@ -834,24 +834,27 @@ export function App() {
     return (
       <>
         <SeoManager pathname={location.pathname} session={session} />
-        <LoginState
-          busy={authBusy}
-          error={authError ?? error}
-          onLogin={async (email, password) => {
-            setAuthBusy(true);
-            setAuthError(null);
-            setError(null);
-            try {
-              const nextSession = await loginWithEmail({ email, password });
-              await loadWorkspace(nextSession.token, nextSession);
-            } catch (loginError) {
-              setSession(null);
-              setAuthError(loginError instanceof Error ? loginError.message : "Sign in failed.");
-            } finally {
-              setAuthBusy(false);
-            }
-          }}
-        />
+        <PublicLayout activePath="">
+          <LoginState
+            busy={authBusy}
+            error={authError ?? error}
+            embeddedInPublicShell
+            onLogin={async (email, password) => {
+              setAuthBusy(true);
+              setAuthError(null);
+              setError(null);
+              try {
+                const nextSession = await loginWithEmail({ email, password });
+                await loadWorkspace(nextSession.token, nextSession);
+              } catch (loginError) {
+                setSession(null);
+                setAuthError(loginError instanceof Error ? loginError.message : "Sign in failed.");
+              } finally {
+                setAuthBusy(false);
+              }
+            }}
+          />
+        </PublicLayout>
       </>
     );
   }
@@ -4767,6 +4770,7 @@ function SignalPill({ tone, children }: { tone: "warning" | "info"; children: st
 function LoginState(props: {
   busy: boolean;
   error: string | null;
+  embeddedInPublicShell?: boolean;
   onLogin: (email: string, password: string) => Promise<void>;
 }) {
   const [email, setEmail] = useState("");
@@ -4775,12 +4779,14 @@ function LoginState(props: {
   return (
     <div className="login-state">
       <div className="login-shell">
-        <header className="login-header">
-          <div className="login-brand">
-            <img src={brandMarkSrc} alt="" />
-            <strong>exdox</strong>
-          </div>
-        </header>
+        {props.embeddedInPublicShell ? null : (
+          <header className="login-header">
+            <div className="login-brand">
+              <img src={publicBrandMarkSrc} alt="" />
+              <strong>Exdox</strong>
+            </div>
+          </header>
+        )}
         <main className="login-main">
           <section className="login-visual" aria-label="Secure receipt capture">
             <img src="/branding/exdox-login-hero.webp" alt="Cafe owner capturing a receipt with exdox" />
@@ -4831,19 +4837,21 @@ function LoginState(props: {
             </div>
           </div>
         </main>
-        <footer className="login-footer">
-          <span>
-            <Link to="/pricing">Pricing</Link>
-            {" | "}
-            <Link to="/privacy">Privacy</Link>
-            {" | "}
-            <Link to="/cookies">Cookies</Link>
-            {" | "}
-            <Link to="/company">Company</Link>
-          </span>
-          <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
-          <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
-        </footer>
+        {props.embeddedInPublicShell ? null : (
+          <footer className="login-footer">
+            <span>
+              <Link to="/pricing">Pricing</Link>
+              {" | "}
+              <Link to="/privacy">Privacy</Link>
+              {" | "}
+              <Link to="/cookies">Cookies</Link>
+              {" | "}
+              <Link to="/company">Company</Link>
+            </span>
+            <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
+            <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
+          </footer>
+        )}
       </div>
     </div>
   );
