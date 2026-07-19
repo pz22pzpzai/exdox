@@ -4331,11 +4331,18 @@ function RequisitionPage(props: {
           type="button"
           onClick={async () => {
             if (!institutionId.trim()) {
-              setFeedback("Enter an institution id before copying it.");
+              setError("Enter an institution id before copying it.");
+              setFeedback(null);
               return;
             }
+            setError(null);
             const copied = await copyText(institutionId.trim());
-            setFeedback(copied ? "Institution id copied." : "Could not copy the institution id.");
+            if (copied) {
+              setFeedback("Institution id copied.");
+            } else {
+              setError("Could not copy the institution id.");
+              setFeedback(null);
+            }
           }}
         >
           Copy institution id
@@ -5720,7 +5727,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
             {enterpriseSelected ? null : <span>Per Month</span>}
           </div>
           <span className="slider-vat-note">
-            {enterpriseSelected ? "Enterprise pricing is not available yet." : "GBP, excludes VAT"}
+            {enterpriseSelected ? "Enterprise self-serve rollout is coming soon." : "GBP, excludes VAT"}
           </span>
           <div className="slider-capacity-copy">
             <strong>{selectedStep.documents.toLocaleString()}</strong>
@@ -5838,7 +5845,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
             <p>{plan.trialLabel}</p>
             <p>
               {plan.id === "enterprise"
-                ? "Private rollout pricing"
+                ? "Custom rollout via sales"
                 : plan.monthlyPrice != null
                   ? `${currency(billingCycle === "annual" ? plan.annualMonthlyPrice ?? plan.monthlyPrice : plan.monthlyPrice)} per month`
                   : "Custom pricing"}
