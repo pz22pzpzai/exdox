@@ -918,12 +918,20 @@ export function App() {
                 }));
 
                 try {
-                  await uploadDocuments(session.token, workspaceContext, files);
+                  const uploadResult = await uploadDocuments(session.token, workspaceContext, files);
                   const refreshed = await listReceipts(session.token, workspaceContext);
                   setStore((current) => ({
                     ...current,
                     [targetKey]: refreshed,
                   }));
+                  if (uploadResult.failed.length) {
+                    const failedSummary = uploadResult.failed.map((item) => item.fileName).join(", ");
+                    setError(
+                      uploadResult.uploaded.length
+                        ? `Uploaded ${uploadResult.uploaded.length} of ${files.length} files. Failed: ${failedSummary}.`
+                        : `None of the selected files finished uploading. Failed: ${failedSummary}.`,
+                    );
+                  }
                 } catch (uploadError) {
                   setStore((current) => ({
                     ...current,

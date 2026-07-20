@@ -362,8 +362,11 @@ export async function uploadDocuments(
   token: string,
   workspaceContext: "cost" | "sales" | "vault",
   files: File[],
-): Promise<void> {
-  await Promise.all(
+): Promise<{
+  uploaded: string[];
+  failed: Array<{ fileName: string; message: string }>;
+}> {
+  const results = await Promise.all(
     files.map(async (file) => {
       const formData = new FormData();
       formData.set("file", file);
@@ -393,10 +396,27 @@ export async function uploadDocuments(
         : null;
 
       if (!response.ok) {
-        throw new Error(payload?.message || `Upload failed for ${file.name}`);
+        return {
+          ok: false as const,
+          fileName: file.name,
+          message: payload?.message || `Upload failed for ${file.name}`,
+        };
       }
+
+      return {
+        ok: true as const,
+        fileName: file.name,
+      };
     }),
   );
+
+  return {
+    uploaded: results.filter((result) => result.ok).map((result) => result.fileName),
+    failed: results.filter((result) => !result.ok).map((result) => ({
+      fileName: result.fileName,
+      message: result.message,
+    })),
+  };
 }
 
 async function apiFetch<T = Record<string, never>>(
