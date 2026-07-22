@@ -2775,6 +2775,7 @@ function DocumentWorkspacePage(props: {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedClaimId, setSelectedClaimId] = useState("");
+  const [imageZoomOpen, setImageZoomOpen] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -2812,8 +2813,10 @@ function DocumentWorkspacePage(props: {
   const isVaultRecord = props.mode === "vault";
   const receiptPublished = receipt.status === "Published";
   const claimAttachmentAllowed = receipt.paymentMethod === "cash_personal";
+  const previewAsImage = canPreviewReceiptAsImage(receipt);
 
   return (
+    <>
     <div className="workspace-split">
       <section className="panel viewer-panel">
         <div className="panel-heading">
@@ -2822,6 +2825,11 @@ function DocumentWorkspacePage(props: {
             <span>{receipt.sourceFilename}</span>
             {assetUrl ? (
               <>
+                {previewAsImage ? (
+                  <button className="secondary-action" type="button" onClick={() => setImageZoomOpen(true)}>
+                    Zoom image
+                  </button>
+                ) : null}
                 <a className="secondary-action link-action" href={assetUrl} target="_blank" rel="noreferrer">
                   Open source file
                 </a>
@@ -2833,7 +2841,18 @@ function DocumentWorkspacePage(props: {
           </div>
         </div>
         {assetUrl ? (
-          <iframe className="document-frame" src={assetUrl} title={receipt.sourceFilename} />
+          previewAsImage ? (
+            <button
+              className="document-image-frame"
+              type="button"
+              onClick={() => setImageZoomOpen(true)}
+              aria-label={`Open larger preview for ${receipt.sourceFilename}`}
+            >
+              <img className="document-image" src={assetUrl} alt={receipt.sourceFilename} />
+            </button>
+          ) : (
+            <iframe className="document-frame" src={assetUrl} title={receipt.sourceFilename} />
+          )
         ) : (
           <div className="document-placeholder">
             <img className="placeholder-logo" src={brandMarkSrc} alt="exdox preview placeholder" />
@@ -2856,14 +2875,6 @@ function DocumentWorkspacePage(props: {
             <span>
               This document matches {duplicateGroup.records.length - 1} other {duplicateGroup.workspaceLabel.toLowerCase()} upload
               {duplicateGroup.records.length - 1 === 1 ? "" : "s"} with the same supplier, gross amount, and date.
-            </span>
-          </section>
-        ) : null}
-        {isLowConfidence(receipt) ? (
-          <section className="signal-banner info">
-            <strong>Low extraction confidence.</strong>
-            <span>
-              This document scored below the normal confidence threshold, so totals, tax, and coding fields should be checked before publish.
             </span>
           </section>
         ) : null}
@@ -3008,20 +3019,12 @@ function DocumentWorkspacePage(props: {
           </div>
           <div className="summary-list">
             <div>
-              <strong>Confidence</strong>
-              <span>{formatConfidence(receipt.confidenceScore, receipt.confidenceSource)}</span>
-            </div>
-            <div>
               <strong>Subtotal</strong>
               <span>{currency(receipt.subtotalAmount ?? receipt.netAmount ?? 0)}</span>
             </div>
             <div>
               <strong>Total tax</strong>
               <span>{currency(receipt.totalTaxAmount ?? receipt.vatAmount ?? 0)}</span>
-            </div>
-            <div>
-              <strong>Extractor</strong>
-              <span>{receipt.extractionProvider && receipt.extractionModel ? `${receipt.extractionProvider} / ${receipt.extractionModel}` : "Not available"}</span>
             </div>
           </div>
         </section>
@@ -3238,6 +3241,23 @@ function DocumentWorkspacePage(props: {
         </div>
       </section>
     </div>
+    {assetUrl && previewAsImage && imageZoomOpen ? (
+      <div className="image-zoom-overlay" role="dialog" aria-modal="true" aria-label="Receipt image preview">
+        <button className="image-zoom-backdrop" type="button" aria-label="Close image preview" onClick={() => setImageZoomOpen(false)} />
+        <div className="image-zoom-panel">
+          <div className="toolbar">
+            <strong>{receipt.sourceFilename}</strong>
+            <button className="secondary-action" type="button" onClick={() => setImageZoomOpen(false)}>
+              Close
+            </button>
+          </div>
+          <div className="image-zoom-stage">
+            <img className="image-zoom-image" src={assetUrl} alt={receipt.sourceFilename} />
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }
 
@@ -7026,16 +7046,12 @@ function documentTypeLabel(documentType: ReceiptRecord["documentType"]) {
   return "Unknown";
 }
 
-function formatConfidence(
-  confidenceScore: ReceiptRecord["confidenceScore"],
-  confidenceSource: ReceiptRecord["confidenceSource"],
-) {
-  if (confidenceScore === null || confidenceScore === undefined) {
-    return "Not available";
+function canPreviewReceiptAsImage(receipt: Pick<ReceiptRecord, "sourceMimeType" | "sourceFilename">) {
+  if (receipt.sourceMimeType.toLowerCase().startsWith("image/")) {
+    return true;
   }
 
-  const percentage = `${Math.round(confidenceScore * 100)}%`;
-  return confidenceSource && confidenceSource !== "unavailable" ? `${percentage} (${confidenceSource})` : percentage;
+  return /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(receipt.sourceFilename);
 }
 
 function toWebsiteInviteLink(inviteLink: string) {
