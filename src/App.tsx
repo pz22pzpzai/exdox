@@ -1291,6 +1291,7 @@ function DashboardShell(props: {
                       title="Costs Inbox"
                       records={props.store.costs}
                       basePath="/costs"
+                      settings={props.store.settings}
                       uploadBusy={uploadBusy}
                       onUpload={(files) => props.onUpload("cost", files)}
                     />
@@ -1305,6 +1306,7 @@ function DashboardShell(props: {
                       mode="cost"
                       fallbackRecords={props.store.costs}
                       claims={props.store.claims}
+                      settings={props.store.settings}
                       onSave={props.onReceiptSave}
                       onDelete={props.onReceiptDelete}
                       onAttachToClaim={props.onAttachReceiptToClaim}
@@ -1321,6 +1323,7 @@ function DashboardShell(props: {
                       title="Sales Inbox"
                       records={props.store.sales}
                       basePath="/sales"
+                      settings={props.store.settings}
                       uploadBusy={uploadBusy}
                       onUpload={(files) => props.onUpload("sales", files)}
                     />
@@ -1335,6 +1338,7 @@ function DashboardShell(props: {
                       mode="sales"
                       fallbackRecords={props.store.sales}
                       claims={props.store.claims}
+                      settings={props.store.settings}
                       onSave={props.onReceiptSave}
                       onDelete={props.onReceiptDelete}
                       onAttachToClaim={props.onAttachReceiptToClaim}
@@ -1351,6 +1355,7 @@ function DashboardShell(props: {
                       title="Document Vault"
                       records={props.store.vault}
                       basePath="/vault"
+                      settings={props.store.settings}
                       uploadBusy={uploadBusy}
                       onUpload={(files) => props.onUpload("vault", files)}
                     />
@@ -1365,6 +1370,7 @@ function DashboardShell(props: {
                       mode="vault"
                       fallbackRecords={props.store.vault}
                       claims={props.store.claims}
+                      settings={props.store.settings}
                       onSave={props.onReceiptSave}
                       onDelete={props.onReceiptDelete}
                       onAttachToClaim={props.onAttachReceiptToClaim}
@@ -1379,7 +1385,7 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route
                   path="/claims/:id"
-                  element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} loadClaim={props.loadClaim} />}
+                  element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} loadClaim={props.loadClaim} settings={props.store.settings} />}
                 />
               ) : null}
               <Route path="/dropbox" element={<Navigate to="/costs" replace />} />
@@ -1435,6 +1441,7 @@ function DashboardShell(props: {
                 element={
                   <EmployeeDropboxPage
                     receipts={props.store.costs}
+                    settings={props.store.settings}
                     onUpload={props.onUpload}
                     uploadBusy={uploadBusy}
                   />
@@ -1446,7 +1453,7 @@ function DashboardShell(props: {
               />
               <Route
                 path="/claims/:id"
-                element={<ClaimDetailPage loadClaim={props.loadClaim} onStatusChange={props.onClaimStatusChange} employeeMode />}
+                element={<ClaimDetailPage loadClaim={props.loadClaim} onStatusChange={props.onClaimStatusChange} settings={props.store.settings} employeeMode />}
               />
               <Route
                 path="/dropbox/:id"
@@ -1455,6 +1462,7 @@ function DashboardShell(props: {
                     mode="cost"
                     fallbackRecords={props.store.costs}
                     claims={props.store.claims}
+                    settings={props.store.settings}
                     onSave={props.onReceiptSave}
                     onDelete={props.onReceiptDelete}
                     onAttachToClaim={props.onAttachReceiptToClaim}
@@ -2494,12 +2502,14 @@ function InboxPage({
   title,
   records,
   basePath,
+  settings,
   uploadBusy,
   onUpload,
 }: {
   title: string;
   records: ReceiptRecord[];
   basePath: "/costs" | "/sales" | "/vault";
+  settings: OrganisationSettings | null;
   uploadBusy: boolean;
   onUpload: (files: File[]) => Promise<void>;
 }) {
@@ -2513,6 +2523,7 @@ function InboxPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
   const navigate = useNavigate();
+  const vatTrackingEnabled = isVatTrackingEnabled(settings);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -2643,7 +2654,7 @@ function InboxPage({
             onClick={() => {
               downloadCsv(
                 `${basePath.replace("/", "") || "inbox"}-${new Date().toISOString().slice(0, 10)}.csv`,
-                buildInboxExportRows(filtered),
+                buildInboxExportRows(filtered, settings),
               );
               setFeedback("Inbox CSV downloaded.");
             }}
@@ -2692,9 +2703,9 @@ function InboxPage({
                   <th>Receipt Date</th>
                   <th>Supplier Name</th>
                   <th>Category</th>
-                  <th>Net Amount</th>
-                  <th>VAT Amount</th>
-                  <th>Gross Total</th>
+                  {vatTrackingEnabled ? <th>Net Amount</th> : null}
+                  {vatTrackingEnabled ? <th>VAT Amount</th> : null}
+                  <th>{vatTrackingEnabled ? "Gross Total" : "Total"}</th>
                   <th>Source</th>
                 </tr>
               )}
@@ -2729,8 +2740,8 @@ function InboxPage({
                       <td>{record.invoiceDate ?? "Pending"}</td>
                       <td>{record.vendorName ?? "Unknown supplier"}</td>
                       <td>{record.category ?? "Uncategorised"}</td>
-                      <td>{currency(record.netAmount)}</td>
-                      <td>{currency(record.vatAmount)}</td>
+                      {vatTrackingEnabled ? <td>{currency(record.netAmount)}</td> : null}
+                      {vatTrackingEnabled ? <td>{currency(record.vatAmount)}</td> : null}
                       <td>{currency(record.totalAmount)}</td>
                       <td>{sourceLabel(record.receiptSource)}</td>
                     </>
@@ -2760,6 +2771,7 @@ function DocumentWorkspacePage(props: {
   mode: "cost" | "sales" | "vault";
   fallbackRecords: ReceiptRecord[];
   claims: ClaimRecord[];
+  settings?: OrganisationSettings | null;
   onSave: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onAttachToClaim: (receiptId: number, claimId: number) => Promise<ReceiptRecord>;
@@ -2811,6 +2823,7 @@ function DocumentWorkspacePage(props: {
   const taxBreakdown = receipt.taxBreakdown ?? [];
   const notes = receipt.notes ?? [];
   const isVaultRecord = props.mode === "vault";
+  const vatTrackingEnabled = isVatTrackingEnabled(props.settings ?? null);
   const receiptPublished = receipt.status === "Published";
   const claimAttachmentAllowed = receipt.paymentMethod === "cash_personal";
   const previewAsImage = canPreviewReceiptAsImage(receipt);
@@ -2925,27 +2938,41 @@ function DocumentWorkspacePage(props: {
           {!isVaultRecord ? (
             <>
               <label>
-                Net Amount
-                <input type="number" value={receipt.netAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, netAmount: Number(event.target.value) })} />
+                {vatTrackingEnabled ? "Net Amount" : "Total"}
+                <input
+                  type="number"
+                  value={vatTrackingEnabled ? (receipt.netAmount ?? 0) : (receipt.totalAmount ?? 0)}
+                  onChange={(event) =>
+                    setReceipt(
+                      vatTrackingEnabled
+                        ? { ...receipt, netAmount: Number(event.target.value) }
+                        : { ...receipt, totalAmount: Number(event.target.value) },
+                    )
+                  }
+                />
               </label>
-              <label>
-                VAT Amount
-                <input type="number" value={receipt.vatAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, vatAmount: Number(event.target.value) })} />
-              </label>
-              <label>
-                Gross Total
-                <input type="number" value={receipt.totalAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, totalAmount: Number(event.target.value) })} />
-              </label>
-              <label>
-                HMRC Tax Tier
-                <select value={receipt.taxRateApplied ?? "No VAT"} onChange={(event) => setReceipt({ ...receipt, taxRateApplied: event.target.value })}>
-                  {taxRates.map((rate) => (
-                    <option key={rate} value={rate}>
-                      {rate}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {vatTrackingEnabled ? (
+                <>
+                  <label>
+                    VAT Amount
+                    <input type="number" value={receipt.vatAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, vatAmount: Number(event.target.value) })} />
+                  </label>
+                  <label>
+                    Gross Total
+                    <input type="number" value={receipt.totalAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, totalAmount: Number(event.target.value) })} />
+                  </label>
+                  <label>
+                    HMRC Tax Tier
+                    <select value={receipt.taxRateApplied ?? "No VAT"} onChange={(event) => setReceipt({ ...receipt, taxRateApplied: event.target.value })}>
+                      {taxRates.map((rate) => (
+                        <option key={rate} value={rate}>
+                          {rate}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              ) : null}
               <label>
                 Payment Method
                 <select value={receipt.paymentMethod} onChange={(event) => setReceipt({ ...receipt, paymentMethod: event.target.value as ReceiptRecord["paymentMethod"] })}>
@@ -3008,7 +3035,7 @@ function DocumentWorkspacePage(props: {
                   onClick={() => {
                     downloadCsv(
                       `document-${receipt.id}-summary-${new Date().toISOString().slice(0, 10)}.csv`,
-                      buildReceiptSummaryExportRows(receipt),
+                      buildReceiptSummaryExportRows(receipt, props.settings ?? null),
                     );
                     setFeedback("Receipt summary CSV downloaded.");
                   }}
@@ -3020,11 +3047,11 @@ function DocumentWorkspacePage(props: {
           <div className="summary-list">
             <div>
               <strong>Subtotal</strong>
-              <span>{currency(receipt.subtotalAmount ?? receipt.netAmount ?? 0)}</span>
+              <span>{currency(vatTrackingEnabled ? (receipt.subtotalAmount ?? receipt.netAmount ?? 0) : (receipt.totalAmount ?? 0))}</span>
             </div>
             <div>
-              <strong>Total tax</strong>
-              <span>{currency(receipt.totalTaxAmount ?? receipt.vatAmount ?? 0)}</span>
+              <strong>{vatTrackingEnabled ? "Total tax" : "VAT"}</strong>
+              <span>{currency(vatTrackingEnabled ? (receipt.totalTaxAmount ?? receipt.vatAmount ?? 0) : 0)}</span>
             </div>
           </div>
         </section>
@@ -3429,6 +3456,7 @@ function ClaimsPage({
 
 function EmployeeDropboxPage(props: {
   receipts: ReceiptRecord[];
+  settings: OrganisationSettings | null;
   onUpload: (workspaceContext: "cost" | "sales" | "vault", files: File[]) => Promise<void>;
   uploadBusy: boolean;
 }) {
@@ -3439,6 +3467,7 @@ function EmployeeDropboxPage(props: {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
   const [feedback, setFeedback] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
+  const vatTrackingEnabled = isVatTrackingEnabled(props.settings);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -3509,7 +3538,7 @@ function EmployeeDropboxPage(props: {
             onClick={() => {
               downloadCsv(
                 `employee-dropbox-${new Date().toISOString().slice(0, 10)}.csv`,
-                buildInboxExportRows(filteredReceipts),
+                buildInboxExportRows(filteredReceipts, props.settings),
               );
               setFeedback("Employee drop box CSV downloaded.");
             }}
@@ -3533,9 +3562,9 @@ function EmployeeDropboxPage(props: {
                 <th>Status</th>
                 <th>Upload Date</th>
                 <th>Supplier</th>
-                <th>Net</th>
-                <th>VAT</th>
-                <th>Gross</th>
+                {vatTrackingEnabled ? <th>Net</th> : null}
+                {vatTrackingEnabled ? <th>VAT</th> : null}
+                <th>{vatTrackingEnabled ? "Gross" : "Total"}</th>
               </tr>
             </thead>
             <tbody>
@@ -3544,8 +3573,8 @@ function EmployeeDropboxPage(props: {
                   <td><StatusPill status={receipt.status} /></td>
                   <td>{receipt.createdAt.slice(0, 10)}</td>
                   <td>{receipt.vendorName ?? receipt.sourceFilename}</td>
-                  <td>{currency(receipt.netAmount)}</td>
-                  <td>{currency(receipt.vatAmount)}</td>
+                  {vatTrackingEnabled ? <td>{currency(receipt.netAmount)}</td> : null}
+                  {vatTrackingEnabled ? <td>{currency(receipt.vatAmount)}</td> : null}
                   <td>{currency(receipt.totalAmount)}</td>
                 </tr>
               ))}
@@ -3565,6 +3594,7 @@ function EmployeeDropboxPage(props: {
 function ClaimDetailPage(props: {
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
   onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
+  settings?: OrganisationSettings | null;
   employeeMode?: boolean;
 }) {
   const { id } = useParams();
@@ -3640,7 +3670,7 @@ function ClaimDetailPage(props: {
             onClick={() => {
               downloadCsv(
                 `claim-${claim.id}-${new Date().toISOString().slice(0, 10)}.csv`,
-                buildClaimExportRows(claim, filteredReceipts),
+                buildClaimExportRows(claim, filteredReceipts, props.settings ?? null),
               );
               setFeedback("Claim CSV downloaded.");
               setError(null);
@@ -6583,7 +6613,35 @@ function compareReconciliationLines(
   return compareIsoDate(rightDate, leftDate);
 }
 
-function buildInboxExportRows(records: ReceiptRecord[]) {
+function isVatTrackingEnabled(settings: OrganisationSettings | null | undefined) {
+  return settings?.isVatRegistered !== false;
+}
+
+function normalizeReceiptForVatExport(receipt: ReceiptRecord, settings: OrganisationSettings | null | undefined) {
+  if (isVatTrackingEnabled(settings)) {
+    return {
+      netAmount: receipt.netAmount,
+      vatAmount: receipt.vatAmount,
+      totalAmount: receipt.totalAmount,
+      subtotalAmount: receipt.subtotalAmount ?? receipt.netAmount ?? null,
+      totalTaxAmount: receipt.totalTaxAmount ?? receipt.vatAmount ?? null,
+      taxRateApplied: receipt.taxRateApplied ?? "",
+    };
+  }
+
+  const grossTotal = receipt.totalAmount ?? ((receipt.netAmount ?? 0) + (receipt.vatAmount ?? 0));
+
+  return {
+    netAmount: grossTotal,
+    vatAmount: 0,
+    totalAmount: grossTotal,
+    subtotalAmount: grossTotal,
+    totalTaxAmount: 0,
+    taxRateApplied: "No VAT",
+  };
+}
+
+function buildInboxExportRows(records: ReceiptRecord[], settings?: OrganisationSettings | null) {
   return records.map((record) => ({
     id: String(record.id),
     workspace: record.workspaceContext,
@@ -6596,12 +6654,12 @@ function buildInboxExportRows(records: ReceiptRecord[]) {
     invoice_date: record.invoiceDate ?? "",
     due_date: record.dueDate ?? "",
     invoice_number: record.invoiceNumber ?? "",
-    net_amount: formatExportNumber(record.netAmount),
-    vat_amount: formatExportNumber(record.vatAmount),
-    total_amount: formatExportNumber(record.totalAmount),
-    subtotal_amount: formatExportNumber(record.subtotalAmount ?? null),
-    total_tax_amount: formatExportNumber(record.totalTaxAmount ?? null),
-    tax_rate: record.taxRateApplied ?? "",
+    net_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).netAmount),
+    vat_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).vatAmount),
+    total_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).totalAmount),
+    subtotal_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).subtotalAmount),
+    total_tax_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).totalTaxAmount),
+    tax_rate: normalizeReceiptForVatExport(record, settings).taxRateApplied,
     confidence_score: record.confidenceScore == null ? "" : String(record.confidenceScore),
     needs_review: record.needsReview ? "yes" : "no",
     description: record.description ?? "",
@@ -6611,7 +6669,8 @@ function buildInboxExportRows(records: ReceiptRecord[]) {
   }));
 }
 
-function buildReceiptSummaryExportRows(receipt: ReceiptRecord) {
+function buildReceiptSummaryExportRows(receipt: ReceiptRecord, settings?: OrganisationSettings | null) {
+  const normalized = normalizeReceiptForVatExport(receipt, settings);
   return [{
     receipt_id: String(receipt.id),
     workspace: receipt.workspaceContext,
@@ -6624,12 +6683,12 @@ function buildReceiptSummaryExportRows(receipt: ReceiptRecord) {
     invoice_date: receipt.invoiceDate ?? "",
     due_date: receipt.dueDate ?? "",
     invoice_number: receipt.invoiceNumber ?? "",
-    net_amount: formatExportNumber(receipt.netAmount),
-    vat_amount: formatExportNumber(receipt.vatAmount),
-    total_amount: formatExportNumber(receipt.totalAmount),
-    subtotal_amount: formatExportNumber(receipt.subtotalAmount ?? null),
-    total_tax_amount: formatExportNumber(receipt.totalTaxAmount ?? null),
-    tax_rate: receipt.taxRateApplied ?? "",
+    net_amount: formatExportNumber(normalized.netAmount),
+    vat_amount: formatExportNumber(normalized.vatAmount),
+    total_amount: formatExportNumber(normalized.totalAmount),
+    subtotal_amount: formatExportNumber(normalized.subtotalAmount),
+    total_tax_amount: formatExportNumber(normalized.totalTaxAmount),
+    tax_rate: normalized.taxRateApplied,
     payment_method: receipt.paymentMethod,
     confidence_score: receipt.confidenceScore == null ? "" : String(receipt.confidenceScore),
     confidence_source: receipt.confidenceSource ?? "",
@@ -6665,7 +6724,7 @@ function buildTaxBreakdownExportRows(receipt: ReceiptRecord) {
   }));
 }
 
-function buildClaimExportRows(claim: ClaimRecord, receipts: ReceiptRecord[]) {
+function buildClaimExportRows(claim: ClaimRecord, receipts: ReceiptRecord[], settings?: OrganisationSettings | null) {
   return receipts.map((receipt) => ({
     claim_id: String(claim.id),
     claim_name: claim.name,
@@ -6677,9 +6736,9 @@ function buildClaimExportRows(claim: ClaimRecord, receipts: ReceiptRecord[]) {
     receipt_status: receipt.status,
     category: receipt.category ?? "",
     invoice_date: receipt.invoiceDate ?? "",
-    total_amount: formatExportNumber(receipt.totalAmount),
-    net_amount: formatExportNumber(receipt.netAmount),
-    vat_amount: formatExportNumber(receipt.vatAmount),
+    total_amount: formatExportNumber(normalizeReceiptForVatExport(receipt, settings).totalAmount),
+    net_amount: formatExportNumber(normalizeReceiptForVatExport(receipt, settings).netAmount),
+    vat_amount: formatExportNumber(normalizeReceiptForVatExport(receipt, settings).vatAmount),
     source: sourceLabel(receipt.receiptSource),
     document_type: documentTypeLabel(receipt.documentType),
     created_at: receipt.createdAt,
