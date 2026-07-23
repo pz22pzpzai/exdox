@@ -14,6 +14,7 @@ import {
   attachReceiptToClaim,
   clearStoredSession,
   completeBankCallback,
+  confirmEmailWithToken,
   createBillingCheckoutSession,
   createBillingPortalSession,
   createClaim,
@@ -595,6 +596,14 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
         robots: "noindex,nofollow",
       };
     }
+    if (normalizedPath === "/confirm-email") {
+      return {
+        title: "Confirm Email | Exdox",
+        description: "Confirm your Exdox email address and activate your workspace.",
+        canonicalPath: normalizedPath,
+        robots: "noindex,nofollow",
+      };
+    }
     return {
       title: "Exdox | Expense Management Software for Receipt Capture, VAT Review and Claims",
       description:
@@ -806,7 +815,41 @@ export function App() {
     );
   }
 
+  if (session && location.pathname === "/confirm-email") {
+    return <Navigate to={getDefaultRoute(session)} replace />;
+  }
+
   if (!session && location.pathname !== "/login") {
+    if (location.pathname === "/confirm-email") {
+      return (
+        <>
+          <SeoManager pathname={location.pathname} session={session} />
+          <PublicLayout activePath="">
+            <ConfirmEmailState
+              busy={authBusy}
+              error={authError ?? error}
+              email={new URLSearchParams(location.search).get("email") ?? ""}
+              token={new URLSearchParams(location.search).get("token") ?? ""}
+              embeddedInPublicShell
+              onConfirm={async (email, token) => {
+                setAuthBusy(true);
+                setAuthError(null);
+                setError(null);
+                try {
+                  const nextSession = await confirmEmailWithToken({ email, token });
+                  await loadWorkspace(nextSession.token, nextSession);
+                } catch (confirmError) {
+                  setSession(null);
+                  setAuthError(confirmError instanceof Error ? confirmError.message : "Email confirmation failed.");
+                } finally {
+                  setAuthBusy(false);
+                }
+              }}
+            />
+          </PublicLayout>
+        </>
+      );
+    }
     if (location.pathname === "/register") {
       return (
         <>
@@ -827,11 +870,16 @@ export function App() {
                 setAuthError(null);
                 setError(null);
                 try {
-                  const nextSession = await registerWithEmail(input);
-                  await loadWorkspace(nextSession.token, nextSession);
+                  const result = await registerWithEmail(input);
+                  if (result.kind === "confirmed") {
+                    await loadWorkspace(result.session.token, result.session);
+                    return null;
+                  }
+                  return result.message;
                 } catch (registerError) {
                   setSession(null);
                   setAuthError(registerError instanceof Error ? registerError.message : "Registration failed.");
+                  return null;
                 } finally {
                   setAuthBusy(false);
                 }
@@ -4988,12 +5036,13 @@ function RegisterState(props: {
     billingCycle?: BillingCycle;
     monthlyDocumentLimit?: number;
     includedUsers?: number;
-  }) => Promise<void>;
+  }) => Promise<string | null>;
 }) {
   const [fullName, setFullName] = useState("");
   const [organisationName, setOrganisationName] = useState("");
   const [email, setEmail] = useState(props.initialEmail);
   const [password, setPassword] = useState("");
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [billingPlan, setBillingPlan] = useState<BillingPlanId>(normalizeRegisterPlan(props.initialPlan));
   const [billingCycle, setBillingCycle] = useState<BillingCycle>(props.initialBillingCycle);
   const invitedFlow = Boolean(props.inviteToken);
@@ -5002,6 +5051,12 @@ function RegisterState(props: {
   useEffect(() => {
     setEmail(props.initialEmail);
   }, [props.initialEmail]);
+
+  useEffect(() => {
+    if (props.error) {
+      setSuccessMessage(null);
+    }
+  }, [props.error]);
 
   useEffect(() => {
     setBillingPlan(normalizeRegisterPlan(props.initialPlan));
@@ -5045,7 +5100,7 @@ function RegisterState(props: {
               className="login-form"
               onSubmit={async (event) => {
                 event.preventDefault();
-                await props.onRegister({
+                const nextSuccessMessage = await props.onRegister({
                   email,
                   password,
                   fullName: fullName || undefined,
@@ -5068,6 +5123,10 @@ function RegisterState(props: {
                       ? undefined
                       : props.initialIncludedUsers,
                 });
+                if (nextSuccessMessage) {
+                  setSuccessMessage(nextSuccessMessage);
+                  setPassword("");
+                }
               }}
             >
               <label>
@@ -5137,6 +5196,7 @@ function RegisterState(props: {
                   required
                 />
               </label>
+              {successMessage ? <div className="success-banner">{successMessage}</div> : null}
               {props.error ? <div className="error-banner">{props.error}</div> : null}
               <button className="primary-action login-submit" type="submit" disabled={props.busy}>
                 {props.busy ? "Creating access..." : invitedFlow ? "Activate access" : "Create workspace"}
@@ -5163,6 +5223,64 @@ function RegisterState(props: {
             <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
           </footer>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmEmailState(props: {
+  busy: boolean;
+  error: string | null;
+  email: string;
+  token: string;
+  embeddedInPublicShell?: boolean;
+  onConfirm: (email: string, token: string) => Promise<void>;
+}) {
+  const [attempted, setAttempted] = useState(false);
+
+  useEffect(() => {
+    if (attempted || !props.email || !props.token) {
+      return;
+    }
+
+    setAttempted(true);
+    void props.onConfirm(props.email, props.token);
+  }, [attempted, props]);
+
+  const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
+  const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
+  const missingDetails = !props.email || !props.token;
+
+  return (
+    <div className={loginStateClassName}>
+      <div className={loginShellClassName}>
+        <main className="login-main">
+          <section className="login-visual" aria-label="Email confirmation and workspace activation">
+            <img src="/branding/exdox-platform-hero.png" alt="Exdox finance workspace with synced receipt controls" />
+            <span className="login-callout callout-snap">Email Confirmation</span>
+            <span className="login-callout callout-hmrc">Workspace Activation</span>
+            <span className="login-callout callout-total">Secure Sign-Up</span>
+          </section>
+          <div className="login-panel">
+            <h1>Confirm Your Email</h1>
+            <p>
+              {missingDetails
+                ? "This confirmation link is incomplete. Open the latest email from Exdox or register again."
+                : props.busy
+                  ? "Activating your workspace now."
+                  : props.error
+                    ? "We could not confirm this email link."
+                    : "Your email is confirmed. Taking you into Exdox now."}
+            </p>
+            {missingDetails ? <div className="error-banner">This confirmation link is missing the required details.</div> : null}
+            {!missingDetails && props.busy ? <div className="success-banner">Checking your confirmation link...</div> : null}
+            {!missingDetails && props.error ? <div className="error-banner">{props.error}</div> : null}
+            <div className="login-links">
+              <Link to="/login">Go to login</Link>
+              <Link to="/register">Create another workspace</Link>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );

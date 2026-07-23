@@ -132,7 +132,7 @@ export type InviteResult = {
   email: string;
   fullName: string | null;
   role: "Business_Admin" | "Standard_Employee";
-  status: "pending_invite" | "active";
+  status: "pending_invite" | "pending_confirmation" | "active";
   organisationId: number;
   inviteLink: string;
   delivery?: {
@@ -147,7 +147,7 @@ export type SessionUser = {
   email: string;
   fullName: string | null;
   role: "Business_Admin" | "Standard_Employee";
-  status: "pending_invite" | "active";
+  status: "pending_invite" | "pending_confirmation" | "active";
 };
 
 export type SessionState = {

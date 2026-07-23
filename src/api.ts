@@ -24,10 +24,28 @@ type AuthResponse =
       success: true;
       token: string;
       user: SessionState["user"];
+      requiresEmailConfirmation?: false;
+    }
+  | {
+      success: true;
+      requiresEmailConfirmation: true;
+      message: string;
+      user: SessionState["user"];
     }
   | {
       success: false;
       message?: string;
+    };
+
+export type RegisterResult =
+  | {
+      kind: "confirmed";
+      session: SessionState;
+    }
+  | {
+      kind: "pending_confirmation";
+      message: string;
+      email: string;
     };
 
 export function loadStoredSession(): SessionState | null {
@@ -75,6 +93,10 @@ export async function loginWithEmail(input: { email: string; password: string })
     throw new Error(("message" in payload && payload.message) || "Authentication failed.");
   }
 
+  if (!("token" in payload)) {
+    throw new Error(("message" in payload && payload.message) || "Authentication failed.");
+  }
+
   let hydrated: SessionState;
   try {
     const session = await fetchSession(payload.token);
@@ -97,7 +119,7 @@ export async function registerWithEmail(input: {
   billingCycle?: BillingCycle;
   monthlyDocumentLimit?: number;
   includedUsers?: number;
-}): Promise<SessionState> {
+}): Promise<RegisterResult> {
   const response = await fetch(`${API_BASE_URL}/register`, {
     method: "POST",
     headers: {
@@ -109,6 +131,47 @@ export async function registerWithEmail(input: {
   const payload = (await response.json()) as AuthResponse;
   if (!response.ok || !payload.success) {
     throw new Error(("message" in payload && payload.message) || "Registration failed.");
+  }
+
+  if ("requiresEmailConfirmation" in payload && payload.requiresEmailConfirmation) {
+    return {
+      kind: "pending_confirmation",
+      message: payload.message,
+      email: payload.user.email,
+    };
+  }
+
+  if (!("token" in payload)) {
+    throw new Error("Registration completed without an authentication token.");
+  }
+
+  let hydrated: SessionState;
+  try {
+    const session = await fetchSession(payload.token);
+    hydrated = { ...session, token: payload.token };
+  } catch {
+    hydrated = buildFallbackSession(payload.token, payload.user);
+  }
+
+  saveStoredSession(hydrated);
+  return {
+    kind: "confirmed",
+    session: hydrated,
+  };
+}
+
+export async function confirmEmailWithToken(input: { email: string; token: string }): Promise<SessionState> {
+  const response = await fetch(`${API_BASE_URL}/confirm-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  const payload = (await response.json()) as AuthResponse;
+  if (!response.ok || !payload.success || !("token" in payload)) {
+    throw new Error(("message" in payload && payload.message) || "Email confirmation failed.");
   }
 
   let hydrated: SessionState;
