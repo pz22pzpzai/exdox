@@ -6319,7 +6319,7 @@ function currency(value: number | null) {
 }
 
 function priceWithVat(value: number) {
-  return Number((value * 1.44).toFixed(2));
+  return Number(value.toFixed(2));
 }
 
 function sumGross(records: ReceiptRecord[]) {
