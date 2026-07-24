@@ -1002,11 +1002,13 @@ export function App() {
               }}
               onReceiptDelete={async (id) => {
                 await deleteReceipt(session.token, id);
+                const refreshedClaims = await listClaims(session.token);
                 setStore((current) => ({
                   ...current,
                   costs: current.costs.filter((item) => item.id !== id),
                   sales: current.sales.filter((item) => item.id !== id),
                   vault: current.vault.filter((item) => item.id !== id),
+                  claims: refreshedClaims,
                 }));
               }}
               onAttachReceiptToClaim={async (receiptId, claimId) => {
@@ -3376,6 +3378,7 @@ function ClaimsPage({
   }, [location.search]);
 
   const filteredClaims = claims
+    .filter((claim) => claim.documentCount > 0)
     .filter((claim) => statusFilter === "all" || claim.status === statusFilter)
     .sort((left, right) => compareClaimRecords(left, right, sortOrder));
 
