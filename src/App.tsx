@@ -5047,6 +5047,7 @@ function RegisterState(props: {
   const billingCycle: BillingCycle = "monthly";
   const invitedFlow = Boolean(props.inviteToken);
   const enterpriseSignupRequested = !invitedFlow && props.initialPlan === "enterprise";
+  const selfServeSignupBlocked = !invitedFlow;
 
   useEffect(() => {
     setEmail(props.initialEmail);
@@ -5088,17 +5089,25 @@ function RegisterState(props: {
             <p>
               {invitedFlow
                 ? "Set a password to activate access to the invited workspace."
-                : "Create a business workspace for receipt capture, document review, claims, and finance control."}
+                : "Online sign-up is temporarily paused until card checkout is live."}
             </p>
             {enterpriseSignupRequested ? (
               <div className="success-banner">
                 Enterprise rollout is coming soon. Capture, Control, and Operations can be started online today.
               </div>
             ) : null}
+            {selfServeSignupBlocked ? (
+              <div className="error-banner">
+                Self-serve workspace creation is temporarily unavailable while Stripe card checkout is being connected. Invited users can still activate access from their email link.
+              </div>
+            ) : null}
             <form
               className="login-form"
               onSubmit={async (event) => {
                 event.preventDefault();
+                if (selfServeSignupBlocked) {
+                  return;
+                }
                 const nextSuccessMessage = await props.onRegister({
                   email,
                   password,
@@ -5187,8 +5196,8 @@ function RegisterState(props: {
               </label>
               {successMessage ? <div className="success-banner">{successMessage}</div> : null}
               {props.error ? <div className="error-banner">{props.error}</div> : null}
-              <button className="primary-action login-submit" type="submit" disabled={props.busy}>
-                {props.busy ? "Creating access..." : invitedFlow ? "Activate access" : "Create workspace"}
+              <button className="primary-action login-submit" type="submit" disabled={props.busy || selfServeSignupBlocked}>
+                {props.busy ? "Creating access..." : invitedFlow ? "Activate access" : "Card checkout coming soon"}
               </button>
             </form>
             <div className="login-links">
