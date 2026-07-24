@@ -2785,7 +2785,7 @@ function InboxPage({
                           {isLowConfidence(record) ? <SignalPill tone="info">Low confidence</SignalPill> : null}
                         </div>
                       </td>
-                      <td>{record.invoiceDate ?? "Date pending"}</td>
+                      <td>{receiptDocumentDate(record)}</td>
                       <td>{record.vendorName ?? "Unknown supplier"}</td>
                       <td>{record.category ?? "Uncategorised"}</td>
                       {vatTrackingEnabled ? <td>{currency(record.netAmount)}</td> : null}
@@ -2964,7 +2964,7 @@ function DocumentWorkspacePage(props: {
           </label>
           <label>
             Receipt Date
-            <input type="date" value={receipt.invoiceDate ?? ""} onChange={(event) => setReceipt({ ...receipt, invoiceDate: event.target.value })} />
+            <input type="date" value={receiptDocumentDate(receipt)} onChange={(event) => setReceipt({ ...receipt, invoiceDate: event.target.value })} />
           </label>
           <label>
             Invoice Number
@@ -3805,7 +3805,7 @@ function ClaimDetailPage(props: {
                 <tr key={receipt.id}>
                   <td>{receipt.sourceFilename}</td>
                   <td>{receipt.vendorName ?? "Unknown supplier"}</td>
-                  <td>{receipt.invoiceDate ?? "Date pending"}</td>
+                  <td>{receiptDocumentDate(receipt)}</td>
                   <td>{receipt.category ?? "Uncategorised"}</td>
                   <td>{currency(receiptGrossAmount(receipt))}</td>
                   <td>
@@ -4301,7 +4301,7 @@ function ReconciliationPage(props: {
                         {line.candidates.map((candidate) => (
                           <tr key={candidate.id}>
                             <td>{candidate.vendorName ?? "Unknown supplier"}</td>
-                            <td>{candidate.invoiceDate ?? "Date pending"}</td>
+                            <td>{receiptDocumentDate(candidate)}</td>
                             <td>{currency(receiptGrossAmount(candidate))}</td>
                             <td>{sourceLabel(candidate.receiptSource)}</td>
                             <td>{candidate.matchScore.toFixed(2)}</td>
@@ -6336,6 +6336,10 @@ function receiptGrossAmount(
   return record.totalAmount ?? 0;
 }
 
+function receiptDocumentDate(record: { invoiceDate?: string | null; createdAt?: string | null }) {
+  return record.invoiceDate ?? record.createdAt?.slice(0, 10) ?? "";
+}
+
 type DuplicateInsightGroup = {
   key: string;
   records: ReceiptRecord[];
@@ -6775,7 +6779,7 @@ function buildInboxExportRows(records: ReceiptRecord[], settings?: OrganisationS
     supplier: record.vendorName ?? "",
     category: record.category ?? "",
     customer: record.customer ?? "",
-    invoice_date: record.invoiceDate ?? "",
+    invoice_date: receiptDocumentDate(record),
     due_date: record.dueDate ?? "",
     invoice_number: record.invoiceNumber ?? "",
     net_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).netAmount),
@@ -6804,7 +6808,7 @@ function buildReceiptSummaryExportRows(receipt: ReceiptRecord, settings?: Organi
     supplier: receipt.vendorName ?? "",
     category: receipt.category ?? "",
     customer: receipt.customer ?? "",
-    invoice_date: receipt.invoiceDate ?? "",
+    invoice_date: receiptDocumentDate(receipt),
     due_date: receipt.dueDate ?? "",
     invoice_number: receipt.invoiceNumber ?? "",
     net_amount: formatExportNumber(normalized.netAmount),
@@ -6859,7 +6863,7 @@ function buildClaimExportRows(claim: ClaimRecord, receipts: ReceiptRecord[], set
     source_filename: receipt.sourceFilename,
     receipt_status: receipt.status,
     category: receipt.category ?? "",
-    invoice_date: receipt.invoiceDate ?? "",
+    invoice_date: receiptDocumentDate(receipt),
     total_amount: formatExportNumber(normalizeReceiptForVatExport(receipt, settings).totalAmount),
     net_amount: formatExportNumber(normalizeReceiptForVatExport(receipt, settings).netAmount),
     vat_amount: formatExportNumber(normalizeReceiptForVatExport(receipt, settings).vatAmount),
@@ -6936,7 +6940,7 @@ function buildReconciliationExportRows(lines: ReconciliationLine[]) {
       matched_receipt_id: line.matchedReceiptId == null ? "" : String(line.matchedReceiptId),
       candidate_receipt_id: candidate ? String(candidate.id) : "",
       candidate_supplier: candidate?.vendorName ?? "",
-      candidate_invoice_date: candidate?.invoiceDate ?? "",
+      candidate_invoice_date: candidate ? receiptDocumentDate(candidate) : "",
       candidate_total_amount: formatExportNumber(candidate?.totalAmount ?? null),
       candidate_source: candidate ? sourceLabel(candidate.receiptSource) : "",
       candidate_status: candidate?.status ?? "",
