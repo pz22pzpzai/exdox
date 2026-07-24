@@ -4906,18 +4906,29 @@ function MetricCard(props: { label: string; value: string; detail: string; onCli
   );
 }
 
-function StatusPill({ status }: { status: "pending" | "approved" | "paid" | "rejected" | InboxStatus }) {
-  const normalized =
-    status === "pending"
-      ? "Review"
-      : status === "approved"
-        ? "Ready"
-        : status === "paid"
-          ? "Published"
-          : status === "rejected"
-            ? "Processing"
-            : status;
-  return <span className={`status-pill status-${normalized.toLowerCase()}`}>{status}</span>;
+function normalizeInboxStatusLabel(status: "pending" | "approved" | "paid" | "rejected" | InboxStatus | string | null | undefined) {
+  const trimmed = typeof status === "string" ? status.trim() : "";
+  if (trimmed === "pending") {
+    return "Review";
+  }
+  if (trimmed === "approved") {
+    return "Ready";
+  }
+  if (trimmed === "paid") {
+    return "Published";
+  }
+  if (trimmed === "rejected") {
+    return "Processing";
+  }
+  if (trimmed === "Processing" || trimmed === "Ready" || trimmed === "Review" || trimmed === "Published") {
+    return trimmed;
+  }
+  return "Review";
+}
+
+function StatusPill({ status }: { status: "pending" | "approved" | "paid" | "rejected" | InboxStatus | string }) {
+  const normalized = normalizeInboxStatusLabel(status);
+  return <span className={`status-pill status-${normalized.toLowerCase()}`}>{normalized}</span>;
 }
 
 function SignalPill({ tone, children }: { tone: "warning" | "info"; children: string }) {
