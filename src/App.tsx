@@ -5044,7 +5044,7 @@ function RegisterState(props: {
   const [password, setPassword] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [billingPlan, setBillingPlan] = useState<BillingPlanId>(normalizeRegisterPlan(props.initialPlan));
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>(props.initialBillingCycle);
+  const billingCycle: BillingCycle = "monthly";
   const invitedFlow = Boolean(props.inviteToken);
   const enterpriseSignupRequested = !invitedFlow && props.initialPlan === "enterprise";
 
@@ -5060,8 +5060,7 @@ function RegisterState(props: {
 
   useEffect(() => {
     setBillingPlan(normalizeRegisterPlan(props.initialPlan));
-    setBillingCycle(props.initialBillingCycle);
-  }, [props.initialBillingCycle, props.initialPlan]);
+  }, [props.initialPlan]);
 
   const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
   const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
@@ -5159,16 +5158,6 @@ function RegisterState(props: {
                           {plan.name}
                         </option>
                       ))}
-                    </select>
-                  </label>
-                  <label>
-                    Billing Cycle
-                    <select
-                      value={billingCycle}
-                      onChange={(event) => setBillingCycle(event.target.value as BillingCycle)}
-                    >
-                      <option value="monthly">Monthly</option>
-                      <option value="annual">Annual</option>
                     </select>
                   </label>
                 </>
@@ -5846,16 +5835,12 @@ function PricingTeaserSection() {
 }
 
 function PricingSection({ session = null }: { session?: SessionState | null }) {
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>(normalizePublicBillingCycle(params.get("billingCycle")));
   const [sliderIndex, setSliderIndex] = useState(0);
   const signedIn = Boolean(session);
   const selectedStep = pricingSliderSteps[sliderIndex] ?? pricingSliderSteps[0]!;
   const selectedPlan = pricingPlans.find((plan) => plan.id === selectedStep.planId) ?? pricingPlans[0]!;
   const enterpriseSelected = selectedStep.planId === "enterprise";
-  const selectedPrice =
-    billingCycle === "annual" ? selectedStep.annualMonthlyPrice : selectedStep.monthlyPrice;
+  const selectedPrice = selectedStep.monthlyPrice;
   const selectedCredits = [
     { label: "Sheets of Bank Statement Extraction", value: selectedStep.bankStatementCredits },
     { label: "Documents with Line Item Extraction", value: selectedStep.lineItemCredits },
@@ -5881,23 +5866,6 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
       </div>
       <div className="slider-pricing-layout">
         <article className="slider-pricing-card">
-          <div className="billing-cycle-toggle" role="group" aria-label="Billing cycle">
-            <button
-              className={billingCycle === "monthly" ? "active" : ""}
-              type="button"
-              onClick={() => setBillingCycle("monthly")}
-            >
-              Monthly
-            </button>
-            <button
-              className={billingCycle === "annual" ? "active" : ""}
-              type="button"
-              onClick={() => setBillingCycle("annual")}
-            >
-              Annual
-            </button>
-          </div>
-          <span className="slider-save-note">Save 20% with annual billing</span>
           <div className="slider-price-row">
             <strong>{enterpriseSelected ? "Coming soon" : currency(selectedPrice)}</strong>
             {enterpriseSelected ? null : <span>Per Month</span>}
@@ -5945,7 +5913,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
           ) : (
             <Link
               className="public-button"
-              to={buildRegisterLink(selectedStep.planId, billingCycle === "annual" ? "annual" : "monthly", {
+              to={buildRegisterLink(selectedStep.planId, "monthly", {
                 monthlyDocumentLimit:
                   selectedStep.planId === "capture" ||
                   selectedStep.planId === "control" ||
@@ -6023,7 +5991,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               {plan.id === "enterprise"
                 ? "Custom rollout via sales"
                 : plan.monthlyPrice != null
-                  ? `${currency(billingCycle === "annual" ? plan.annualMonthlyPrice ?? plan.monthlyPrice : plan.monthlyPrice)} per month`
+                  ? `${currency(plan.monthlyPrice)} per month`
                   : "Custom pricing"}
             </p>
             <p>{plan.monthlyDocuments}</p>
@@ -6042,7 +6010,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
             ) : (
               <Link
                 className="public-button"
-                to={buildRegisterLink(plan.id, billingCycle, {
+                to={buildRegisterLink(plan.id, "monthly", {
                   monthlyDocumentLimit: plan.monthlyDocumentLimit,
                   includedUsers: plan.includedUsers,
                 })}
@@ -6059,8 +6027,8 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
           <p>Plans are structured around access depth, team capacity, and monthly document volume.</p>
         </article>
         <article className="company-card">
-          <strong>Monthly or annual</strong>
-          <p>Teams can choose the billing cycle that fits procurement and budgeting requirements.</p>
+          <strong>Monthly pricing</strong>
+          <p>Self-serve plans are currently shown as monthly pricing while annual billing stays hidden.</p>
         </article>
         <article className="company-card">
           <strong>Scales with volume</strong>
@@ -7206,7 +7174,7 @@ function normalizeRegisterPlan(planId: BillingPlanId): BillingPlanId {
 }
 
 function normalizePublicBillingCycle(value: string | null): BillingCycle {
-  return value === "annual" ? "annual" : "monthly";
+  return "monthly";
 }
 
 function isBillingStatusActive(status: NonNullable<SessionState["billing"]>["status"]) {
