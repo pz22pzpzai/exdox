@@ -5813,7 +5813,7 @@ function PricingTeaserSection() {
           >
             <span>{plan.name}</span>
             <strong>{plan.tagline}</strong>
-            <p>{plan.monthlyPrice != null ? `${currency(plan.monthlyPrice)} per month` : "Custom pricing"}</p>
+            <p>{plan.monthlyPrice != null ? `${currency(priceWithVat(plan.monthlyPrice))} per month` : "Custom pricing"}</p>
             <p>{plan.monthlyDocuments} · {plan.users}</p>
           </Link>
         ))}
@@ -5840,7 +5840,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
   const selectedStep = pricingSliderSteps[sliderIndex] ?? pricingSliderSteps[0]!;
   const selectedPlan = pricingPlans.find((plan) => plan.id === selectedStep.planId) ?? pricingPlans[0]!;
   const enterpriseSelected = selectedStep.planId === "enterprise";
-  const selectedPrice = selectedStep.monthlyPrice;
+  const selectedPrice = priceWithVat(selectedStep.monthlyPrice);
   const selectedCredits = [
     { label: "Sheets of Bank Statement Extraction", value: selectedStep.bankStatementCredits },
     { label: "Documents with Line Item Extraction", value: selectedStep.lineItemCredits },
@@ -5871,7 +5871,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
             {enterpriseSelected ? null : <span>Per Month</span>}
           </div>
           <span className="slider-vat-note">
-            {enterpriseSelected ? "Enterprise self-serve rollout is coming soon." : "GBP, excludes VAT"}
+            {enterpriseSelected ? "Enterprise self-serve rollout is coming soon." : "GBP, includes VAT"}
           </span>
           <div className="slider-capacity-copy">
             <strong>{selectedStep.documents.toLocaleString()}</strong>
@@ -5991,7 +5991,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               {plan.id === "enterprise"
                 ? "Custom rollout via sales"
                 : plan.monthlyPrice != null
-                  ? `${currency(plan.monthlyPrice)} per month`
+                  ? `${currency(priceWithVat(plan.monthlyPrice))} per month`
                   : "Custom pricing"}
             </p>
             <p>{plan.monthlyDocuments}</p>
@@ -6217,7 +6217,7 @@ function BillingPage(props: { session: SessionState }) {
             <article key={plan.id} className={`pricing-card${active ? " current-plan" : ""}`}>
               <span>{plan.name}</span>
               <strong>{plan.tagline}</strong>
-              <p>{plan.id === "enterprise" ? "Private rollout pricing" : plan.monthlyPrice != null ? `${currency(plan.monthlyPrice)} per month` : "Custom pricing"}</p>
+              <p>{plan.id === "enterprise" ? "Private rollout pricing" : plan.monthlyPrice != null ? `${currency(priceWithVat(plan.monthlyPrice))} per month` : "Custom pricing"}</p>
               <p>{plan.monthlyDocuments}</p>
               <p>{plan.users}</p>
               <ul className="pricing-feature-list">
@@ -6293,6 +6293,10 @@ function currency(value: number | null) {
     style: "currency",
     currency: "GBP",
   }).format(value ?? 0);
+}
+
+function priceWithVat(value: number) {
+  return Number((value * 1.2).toFixed(2));
 }
 
 function sumGross(records: ReceiptRecord[]) {
