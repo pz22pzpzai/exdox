@@ -1897,7 +1897,7 @@ function DataHealthPage({ store }: { store: AppStore }) {
                   <button className="summary-action-row" type="button" onClick={() => navigate(recordRoute(record))}>
                     <strong>{record.vendorName?.trim() || record.sourceFilename}</strong>
                     <span>
-                      {workspaceLabel(record.workspaceContext)} | {currency(record.totalAmount ?? 0)} | {record.createdAt.slice(0, 10)} | {reasons.join(", ")}
+                      {workspaceLabel(record.workspaceContext)} | {currency(receiptGrossAmount(record))} | {record.createdAt.slice(0, 10)} | {reasons.join(", ")}
                     </span>
                   </button>
                 </li>
@@ -2785,12 +2785,12 @@ function InboxPage({
                           {isLowConfidence(record) ? <SignalPill tone="info">Low confidence</SignalPill> : null}
                         </div>
                       </td>
-                      <td>{record.invoiceDate ?? "Pending"}</td>
+                      <td>{record.invoiceDate ?? "Date pending"}</td>
                       <td>{record.vendorName ?? "Unknown supplier"}</td>
                       <td>{record.category ?? "Uncategorised"}</td>
                       {vatTrackingEnabled ? <td>{currency(record.netAmount)}</td> : null}
                       {vatTrackingEnabled ? <td>{currency(record.vatAmount)}</td> : null}
-                      <td>{currency(record.totalAmount)}</td>
+                      <td>{currency(receiptGrossAmount(record))}</td>
                       <td>{sourceLabel(record.receiptSource)}</td>
                     </>
                   )}
@@ -3007,7 +3007,7 @@ function DocumentWorkspacePage(props: {
                   </label>
                   <label>
                     Gross Total
-                    <input type="number" value={receipt.totalAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, totalAmount: Number(event.target.value) })} />
+                    <input type="number" value={receiptGrossAmount(receipt)} onChange={(event) => setReceipt({ ...receipt, totalAmount: Number(event.target.value) })} />
                   </label>
                   <label>
                     HMRC Tax Tier
@@ -3623,7 +3623,7 @@ function EmployeeDropboxPage(props: {
                   <td>{receipt.vendorName ?? receipt.sourceFilename}</td>
                   {vatTrackingEnabled ? <td>{currency(receipt.netAmount)}</td> : null}
                   {vatTrackingEnabled ? <td>{currency(receipt.vatAmount)}</td> : null}
-                  <td>{currency(receipt.totalAmount)}</td>
+                  <td>{currency(receiptGrossAmount(receipt))}</td>
                 </tr>
               ))}
             </tbody>
@@ -3805,9 +3805,9 @@ function ClaimDetailPage(props: {
                 <tr key={receipt.id}>
                   <td>{receipt.sourceFilename}</td>
                   <td>{receipt.vendorName ?? "Unknown supplier"}</td>
-                  <td>{receipt.invoiceDate ?? "Pending"}</td>
+                  <td>{receipt.invoiceDate ?? "Date pending"}</td>
                   <td>{receipt.category ?? "Uncategorised"}</td>
-                  <td>{currency(receipt.totalAmount)}</td>
+                  <td>{currency(receiptGrossAmount(receipt))}</td>
                   <td>
                     <div className="table-action-cell">
                       <StatusPill status={receipt.status} />
@@ -4301,8 +4301,8 @@ function ReconciliationPage(props: {
                         {line.candidates.map((candidate) => (
                           <tr key={candidate.id}>
                             <td>{candidate.vendorName ?? "Unknown supplier"}</td>
-                            <td>{candidate.invoiceDate ?? "Pending"}</td>
-                            <td>{currency(candidate.totalAmount)}</td>
+                            <td>{candidate.invoiceDate ?? "Date pending"}</td>
+                            <td>{currency(receiptGrossAmount(candidate))}</td>
                             <td>{sourceLabel(candidate.receiptSource)}</td>
                             <td>{candidate.matchScore.toFixed(2)}</td>
                             <td>
@@ -6309,7 +6309,31 @@ function priceWithVat(value: number) {
 }
 
 function sumGross(records: ReceiptRecord[]) {
-  return records.reduce((sum, record) => sum + (record.totalAmount ?? 0), 0);
+  return records.reduce((sum, record) => sum + receiptGrossAmount(record), 0);
+}
+
+function hasMeaningfulAmount(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) && Math.abs(value) > 0.0001;
+}
+
+function receiptGrossAmount(
+  record: {
+    totalAmount: number | null;
+    subtotalAmount?: number | null;
+    totalTaxAmount?: number | null;
+    netAmount?: number | null;
+    vatAmount?: number | null;
+  },
+) {
+  if (hasMeaningfulAmount(record.totalAmount)) {
+    return record.totalAmount ?? 0;
+  }
+  const subtotal = record.subtotalAmount ?? record.netAmount;
+  const tax = record.totalTaxAmount ?? record.vatAmount;
+  if (hasMeaningfulAmount(subtotal) || hasMeaningfulAmount(tax)) {
+    return Number(((subtotal ?? 0) + (tax ?? 0)).toFixed(2));
+  }
+  return record.totalAmount ?? 0;
 }
 
 type DuplicateInsightGroup = {
@@ -6496,8 +6520,9 @@ function duplicateCandidateKeys(record: ReceiptRecord) {
 }
 
 function duplicateCandidateAmount(record: ReceiptRecord) {
-  const hasComponentAmount = record.netAmount != null || record.vatAmount != null;
-  const gross = record.totalAmount ?? (hasComponentAmount ? (record.netAmount ?? 0) + (record.vatAmount ?? 0) : null);
+  const hasComponentAmount =
+    record.netAmount != null || record.vatAmount != null || record.subtotalAmount != null || record.totalTaxAmount != null;
+  const gross = hasComponentAmount || record.totalAmount != null ? receiptGrossAmount(record) : null;
   return gross === null || !Number.isFinite(gross) || gross <= 0 ? null : gross;
 }
 
@@ -6647,10 +6672,10 @@ function compareInboxRecords(
     return compareIsoDate(left.createdAt, right.createdAt);
   }
   if (sortOrder === "highest_total") {
-    return (right.totalAmount ?? -1) - (left.totalAmount ?? -1) || compareIsoDate(right.createdAt, left.createdAt);
+    return receiptGrossAmount(right) - receiptGrossAmount(left) || compareIsoDate(right.createdAt, left.createdAt);
   }
   if (sortOrder === "lowest_total") {
-    return (left.totalAmount ?? Number.MAX_SAFE_INTEGER) - (right.totalAmount ?? Number.MAX_SAFE_INTEGER) || compareIsoDate(right.createdAt, left.createdAt);
+    return receiptGrossAmount(left) - receiptGrossAmount(right) || compareIsoDate(right.createdAt, left.createdAt);
   }
   if (sortOrder === "lowest_confidence") {
     return (left.confidenceScore ?? Number.MAX_SAFE_INTEGER) - (right.confidenceScore ?? Number.MAX_SAFE_INTEGER) || compareIsoDate(right.createdAt, left.createdAt);
@@ -6721,14 +6746,14 @@ function normalizeReceiptForVatExport(receipt: ReceiptRecord, settings: Organisa
     return {
       netAmount: receipt.netAmount,
       vatAmount: receipt.vatAmount,
-      totalAmount: receipt.totalAmount,
+      totalAmount: receiptGrossAmount(receipt),
       subtotalAmount: receipt.subtotalAmount ?? receipt.netAmount ?? null,
       totalTaxAmount: receipt.totalTaxAmount ?? receipt.vatAmount ?? null,
       taxRateApplied: receipt.taxRateApplied ?? "",
     };
   }
 
-  const grossTotal = receipt.totalAmount ?? ((receipt.netAmount ?? 0) + (receipt.vatAmount ?? 0));
+  const grossTotal = receiptGrossAmount(receipt);
 
   return {
     netAmount: grossTotal,
