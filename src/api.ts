@@ -188,6 +188,13 @@ export async function confirmEmailWithToken(input: { email: string; token: strin
   return hydrated;
 }
 
+export async function resendConfirmationEmail(input: { email: string }): Promise<{ message: string; delivered?: boolean }> {
+  return apiFetch("/confirm-email/resend", "", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function fetchSession(token: string): Promise<SessionState> {
   const response = await apiFetch<{
     user: SessionState["user"];
@@ -492,7 +499,7 @@ async function apiFetch<T = Record<string, never>>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...(init?.headers ?? {}),
     },

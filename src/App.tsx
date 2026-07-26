@@ -31,6 +31,7 @@ import {
   listRules,
   loginWithEmail,
   loadStoredSession,
+  resendConfirmationEmail,
   registerWithEmail,
   matchReconciliation,
   removeRule,
@@ -879,6 +880,10 @@ export function App() {
                 } finally {
                   setAuthBusy(false);
                 }
+              }}
+              onResend={async (email) => {
+                const response = await resendConfirmationEmail({ email });
+                return response.message;
               }}
             />
           </PublicLayout>
@@ -4983,6 +4988,7 @@ function LoginState(props: {
   const [password, setPassword] = useState("");
   const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
   const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
+  const needsEmailConfirmation = (props.error ?? "").toLowerCase().includes("confirm your email");
 
   return (
     <div className={loginStateClassName}>
@@ -5042,6 +5048,7 @@ function LoginState(props: {
             <div className="login-links">
               <Link to={supportPagePath}>Forgot Password?</Link>
               <Link to="/register">Register</Link>
+              {needsEmailConfirmation ? <Link to={`/confirm-email?email=${encodeURIComponent(email)}`}>Resend confirmation email</Link> : null}
             </div>
           </div>
         </main>
@@ -5299,8 +5306,11 @@ function ConfirmEmailState(props: {
   token: string;
   embeddedInPublicShell?: boolean;
   onConfirm: (email: string, token: string) => Promise<void>;
+  onResend: (email: string) => Promise<string>;
 }) {
   const [attempted, setAttempted] = useState(false);
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (attempted || !props.email || !props.token) {
@@ -5314,6 +5324,7 @@ function ConfirmEmailState(props: {
   const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
   const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
   const missingDetails = !props.email || !props.token;
+  const canResend = Boolean(props.email);
 
   return (
     <div className={loginStateClassName}>
@@ -5339,9 +5350,29 @@ function ConfirmEmailState(props: {
             {missingDetails ? <div className="error-banner">This confirmation link is missing the required details.</div> : null}
             {!missingDetails && props.busy ? <div className="success-banner">Checking your confirmation link...</div> : null}
             {!missingDetails && props.error ? <div className="error-banner">{props.error}</div> : null}
+            {resendMessage ? <div className="success-banner">{resendMessage}</div> : null}
             <div className="login-links">
               <Link to="/login">Go to login</Link>
               <Link to="/register">Create another workspace</Link>
+              {canResend ? (
+                <button
+                  className="link-button"
+                  type="button"
+                  disabled={resendBusy}
+                  onClick={async () => {
+                    setResendBusy(true);
+                    setResendMessage(null);
+                    try {
+                      const message = await props.onResend(props.email);
+                      setResendMessage(message);
+                    } finally {
+                      setResendBusy(false);
+                    }
+                  }}
+                >
+                  {resendBusy ? "Sending confirmation..." : "Send a new confirmation email"}
+                </button>
+              ) : null}
             </div>
           </div>
         </main>
@@ -6590,6 +6621,8 @@ function BillingPage(props: { session: SessionState }) {
   const lockedRouteLabel = lockedRoute ? routeTitle(lockedRoute) : null;
   const billing = props.session.billing;
   const trialSetupRequired = billing?.status === "inactive" && !billing?.stripeSubscriptionId;
+  const trialDateLabel = billing?.trialEndsAt ? formatLongDate(billing.trialEndsAt) : null;
+  const cancellationDateLabel = billing?.cancellationScheduledFor ? formatLongDate(billing.cancellationScheduledFor) : null;
 
   if (!billing) {
     return (
@@ -6619,6 +6652,14 @@ function BillingPage(props: { session: SessionState }) {
             <strong>{billing.billingCycle}</strong>
           </div>
           <div className="metric-card">
+            <span>{billing.status === "trialing" ? "Trial ends" : "Next billing event"}</span>
+            <strong>{trialSetupRequired ? "Awaiting card setup" : trialDateLabel ?? "Managed in portal"}</strong>
+          </div>
+          <div className="metric-card">
+            <span>Cancellation</span>
+            <strong>{cancellationDateLabel ?? "Not scheduled"}</strong>
+          </div>
+          <div className="metric-card">
             <span>Documents this month</span>
             <strong>
               {billing.monthlyDocumentUsage}
@@ -6634,7 +6675,9 @@ function BillingPage(props: { session: SessionState }) {
           </div>
         </div>
         <p className="muted-copy">
-          {billing.stripeConfigured
+          {cancellationDateLabel
+            ? `Cancellation is scheduled for ${cancellationDateLabel}. Access remains available until then unless the billing portal shows a different end date.`
+            : billing.stripeConfigured
             ? trialSetupRequired
               ? "Add your card to begin the free trial. The first charge is taken automatically when the trial ends unless you cancel before renewal."
               : "Use Billing to manage your subscription, update payment details, or cancel before the next renewal."
@@ -6784,6 +6827,18 @@ function currency(value: number | null) {
     style: "currency",
     currency: "GBP",
   }).format(value ?? 0);
+}
+
+function formatLongDate(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function priceWithVat(value: number) {
