@@ -1854,7 +1854,7 @@ function DataHealthPage({ store }: { store: AppStore }) {
           onClick={() => navigate(firstInboxRouteForDuplicateReview(store))}
         />
         <MetricCard
-          label="Coding gaps"
+          label="Missing details"
           value={String(codingGapRecords.length)}
           detail="Documents missing category or supplier"
           onClick={() => navigate(codingGapRecords[0] ? recordRoute(codingGapRecords[0]) : "/costs")}
@@ -1879,7 +1879,7 @@ function DataHealthPage({ store }: { store: AppStore }) {
             {codingGapRecords.length ? (
               <li>
                 <button className="summary-action-row" type="button" onClick={() => navigate(recordRoute(codingGapRecords[0]!))}>
-                  <strong>{codingGapRecords.length} document{codingGapRecords.length === 1 ? "" : "s"} missing coding detail</strong>
+                  <strong>{codingGapRecords.length} document{codingGapRecords.length === 1 ? "" : "s"} missing supplier or category</strong>
                   <span>Open the next document missing a supplier or category and complete the review fields.</span>
                 </button>
               </li>
@@ -6483,7 +6483,7 @@ function buildAttentionRecords(
       if (duplicateGroupsByReceiptId.has(record.id)) reasons.push("Possible duplicate");
       if (isLowConfidence(record)) reasons.push("Low confidence");
       if (record.needsReview) reasons.push("Needs review");
-      if (needsCodingAttention(record)) reasons.push("Coding gap");
+      if (needsCodingAttention(record)) reasons.push("Missing details");
       return { record, reasons };
     })
     .filter(({ reasons }) => reasons.length > 0)
