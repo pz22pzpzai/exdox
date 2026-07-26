@@ -2164,6 +2164,35 @@ input {
   gap: 28px;
 }
 
+.faq-search-shell {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.faq-search-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.faq-search-input {
+  min-height: 50px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  font: inherit;
+  color: var(--ink);
+  box-shadow: 0 4px 12px rgba(17, 28, 56, 0.05);
+}
+
+.faq-search-meta {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .faq-group-heading {
   margin-bottom: 16px;
 }
@@ -2214,6 +2243,10 @@ input {
 
 .faq-answer p {
   margin: 0;
+}
+
+.faq-empty-state {
+  padding: 20px 22px;
 }
 
 .document-card {

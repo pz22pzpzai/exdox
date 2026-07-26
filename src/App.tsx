@@ -5571,10 +5571,11 @@ function PublicPageIntro(props: { kicker: string; title: string; body: string })
 }
 
 function FaqSection() {
+  const [query, setQuery] = useState("");
   const faqGroups: Array<{
     title: string;
     description: string;
-    items: Array<{ question: string; answer: React.ReactNode }>;
+    items: Array<{ question: string; answer: React.ReactNode; searchText: string }>;
   }> = [
     {
       title: "Getting started",
@@ -5589,6 +5590,7 @@ function FaqSection() {
               still need help.
             </p>
           ),
+          searchText: "log in login sign in email password workspace email access support",
         },
         {
           question: "What is the difference between the app and the website?",
@@ -5598,6 +5600,7 @@ function FaqSection() {
               workspace for finance tasks such as inbox review, supplier rules, claims, vault access, reconciliation, and settings.
             </p>
           ),
+          searchText: "difference between app and website mobile capture review workspace supplier rules claims vault reconciliation settings",
         },
         {
           question: "Why do I see Costs, Sales, Vault, Claims, or other areas?",
@@ -5607,6 +5610,7 @@ function FaqSection() {
               for outbound sales evidence, Vault is for stored source documents, and Claims is for employee expense claims.
             </p>
           ),
+          searchText: "costs sales vault claims different work areas organisation receipts purchase documents outbound sales employee expense claims",
         },
       ],
     },
@@ -5622,6 +5626,7 @@ function FaqSection() {
               and extract. Once it appears in the list, tap it to review the values if needed.
             </p>
           ),
+          searchText: "upload receipt app camera bottom navigation take photo choose file review values",
         },
         {
           question: "What does 'To be reviewed' mean?",
@@ -5631,6 +5636,7 @@ function FaqSection() {
               amount, category, or VAT before it is treated as complete.
             </p>
           ),
+          searchText: "to be reviewed review stage supplier date amount category vat complete",
         },
         {
           question: "Why does a merchant name show in the app before it shows on the website?",
@@ -5640,6 +5646,7 @@ function FaqSection() {
               only shows the saved cloud value, so there can be a short delay before both surfaces match.
             </p>
           ),
+          searchText: "merchant name app website stronger local supplier cloud value sync delay unknown supplier",
         },
         {
           question: "What happens if I upload the same receipt twice?",
@@ -5649,6 +5656,7 @@ function FaqSection() {
               reused. If a duplicate is blocked, it should not become a normal new record in the review queue.
             </p>
           ),
+          searchText: "duplicate upload same receipt twice file name blocked review queue",
         },
       ],
     },
@@ -5664,6 +5672,7 @@ function FaqSection() {
               open a document, check extracted values, and move work toward ready or published states.
             </p>
           ),
+          searchText: "costs inbox receipts supplier bills invoices search filter ready published states",
         },
         {
           question: "Why does a row say 'Unknown supplier'?",
@@ -5673,6 +5682,7 @@ function FaqSection() {
               cloud version has not yet caught up with a stronger supplier name seen earlier in the app.
             </p>
           ),
+          searchText: "unknown supplier blank saved supplier website record review cloud stronger supplier app",
         },
         {
           question: "What does 'Missing details' mean in Data Health?",
@@ -5682,6 +5692,7 @@ function FaqSection() {
               prompt, not a software error.
             </p>
           ),
+          searchText: "missing details data health supplier category bookkeeping review prompt software error",
         },
         {
           question: "How do I find a document quickly on the website?",
@@ -5691,6 +5702,7 @@ function FaqSection() {
               categories, notes, and related document text.
             </p>
           ),
+          searchText: "find document quickly website search status issue filters supplier names filenames categories notes",
         },
       ],
     },
@@ -5706,6 +5718,7 @@ function FaqSection() {
               when a document needs help with supplier, date, totals, tax, or category.
             </p>
           ),
+          searchText: "values wrong correct fields save review supplier date totals tax category",
         },
         {
           question: "Why is a document still processing?",
@@ -5715,6 +5728,7 @@ function FaqSection() {
               queue and check again before treating it as failed.
             </p>
           ),
+          searchText: "document still processing upload refresh queue failed pending",
         },
         {
           question: "Why can I see something in one place but not another?",
@@ -5724,6 +5738,7 @@ function FaqSection() {
               or review updates are still syncing. If it does not settle, reopen the record and check the latest saved fields.
             </p>
           ),
+          searchText: "see something in one place not another sync app website upload extraction review updates latest saved fields",
         },
         {
           question: "Where do I go for account, billing, or security help?",
@@ -5733,10 +5748,26 @@ function FaqSection() {
               and security requests so the issue reaches the right place quickly.
             </p>
           ),
+          searchText: "account billing security help support company page access support billing support security requests",
         },
       ],
     },
   ];
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredGroups = faqGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (!normalizedQuery) {
+          return true;
+        }
+        const haystack = `${group.title} ${group.description} ${item.question} ${item.searchText}`.toLowerCase();
+        return haystack.includes(normalizedQuery);
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
+  const totalMatches = filteredGroups.reduce((sum, group) => sum + group.items.length, 0);
 
   return (
     <section className="faq-band">
@@ -5748,6 +5779,25 @@ function FaqSection() {
         <p>
           This page covers the most common questions for using Exdox across the mobile app and website, including uploads,
           review queues, duplicate checks, claims, and sync behaviour.
+        </p>
+      </div>
+
+      <div className="faq-search-shell">
+        <label className="faq-search-label" htmlFor="faq-search">
+          Search the FAQs
+        </label>
+        <input
+          id="faq-search"
+          className="faq-search-input"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Try login, duplicate, unknown supplier, claims..."
+        />
+        <p className="faq-search-meta">
+          {normalizedQuery
+            ? `${totalMatches} answer${totalMatches === 1 ? "" : "s"} found for "${query.trim()}".`
+            : "Search by issue, page name, or wording from the app or website."}
         </p>
       </div>
 
@@ -5767,7 +5817,7 @@ function FaqSection() {
       </div>
 
       <div className="faq-group-list">
-        {faqGroups.map((group) => (
+        {filteredGroups.map((group) => (
           <section key={group.title} className="faq-group">
             <div className="section-heading faq-group-heading">
               <div>
@@ -5786,6 +5836,12 @@ function FaqSection() {
             </div>
           </section>
         ))}
+        {!filteredGroups.length ? (
+          <article className="company-card faq-empty-state">
+            <strong>No answers matched that search</strong>
+            <p>Try simpler terms like login, receipt, review, duplicate, billing, or supplier.</p>
+          </article>
+        ) : null}
       </div>
     </section>
   );
