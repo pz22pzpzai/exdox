@@ -418,9 +418,9 @@ const pricingSliderSteps: Array<{
   },
 ];
 
-const brandLogoSrc = "/branding/exdox-logo.png";
-const brandMarkSrc = "/branding/exdox-mark.png";
-const publicBrandMarkSrc = "/branding/exdox-mark-header-v2.png";
+const brandLogoSrc = "/branding/exdox-logo.webp";
+const brandMarkSrc = "/branding/exdox-mark.webp";
+const publicBrandMarkSrc = "/branding/exdox-mark-header-v2.webp";
 const websiteOrigin = "https://www.exdox.co.uk";
 
 type SeoConfig = {
@@ -480,11 +480,11 @@ function SeoManager({ pathname, session }: { pathname: string; session: SessionS
     updateMetaTag("property", "og:type", seo.ogType ?? "website");
     updateMetaTag("property", "og:url", `${websiteOrigin}${seo.canonicalPath}`);
     updateMetaTag("property", "og:site_name", "Exdox");
-    updateMetaTag("property", "og:image", `${websiteOrigin}/branding/exdox-platform-hero.png`);
+    updateMetaTag("property", "og:image", `${websiteOrigin}/branding/exdox-platform-hero.webp`);
     updateMetaTag("name", "twitter:card", "summary_large_image");
     updateMetaTag("name", "twitter:title", seo.title);
     updateMetaTag("name", "twitter:description", seo.description);
-    updateMetaTag("name", "twitter:image", `${websiteOrigin}/branding/exdox-platform-hero.png`);
+    updateMetaTag("name", "twitter:image", `${websiteOrigin}/branding/exdox-platform-hero.webp`);
     updateCanonicalLink(`${websiteOrigin}${seo.canonicalPath}`);
     updateStructuredData(seo.structuredData);
   }, [pathname, session]);
@@ -680,7 +680,7 @@ function buildPublicStructuredData(input: {
       "@type": "Organization",
       name: "Exdox",
       url: websiteOrigin,
-      logo: `${websiteOrigin}/branding/exdox-logo.png`,
+      logo: `${websiteOrigin}/branding/exdox-logo.webp`,
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "sales",
@@ -5133,7 +5133,7 @@ function RegisterState(props: {
         )}
         <main className="login-main">
           <section className="login-visual" aria-label="Receipt capture and finance review">
-            <img src="/branding/exdox-platform-hero.png" alt="Exdox finance workspace with synced receipt controls" />
+            <img src="/branding/exdox-platform-hero.webp" alt="Exdox finance workspace with synced receipt controls" />
             <span className="login-callout callout-snap">Invite &amp; Onboard</span>
             <span className="login-callout callout-hmrc">Web + Mobile Sync</span>
             <span className="login-callout callout-total">Receipt Review Ready</span>
@@ -5320,7 +5320,7 @@ function ConfirmEmailState(props: {
       <div className={loginShellClassName}>
         <main className="login-main">
           <section className="login-visual" aria-label="Email confirmation and workspace activation">
-            <img src="/branding/exdox-platform-hero.png" alt="Exdox finance workspace with synced receipt controls" />
+            <img src="/branding/exdox-platform-hero.webp" alt="Exdox finance workspace with synced receipt controls" />
             <span className="login-callout callout-snap">Email Confirmation</span>
             <span className="login-callout callout-hmrc">Workspace Activation</span>
             <span className="login-callout callout-total">Secure Sign-Up</span>
@@ -5472,7 +5472,7 @@ function PublicSite() {
           </div>
           <span>Card details are collected up front and the first charge is taken when the trial ends unless you cancel before renewal.</span>
         </div>
-        <img src="/branding/exdox-platform-hero.png" alt="Connected exdox accounting workspace" />
+        <img src="/branding/exdox-platform-hero.webp" alt="Connected exdox accounting workspace" />
       </section>
       <PlatformCapabilitiesSection />
       <FlowSection />
