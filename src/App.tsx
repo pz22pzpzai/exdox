@@ -131,6 +131,8 @@ const publicNavItems = [
   { to: "/company", label: "Company" },
 ] as const;
 const supportPagePath = "/company#support";
+const termsPagePath = "/terms";
+const termsVersion = "2026-07-26";
 
 const pricingPlans: Array<{
   id: BillingPlanId;
@@ -458,6 +460,7 @@ function isSignedInPublicPage(pathname: string) {
     || pathname === "/integrations"
     || pathname === "/faq"
     || pathname === "/company"
+    || pathname === "/terms"
     || pathname === "/privacy"
     || pathname === "/cookies";
 }
@@ -564,6 +567,21 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
           pageName: "FAQs",
           pageDescription:
             "Find answers for using the Exdox mobile app and website, including uploads, review queues, duplicate receipts, login issues, claims, and document sync.",
+        }),
+      };
+    }
+    if (normalizedPath === "/terms") {
+      return {
+        title: "Terms and Conditions | Exdox",
+        description:
+          "Read the Exdox Terms and Conditions for free trials, billing, cancellation, acceptable use, account access, and service responsibilities.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Terms and Conditions",
+          pageDescription:
+            "Read the Exdox Terms and Conditions for free trials, billing, cancellation, acceptable use, account access, and service responsibilities.",
         }),
       };
     }
@@ -5032,6 +5050,8 @@ function LoginState(props: {
             <span>
               <Link to="/pricing">Pricing</Link>
               {" | "}
+              <Link to={termsPagePath}>Terms</Link>
+              {" | "}
               <Link to="/privacy">Privacy</Link>
               {" | "}
               <Link to="/cookies">Cookies</Link>
@@ -5067,6 +5087,8 @@ function RegisterState(props: {
     billingCycle?: BillingCycle;
     monthlyDocumentLimit?: number;
     includedUsers?: number;
+    termsAccepted?: boolean;
+    termsVersion?: string;
   }) => Promise<string | null>;
 }) {
   const [fullName, setFullName] = useState("");
@@ -5075,10 +5097,11 @@ function RegisterState(props: {
   const [password, setPassword] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [billingPlan, setBillingPlan] = useState<BillingPlanId>(normalizeRegisterPlan(props.initialPlan));
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const billingCycle: BillingCycle = "monthly";
   const invitedFlow = Boolean(props.inviteToken);
   const enterpriseSignupRequested = !invitedFlow && props.initialPlan === "enterprise";
-  const selfServeSignupBlocked = !invitedFlow;
+  const selfServeSignupBlocked = false;
 
   useEffect(() => {
     setEmail(props.initialEmail);
@@ -5120,25 +5143,17 @@ function RegisterState(props: {
             <p>
               {invitedFlow
                 ? "Set a password to activate access to the invited workspace."
-                : "Online sign-up is temporarily paused until card checkout is live."}
+                : "Create your workspace, confirm your email, then add your card to begin the free trial."}
             </p>
             {enterpriseSignupRequested ? (
               <div className="success-banner">
                 Enterprise rollout is coming soon. Capture, Control, and Operations can be started online today.
               </div>
             ) : null}
-            {selfServeSignupBlocked ? (
-              <div className="error-banner">
-                Self-serve workspace creation is temporarily unavailable while Stripe card checkout is being connected. Invited users can still activate access from their email link.
-              </div>
-            ) : null}
             <form
               className="login-form"
               onSubmit={async (event) => {
                 event.preventDefault();
-                if (selfServeSignupBlocked) {
-                  return;
-                }
                 const nextSuccessMessage = await props.onRegister({
                   email,
                   password,
@@ -5161,6 +5176,8 @@ function RegisterState(props: {
                     !isSelfServePlanId(normalizeRegisterPlan(billingPlan))
                       ? undefined
                       : props.initialIncludedUsers,
+                  termsAccepted: invitedFlow ? undefined : acceptedTerms,
+                  termsVersion: invitedFlow ? undefined : termsVersion,
                 });
                 if (nextSuccessMessage) {
                   setSuccessMessage(nextSuccessMessage);
@@ -5225,10 +5242,28 @@ function RegisterState(props: {
                   required
                 />
               </label>
+              {!invitedFlow ? (
+                <label className="checkbox-field">
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(event) => setAcceptedTerms(event.target.checked)}
+                    required
+                  />
+                  <span>
+                    I agree to the <Link to={termsPagePath}>Terms and Conditions</Link> and understand that my card will be charged automatically when the free trial ends unless I cancel before renewal.
+                  </span>
+                </label>
+              ) : null}
+              {!invitedFlow ? (
+                <div className="muted-copy">
+                  The free trial starts after email confirmation and card setup. You can cancel from Billing before the trial converts to a paid subscription.
+                </div>
+              ) : null}
               {successMessage ? <div className="success-banner">{successMessage}</div> : null}
               {props.error ? <div className="error-banner">{props.error}</div> : null}
-              <button className="primary-action login-submit" type="submit" disabled={props.busy || selfServeSignupBlocked}>
-                {props.busy ? "Creating access..." : invitedFlow ? "Activate access" : "Card checkout coming soon"}
+              <button className="primary-action login-submit" type="submit" disabled={props.busy || (!invitedFlow && !acceptedTerms)}>
+                {props.busy ? "Creating access..." : invitedFlow ? "Activate access" : "Create workspace"}
               </button>
             </form>
             <div className="login-links">
@@ -5383,6 +5418,19 @@ function PublicSite() {
     );
   }
 
+  if (location.pathname === "/terms") {
+    return (
+      <PublicLayout activePath="">
+        <PublicPageIntro
+          kicker="Terms"
+          title="Terms and Conditions for Exdox."
+          body="These terms cover your use of Exdox, including free trials, subscription billing, cancellation rights, acceptable use, and service access."
+        />
+        <TermsSection />
+      </PublicLayout>
+    );
+  }
+
   if (location.pathname === "/privacy") {
     return (
       <PublicLayout activePath="">
@@ -5422,7 +5470,7 @@ function PublicSite() {
             <Link className="public-primary" to="/register?plan=control&billingCycle=monthly">Start Free Trial</Link>
             <Link className="secondary-inline-link" to="/pricing">See pricing structure</Link>
           </div>
-          <span>No credit card required to start the trial.</span>
+          <span>Card details are collected up front and the first charge is taken when the trial ends unless you cancel before renewal.</span>
         </div>
         <img src="/branding/exdox-platform-hero.png" alt="Connected exdox accounting workspace" />
       </section>
@@ -5498,6 +5546,8 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
           <Link to="/pricing">Pricing</Link>
           {" | "}
           <Link to="/faq">FAQs</Link>
+          {" | "}
+          <Link to={termsPagePath}>Terms</Link>
           {" | "}
           <Link to="/privacy">Privacy</Link>
           {" | "}
@@ -5738,6 +5788,81 @@ function FaqSection() {
         ))}
       </div>
     </section>
+  );
+}
+
+function TermsSection() {
+  return (
+    <PolicyLayout
+      title="Exdox Terms and Conditions"
+      updatedOn="26 July 2026"
+      sections={[
+        {
+          heading: "Who these terms apply to",
+          body: (
+            <>
+              <p>These terms apply to anyone who signs up for, accesses, or uses Exdox through the website, mobile app, or related services.</p>
+              <p>By creating an Exdox workspace, starting a free trial, or using a paid subscription, you agree to these terms on behalf of yourself and, where applicable, your organisation.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Free trial and card authorisation",
+          body: (
+            <>
+              <p>Eligible self-serve plans may include a free trial period. When you start a trial, you must provide valid payment details.</p>
+              <p>Your card is not charged immediately for the trial itself unless stated otherwise at checkout. By starting the trial, you authorise Exdox and its payment processor to charge the selected subscription price automatically when the trial ends unless you cancel before renewal.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Billing, renewal, and cancellation",
+          body: (
+            <>
+              <p>Paid subscriptions renew automatically on the billing cycle shown at checkout unless canceled in time.</p>
+              <p>You can manage or cancel your trial or subscription from the billing area of the Exdox website, including the linked billing portal where available. If you cancel during the trial, the subscription should not renew into a paid billing period.</p>
+              <p>Fees already charged are generally non-refundable except where required by law or where Exdox agrees otherwise in writing.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Using the service",
+          body: (
+            <>
+              <p>You must use Exdox lawfully and must not misuse the service, interfere with platform security, upload harmful content, or attempt unauthorised access to data, accounts, or systems.</p>
+              <p>You are responsible for the accuracy, legality, and authority of the documents, business information, and user access you submit into your workspace.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Accounts and security",
+          body: (
+            <>
+              <p>You are responsible for keeping account credentials confidential and for activity that takes place through your workspace under your control.</p>
+              <p>Exdox may suspend or restrict access where needed for security, fraud prevention, payment failure, legal compliance, or material breach of these terms.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Service availability and changes",
+          body: (
+            <>
+              <p>Exdox may update, improve, limit, or retire features from time to time. We aim to keep the service available, but uninterrupted access is not guaranteed.</p>
+              <p>We may change pricing, plans, or commercial packaging in the future. Material billing changes would apply prospectively rather than rewriting charges that have already been accepted.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Liability and contact",
+          body: (
+            <>
+              <p>To the extent permitted by law, Exdox is not liable for indirect, incidental, special, or consequential loss. Nothing in these terms limits liability where it cannot legally be excluded.</p>
+              <p>For billing, cancellation, legal, or account questions, contact <a href="mailto:hello@exdox.co.uk?subject=Exdox%20terms%20request">hello@exdox.co.uk</a>.</p>
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -6317,7 +6442,8 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
           <ul>
             <li>Capture, Control, and Operations start with a 14-day trial</li>
             <li>Enterprise can use a longer onboarding window</li>
-            <li>No card required to start the initial workspace</li>
+            <li>Card details are collected before the trial begins</li>
+            <li>Cancel from Billing before renewal if you do not want the paid subscription to start</li>
           </ul>
         </article>
         <article className="workflow-card">
@@ -6407,6 +6533,7 @@ function BillingPage(props: { session: SessionState }) {
   const lockedRoute = new URLSearchParams(useLocation().search).get("locked");
   const lockedRouteLabel = lockedRoute ? routeTitle(lockedRoute) : null;
   const billing = props.session.billing;
+  const trialSetupRequired = billing?.status === "inactive" && !billing?.stripeSubscriptionId;
 
   if (!billing) {
     return (
@@ -6452,8 +6579,10 @@ function BillingPage(props: { session: SessionState }) {
         </div>
         <p className="muted-copy">
           {billing.stripeConfigured
-            ? "Stripe checkout is ready. Choose a plan below to open checkout, or use the billing portal if this workspace already has a Stripe customer."
-            : "Online plan changes are not live in this workspace yet. Compare plans below, then use billing support to coordinate the next package band."}
+            ? trialSetupRequired
+              ? "Add your card to begin the free trial. The first charge is taken automatically when the trial ends unless you cancel before renewal."
+              : "Use Billing to manage your subscription, update payment details, or cancel before the next renewal."
+            : "Online billing is not live in this workspace yet. Use billing support to coordinate trial setup, cancellation, or plan changes."}
         </p>
         <div className="section-actions">
           <button className="secondary-action" type="button" onClick={() => navigate("/pricing")}>
@@ -6479,7 +6608,7 @@ function BillingPage(props: { session: SessionState }) {
                 }
               }}
             >
-              Open billing portal
+              Manage or cancel in billing portal
             </button>
           ) : (
             <button className="secondary-action" type="button" onClick={() => navigate(supportPagePath)}>
@@ -6493,6 +6622,7 @@ function BillingPage(props: { session: SessionState }) {
       <div className="pricing-grid pricing-grid-expanded">
         {pricingPlans.map((plan) => {
           const active = billing.planId === plan.id;
+          const canStartTrialOnThisPlan = trialSetupRequired && active;
           return (
             <article key={plan.id} className={`pricing-card${active ? " current-plan" : ""}`}>
               <span>{plan.name}</span>
@@ -6505,13 +6635,38 @@ function BillingPage(props: { session: SessionState }) {
                   <li key={feature}>{feature}</li>
                 ))}
               </ul>
-              {active ? (
+              {canStartTrialOnThisPlan ? (
+                <button
+                  className="public-button"
+                  type="button"
+                  disabled={busyPlan !== null || !billing.stripeConfigured}
+                  onClick={async () => {
+                    setBusyPlan(plan.id);
+                    setMessage(null);
+                    try {
+                      const response = await createBillingCheckoutSession(props.session.token, {
+                        planId: plan.id,
+                        billingCycle: "monthly",
+                      });
+                      if (response.checkoutUrl) {
+                        window.location.href = response.checkoutUrl;
+                      }
+                    } catch (error) {
+                      setMessage(error instanceof Error ? error.message : "Could not start checkout.");
+                    } finally {
+                      setBusyPlan(null);
+                    }
+                  }}
+                >
+                  {busyPlan === plan.id ? "Opening checkout..." : "Start free trial"}
+                </button>
+              ) : active ? (
                 <button className="secondary-action" type="button" disabled>
                   Current plan
                 </button>
               ) : plan.id === "enterprise" ? (
                 <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
-              ) : !billing.stripeConfigured ? (
+              ) : !billing.stripeConfigured || Boolean(billing.stripeSubscriptionId) ? (
                 <span className="public-button public-button-disabled" aria-disabled="true">Billing support</span>
               ) : (
                 <button
@@ -6536,7 +6691,7 @@ function BillingPage(props: { session: SessionState }) {
                     }
                   }}
                 >
-                  {busyPlan === plan.id ? "Opening checkout..." : "Upgrade"}
+                  {busyPlan === plan.id ? "Opening checkout..." : trialSetupRequired ? "Change plan and start trial" : "Upgrade"}
                 </button>
               )}
             </article>
@@ -7362,6 +7517,9 @@ function isRouteAllowed(session: SessionState, pathname: string) {
 }
 
 function getDefaultRoute(session: SessionState) {
+  if (isBusinessAdmin(session) && session.billing && !isBillingStatusActive(session.billing.status)) {
+    return "/billing";
+  }
   const allowedRoutes = session.allowedWebRoutes;
   if (allowedRoutes?.length) {
     const firstAllowed = allowedRoutes.find((route) => route !== "/billing");

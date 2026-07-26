@@ -189,6 +189,24 @@ a {
   font-size: 0.94rem;
 }
 
+.checkbox-field {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+}
+
+.checkbox-field input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin-top: 2px;
+}
+
+.checkbox-field a {
+  color: var(--blue);
+  font-weight: 700;
+}
+
 .login-submit {
   justify-content: center;
 }

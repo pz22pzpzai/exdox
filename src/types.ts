@@ -180,6 +180,7 @@ export type BillingSummary = {
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   stripeConfigured: boolean;
+  cancellationScheduledFor: string | null;
 };
 
 export type BillingPlanDefinition = {

@@ -119,6 +119,8 @@ export async function registerWithEmail(input: {
   billingCycle?: BillingCycle;
   monthlyDocumentLimit?: number;
   includedUsers?: number;
+  termsAccepted?: boolean;
+  termsVersion?: string;
 }): Promise<RegisterResult> {
   const response = await fetch(`${API_BASE_URL}/register`, {
     method: "POST",
@@ -542,6 +544,7 @@ export function buildFallbackSession(token: string, user: SessionUser): SessionS
             stripeCustomerId: null,
             stripeSubscriptionId: null,
             stripeConfigured: false,
+            cancellationScheduledFor: null,
           }
         : undefined,
     entitlements:
