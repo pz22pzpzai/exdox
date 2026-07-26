@@ -127,6 +127,7 @@ const publicNavItems = [
   { to: "/platform", label: "Platform" },
   { to: "/integrations", label: "Integrations" },
   { to: "/pricing", label: "Pricing" },
+  { to: "/faq", label: "FAQs" },
   { to: "/company", label: "Company" },
 ] as const;
 const supportPagePath = "/company#support";
@@ -455,6 +456,7 @@ function buildFallbackOrganisationSettings(session: SessionState): OrganisationS
 function isSignedInPublicPage(pathname: string) {
   return pathname === "/platform"
     || pathname === "/integrations"
+    || pathname === "/faq"
     || pathname === "/company"
     || pathname === "/privacy"
     || pathname === "/cookies";
@@ -547,6 +549,21 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
           pageName: "Company",
           pageDescription:
             "Learn how Exdox keeps mobile capture, web review, archived evidence, VAT edits, and finance controls aligned in one workspace.",
+        }),
+      };
+    }
+    if (normalizedPath === "/faq") {
+      return {
+        title: "Exdox FAQs | Help Using the App and Website",
+        description:
+          "Find answers for using the Exdox mobile app and website, including uploads, review queues, duplicate receipts, login issues, claims, and document sync.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "FAQs",
+          pageDescription:
+            "Find answers for using the Exdox mobile app and website, including uploads, review queues, duplicate receipts, login issues, claims, and document sync.",
         }),
       };
     }
@@ -5340,6 +5357,19 @@ function PublicSite() {
     );
   }
 
+  if (location.pathname === "/faq") {
+    return (
+      <PublicLayout activePath="/faq">
+        <PublicPageIntro
+          kicker="FAQs"
+          title="Help for using Exdox across the app and website."
+          body="Find quick answers for capture, review, duplicate uploads, sync questions, claims, login access, and common day-to-day workflow issues."
+        />
+        <FaqSection />
+      </PublicLayout>
+    );
+  }
+
   if (location.pathname === "/company") {
     return (
       <PublicLayout activePath="/company">
@@ -5467,6 +5497,8 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
         <span>
           <Link to="/pricing">Pricing</Link>
           {" | "}
+          <Link to="/faq">FAQs</Link>
+          {" | "}
           <Link to="/privacy">Privacy</Link>
           {" | "}
           <Link to="/cookies">Cookies</Link>
@@ -5484,6 +5516,227 @@ function PublicPageIntro(props: { kicker: string; title: string; body: string })
       <p className="section-kicker">{props.kicker}</p>
       <h1>{props.title}</h1>
       <p>{props.body}</p>
+    </section>
+  );
+}
+
+function FaqSection() {
+  const faqGroups: Array<{
+    title: string;
+    description: string;
+    items: Array<{ question: string; answer: React.ReactNode }>;
+  }> = [
+    {
+      title: "Getting started",
+      description: "The basics for signing in, choosing where to work, and understanding what you are seeing first.",
+      items: [
+        {
+          question: "How do I log in to Exdox?",
+          answer: (
+            <p>
+              Use the same registered email address and password on both the website and the mobile app. If you cannot sign in,
+              first confirm you are using the correct workspace email, then use the access support route on the Company page if you
+              still need help.
+            </p>
+          ),
+        },
+        {
+          question: "What is the difference between the app and the website?",
+          answer: (
+            <p>
+              The app is mainly for capturing receipts and checking documents on the move. The website gives a broader review
+              workspace for finance tasks such as inbox review, supplier rules, claims, vault access, reconciliation, and settings.
+            </p>
+          ),
+        },
+        {
+          question: "Why do I see Costs, Sales, Vault, Claims, or other areas?",
+          answer: (
+            <p>
+              These are different work areas inside the same organisation. Costs is for receipts and purchase documents, Sales is
+              for outbound sales evidence, Vault is for stored source documents, and Claims is for employee expense claims.
+            </p>
+          ),
+        },
+      ],
+    },
+    {
+      title: "Using the mobile app",
+      description: "The most common questions for uploading and checking receipts from your phone.",
+      items: [
+        {
+          question: "How do I upload a receipt in the app?",
+          answer: (
+            <p>
+              Use the camera button in the bottom navigation to take a photo or choose a file, then wait for the receipt to upload
+              and extract. Once it appears in the list, tap it to review the values if needed.
+            </p>
+          ),
+        },
+        {
+          question: "What does 'To be reviewed' mean?",
+          answer: (
+            <p>
+              It means the document is in the review stage and may still need a person to confirm fields such as supplier, date,
+              amount, category, or VAT before it is treated as complete.
+            </p>
+          ),
+        },
+        {
+          question: "Why does a merchant name show in the app before it shows on the website?",
+          answer: (
+            <p>
+              In some cases the app can show a stronger local supplier name while the cloud record is still catching up. The website
+              only shows the saved cloud value, so there can be a short delay before both surfaces match.
+            </p>
+          ),
+        },
+        {
+          question: "What happens if I upload the same receipt twice?",
+          answer: (
+            <p>
+              Exact duplicate uploads are meant to be treated as duplicates automatically, especially when the same file name is
+              reused. If a duplicate is blocked, it should not become a normal new record in the review queue.
+            </p>
+          ),
+        },
+      ],
+    },
+    {
+      title: "Using the website",
+      description: "Common questions for the main review workspace in the browser.",
+      items: [
+        {
+          question: "What is the Costs Inbox for?",
+          answer: (
+            <p>
+              The Costs Inbox is where uploaded receipts, supplier bills, and invoices land for review. You can search, filter,
+              open a document, check extracted values, and move work toward ready or published states.
+            </p>
+          ),
+        },
+        {
+          question: "Why does a row say 'Unknown supplier'?",
+          answer: (
+            <p>
+              That means the saved supplier value is still blank on the website record. The document usually needs review, or the
+              cloud version has not yet caught up with a stronger supplier name seen earlier in the app.
+            </p>
+          ),
+        },
+        {
+          question: "What does 'Missing details' mean in Data Health?",
+          answer: (
+            <p>
+              It means the document is missing a key review field, usually the supplier name or category. It is a bookkeeping-review
+              prompt, not a software error.
+            </p>
+          ),
+        },
+        {
+          question: "How do I find a document quickly on the website?",
+          answer: (
+            <p>
+              Use search plus the status and issue filters in the inbox. Search works best with supplier names, filenames,
+              categories, notes, and related document text.
+            </p>
+          ),
+        },
+      ],
+    },
+    {
+      title: "Review, sync, and troubleshooting",
+      description: "Quick answers for documents that do not look right first time.",
+      items: [
+        {
+          question: "What should I do if the values look wrong?",
+          answer: (
+            <p>
+              Open the document, correct the key fields, and save the review. Exdox is designed so human review can finish the job
+              when a document needs help with supplier, date, totals, tax, or category.
+            </p>
+          ),
+        },
+        {
+          question: "Why is a document still processing?",
+          answer: (
+            <p>
+              Some uploads take longer to settle into a final review state. If it stays processing longer than expected, refresh the
+              queue and check again before treating it as failed.
+            </p>
+          ),
+        },
+        {
+          question: "Why can I see something in one place but not another?",
+          answer: (
+            <p>
+              App and website views are meant to stay in sync, but a record can briefly appear differently while upload, extraction,
+              or review updates are still syncing. If it does not settle, reopen the record and check the latest saved fields.
+            </p>
+          ),
+        },
+        {
+          question: "Where do I go for account, billing, or security help?",
+          answer: (
+            <p>
+              Use the support options on the Company page. There are separate contact routes for access support, billing support,
+              and security requests so the issue reaches the right place quickly.
+            </p>
+          ),
+        },
+      ],
+    },
+  ];
+
+  return (
+    <section className="faq-band">
+      <div className="section-heading">
+        <div>
+          <p className="section-kicker">Help Centre</p>
+          <h2>Answers for everyday Exdox workflow questions</h2>
+        </div>
+        <p>
+          This page covers the most common questions for using Exdox across the mobile app and website, including uploads,
+          review queues, duplicate checks, claims, and sync behaviour.
+        </p>
+      </div>
+
+      <div className="faq-summary-grid">
+        <article className="company-card">
+          <strong>Use the app for capture</strong>
+          <p>Take photos, upload receipts, and check review status while away from the desk.</p>
+        </article>
+        <article className="company-card">
+          <strong>Use the website for review</strong>
+          <p>Open inboxes, correct details, manage workflow status, and handle broader finance controls.</p>
+        </article>
+        <article className="company-card">
+          <strong>Use support when it does not settle</strong>
+          <p>If a login, sync, or security issue still looks wrong after refresh and review, use the support routes on the Company page.</p>
+        </article>
+      </div>
+
+      <div className="faq-group-list">
+        {faqGroups.map((group) => (
+          <section key={group.title} className="faq-group">
+            <div className="section-heading faq-group-heading">
+              <div>
+                <p className="section-kicker">FAQ Section</p>
+                <h2>{group.title}</h2>
+              </div>
+              <p>{group.description}</p>
+            </div>
+            <div className="faq-items">
+              {group.items.map((item) => (
+                <details key={item.question} className="faq-item">
+                  <summary>{item.question}</summary>
+                  <div className="faq-answer">{item.answer}</div>
+                </details>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </section>
   );
 }
@@ -6126,6 +6379,10 @@ function CompanySection() {
         </p>
       </div>
       <div className="company-grid">
+        <Link className="company-card company-link" to="/faq">
+          <strong>Help and FAQs</strong>
+          <p>Use this for everyday guidance on mobile capture, website review, duplicate receipts, claims, and document sync.</p>
+        </Link>
         <a className="company-card company-link" href="mailto:hello@exdox.co.uk?subject=Access%20support">
           <strong>Access support</strong>
           <p>Use this for login help, password resets, invite issues, and activation support.</p>

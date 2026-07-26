@@ -2070,7 +2070,8 @@ input {
 
 .workflow-band,
 .pricing-band,
-.company-band {
+.company-band,
+.faq-band {
   width: min(980px, calc(100% - 48px));
   margin: 0 auto;
   padding: 42px 0;
@@ -2103,7 +2104,8 @@ input {
 .process-grid,
 .workflow-grid,
 .pricing-grid,
-.company-grid {
+.company-grid,
+.faq-summary-grid {
   display: grid;
   gap: 12px;
 }
@@ -2122,15 +2124,78 @@ input {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.faq-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 30px;
+}
+
 .document-card,
 .process-card,
 .workflow-card,
 .pricing-card,
-.company-card {
+.company-card,
+.faq-item {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: white;
   box-shadow: 0 4px 12px rgba(17, 28, 56, 0.05);
+}
+
+.faq-group-list {
+  display: grid;
+  gap: 28px;
+}
+
+.faq-group-heading {
+  margin-bottom: 16px;
+}
+
+.faq-items {
+  display: grid;
+  gap: 12px;
+}
+
+.faq-item {
+  padding: 0;
+  overflow: hidden;
+}
+
+.faq-item summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 18px 22px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::after {
+  content: "+";
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--blue);
+  flex: 0 0 auto;
+}
+
+.faq-item[open] summary::after {
+  content: "−";
+}
+
+.faq-answer {
+  padding: 0 22px 20px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.faq-answer p {
+  margin: 0;
 }
 
 .document-card {
@@ -2681,6 +2746,7 @@ input {
   .workflow-grid,
   .pricing-grid,
   .company-grid,
+  .faq-summary-grid,
   .policy-grid,
   .pricing-grid-expanded,
   .pricing-notes-grid,
