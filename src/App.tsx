@@ -133,6 +133,7 @@ const publicNavItems = [
 ] as const;
 const supportPagePath = "/company#support";
 const termsPagePath = "/terms";
+const accountDeletionPagePath = "/account-deletion";
 const termsVersion = "2026-07-26";
 
 const pricingPlans: Array<{
@@ -598,6 +599,21 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
           pageName: "Privacy Policy",
           pageDescription:
             "Read the Exdox privacy policy, including how we use cookies, analytics, contact data, and Google advertising services.",
+        }),
+      };
+    }
+    if (normalizedPath === "/account-deletion") {
+      return {
+        title: "Account Deletion | Exdox",
+        description:
+          "Request Exdox account deletion and understand which account records are deleted, which finance records may be retained, and the expected timelines.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Account Deletion",
+          pageDescription:
+            "Request Exdox account deletion and understand which account records are deleted, which finance records may be retained, and the expected timelines.",
         }),
       };
     }
@@ -5476,6 +5492,19 @@ function PublicSite() {
     );
   }
 
+  if (location.pathname === "/account-deletion") {
+    return (
+      <PublicLayout activePath="">
+        <PublicPageIntro
+          kicker="Account deletion"
+          title="How to request deletion of an Exdox account."
+          body="This page explains how Exdox users can request account deletion, what information is removed, what records may be retained for legal or bookkeeping reasons, and the usual deletion timelines."
+        />
+        <AccountDeletionSection />
+      </PublicLayout>
+    );
+  }
+
   if (location.pathname === "/cookies") {
     return (
       <PublicLayout activePath="">
@@ -6125,6 +6154,72 @@ function CookiePolicySection() {
           body: (
             <>
               <p>If you have questions about cookies or tracking technologies on Exdox, contact <a href="mailto:hello@exdox.co.uk?subject=Cookie%20policy%20request">hello@exdox.co.uk</a>.</p>
+            </>
+          ),
+        },
+      ]}
+    />
+  );
+}
+
+function AccountDeletionSection() {
+  return (
+    <PolicyLayout
+      title="Exdox Account Deletion"
+      updatedOn="27 July 2026"
+      sections={[
+        {
+          heading: "Who can request deletion",
+          body: (
+            <>
+              <p>An Exdox user can request deletion of their own account. Where an account belongs to a business workspace, we may also require confirmation from the relevant workspace administrator before removing access tied to that organisation.</p>
+              <p>If you are an organisation owner or administrator and want a whole workspace closed, include that clearly in your request so we can review the impact on linked users and finance records.</p>
+            </>
+          ),
+        },
+        {
+          heading: "How to request deletion",
+          body: (
+            <>
+              <p>Email <a href="mailto:hello@exdox.co.uk?subject=Account%20deletion%20request">hello@exdox.co.uk</a> with the subject line <strong>Account deletion request</strong>.</p>
+              <p>Include the email address used for your Exdox login, your organisation name, and whether you are requesting deletion of only your user account or of the wider organisation workspace.</p>
+              <p>If we need to verify identity or admin authority before deleting data, we may ask for confirmation from the registered account or workspace owner.</p>
+            </>
+          ),
+        },
+        {
+          heading: "What is deleted",
+          body: (
+            <>
+              <p>When an account deletion request is approved, we aim to remove or disable the user&apos;s login access, profile-level account details, and app access associated with that user.</p>
+              <p>Where deletion applies to an entire workspace, we also aim to remove active workspace access and operational records that no longer need to be retained.</p>
+            </>
+          ),
+        },
+        {
+          heading: "What may be retained",
+          body: (
+            <>
+              <p>Some records may need to be retained for a limited period where required for legal compliance, fraud prevention, dispute handling, security investigations, backup recovery, or bookkeeping and tax record obligations.</p>
+              <p>This may include finance evidence such as receipts, invoices, claim history, billing events, audit logs, and support correspondence where retention is reasonably required to protect the service or comply with applicable obligations.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Deletion timing",
+          body: (
+            <>
+              <p>We aim to begin handling verified deletion requests promptly. In normal cases, active account access is removed first and the remaining deletion work is usually completed within 30 days.</p>
+              <p>Backups or legally required retained records may remain for longer where necessary, but are kept only for the limited retention purpose that applies to them.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Partial deletion requests",
+          body: (
+            <>
+              <p>If you want some data removed without closing the entire account, tell us exactly what should be deleted. For example, you may request review of specific uploaded documents or support records.</p>
+              <p>We will confirm whether the requested data can be removed immediately or whether any retention requirement applies.</p>
             </>
           ),
         },

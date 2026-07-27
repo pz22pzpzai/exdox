@@ -37,6 +37,12 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://www.exdox.co.uk/account-deletion</loc>
+    <lastmod>2026-07-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://www.exdox.co.uk/cookies</loc>
     <lastmod>2026-07-17</lastmod>
     <changefreq>monthly</changefreq>
