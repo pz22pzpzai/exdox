@@ -803,6 +803,7 @@ export function App() {
       businessAdmin ? getSettings(token).catch(() => null) : Promise.resolve(null),
     ]);
 
+    saveStoredSession(nextSession);
     setSession(nextSession);
     setStore({
       costs,

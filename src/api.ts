@@ -49,18 +49,18 @@ export type RegisterResult =
     };
 
 export function loadStoredSession(): SessionState | null {
-  const sessionStorageValue = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
-  const legacyLocalStorageValue = window.localStorage.getItem(SESSION_STORAGE_KEY);
-  const raw = sessionStorageValue ?? legacyLocalStorageValue;
+  const localStorageValue = window.localStorage.getItem(SESSION_STORAGE_KEY);
+  const legacySessionStorageValue = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+  const raw = localStorageValue ?? legacySessionStorageValue;
   if (!raw) {
     return null;
   }
 
   try {
     const parsed = JSON.parse(raw) as SessionState;
-    if (!sessionStorageValue && legacyLocalStorageValue) {
-      window.sessionStorage.setItem(SESSION_STORAGE_KEY, legacyLocalStorageValue);
-      window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    if (!localStorageValue && legacySessionStorageValue) {
+      window.localStorage.setItem(SESSION_STORAGE_KEY, legacySessionStorageValue);
+      window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
     }
     return parsed;
   } catch {
@@ -70,8 +70,8 @@ export function loadStoredSession(): SessionState | null {
 }
 
 export function saveStoredSession(session: SessionState) {
-  window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-  window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+  window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
 export function clearStoredSession() {
