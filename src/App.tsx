@@ -1263,7 +1263,7 @@ function DashboardShell(props: {
   return (
     <div className="dashboard-shell">
       <aside className="sidebar">
-        <div>
+        <div className="sidebar-main">
           <div className="brand-lockup">
             <img className="brand-mark" src={brandMarkSrc} alt="" />
             <strong>Exdox</strong>
@@ -1307,7 +1307,7 @@ function DashboardShell(props: {
                 <option key={organisation.id} value={organisation.id}>
                   {organisation.name}
                 </option>
-              ))}
+                ))}
             </select>
             <button
               className="icon-button"
@@ -1318,6 +1318,11 @@ function DashboardShell(props: {
             >
               {notificationCount}
             </button>
+            {isRouteAllowed(props.session, "/settings") ? (
+              <button className="secondary-action" type="button" onClick={() => navigate("/settings")}>
+                Profile
+              </button>
+            ) : null}
             <button className="secondary-action" type="button" onClick={props.onSignOut}>
               Sign out
             </button>
