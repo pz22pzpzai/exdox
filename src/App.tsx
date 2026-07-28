@@ -470,6 +470,14 @@ function isSignedInPublicPage(pathname: string) {
     || pathname === "/cookies";
 }
 
+function signedInPublicPrimaryRoute(session: SessionState) {
+  return isRouteAllowed(session, "/billing") ? "/billing" : getDefaultRoute(session);
+}
+
+function signedInPublicSecondaryRoute(session: SessionState) {
+  return isRouteAllowed(session, "/settings") ? "/settings" : getDefaultRoute(session);
+}
+
 function isPublicSeoPath(pathname: string) {
   return pathname === "/"
     || pathname === "/platform"
@@ -1006,7 +1014,7 @@ export function App() {
     return (
       <>
         <SeoManager pathname={location.pathname} session={session} />
-        <PublicSite />
+        <PublicSite session={session} />
       </>
     );
   }
@@ -1543,7 +1551,7 @@ function DashboardShell(props: {
                   path="/settings"
                   element={
                     <SettingsPage
-                      settings={props.store.settings}
+                      settings={props.store.settings ?? buildFallbackOrganisationSettings(props.session)}
                       onSave={props.onSettingsSave}
                       onInviteEmployee={props.onInviteEmployee}
                     />
@@ -2427,7 +2435,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))}>
                 <strong>Manual review load</strong>
-                <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? " still needs" : "s still need"} coding, tax, or publish decisions.</span>
+                <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? " still needs" : "s still need"} review, tax, or publish decisions.</span>
               </button>
             </li>
             <li>
@@ -2583,7 +2591,7 @@ function AutomationPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))}>
                 <strong>Manual review fallback</strong>
-                <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? " still needs" : "s still need"} human coding, tax, or publish decisions.</span>
+                <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? " still needs" : "s still need"} human review, tax, or publish decisions.</span>
               </button>
             </li>
             <li>
@@ -2631,7 +2639,7 @@ function AutomationPage({ store }: { store: AppStore }) {
         <article className="panel">
           <div className="panel-heading">
             <h2>Recent rule-shaped activity</h2>
-            <span>Newest records with coding already in place</span>
+            <span>Newest records with categories already in place</span>
           </div>
           <ul className="summary-list">
             {allDocuments
@@ -2833,7 +2841,7 @@ function InboxPage({
             ? "Files upload straight into secure processing and land in the costs inbox with a Processing status."
             : basePath === "/sales"
               ? "Bulk sales files route into the sales ledger workspace without mixing into expense review."
-              : "Store reference files in a separate archive workspace without forcing them into costs or sales coding."
+              : "Store reference files in a separate archive workspace without forcing them into costs or sales review."
         }
         busy={uploadBusy}
         onFiles={onUpload}
@@ -3067,7 +3075,7 @@ function DocumentWorkspacePage(props: {
 
       <section className="panel editor-panel">
         <div className="panel-heading">
-          <h2>{props.mode === "cost" ? "Cost coding" : props.mode === "sales" ? "Sales ledger coding" : "Vault record"}</h2>
+          <h2>{props.mode === "cost" ? "Cost review" : props.mode === "sales" ? "Sales ledger review" : "Vault record"}</h2>
           <span>Organisation #{receipt.organisationId}</span>
         </div>
         {error ? <div className="error-banner">{error}</div> : null}
@@ -3176,7 +3184,7 @@ function DocumentWorkspacePage(props: {
           ) : (
             <label>
               Archive status
-              <input value="Vault document stored without expense coding" readOnly />
+              <input value="Vault document stored without expense review" readOnly />
             </label>
           )}
           <label>
@@ -5503,51 +5511,51 @@ function ConfirmEmailState(props: {
   );
 }
 
-function PublicSite() {
+function PublicSite({ session = null }: { session?: SessionState | null }) {
   const location = useLocation();
 
   if (location.pathname === "/platform") {
     return (
-      <PublicLayout activePath="/platform">
+      <PublicLayout activePath="/platform" session={session}>
         <PublicPageIntro
           kicker="Platform"
           title="A finance workspace built for operational review."
           body="Receipt capture, invoice review, claims, vault storage, supplier rules, reconciliation, and data health sit inside one connected Exdox platform."
         />
-        <PlatformCapabilitiesSection />
-        <CoverageSection />
-        <FlowSection />
-        <WorkflowCoverageSection />
+        <PlatformCapabilitiesSection session={session} />
+        <CoverageSection session={session} />
+        <FlowSection session={session} />
+        <WorkflowCoverageSection session={session} />
       </PublicLayout>
     );
   }
 
   if (location.pathname === "/integrations") {
     return (
-      <PublicLayout activePath="/integrations">
+      <PublicLayout activePath="/integrations" session={session}>
         <PublicPageIntro
           kicker="Integrations"
           title="Keep evidence, review queues, and accounting handoff in one operational flow."
           body="Exdox supports connected accounting workflows with ready and published queues, protected source evidence, and bank-led reconciliation."
         />
-        <IntegrationSection />
-        <FlowSection />
-        <WorkflowCoverageSection />
+        <IntegrationSection session={session} />
+        <FlowSection session={session} />
+        <WorkflowCoverageSection session={session} />
       </PublicLayout>
     );
   }
 
   if (location.pathname === "/pricing") {
     return (
-      <PublicLayout activePath="/pricing">
-        <PricingSection />
+      <PublicLayout activePath="/pricing" session={session}>
+        <PricingSection session={session} />
       </PublicLayout>
     );
   }
 
   if (location.pathname === "/faq") {
     return (
-      <PublicLayout activePath="/faq">
+      <PublicLayout activePath="/faq" session={session}>
         <PublicPageIntro
           kicker="FAQs"
           title="Help for using Exdox across the app and website."
@@ -5560,20 +5568,20 @@ function PublicSite() {
 
   if (location.pathname === "/company") {
     return (
-      <PublicLayout activePath="/company">
+      <PublicLayout activePath="/company" session={session}>
         <PublicPageIntro
           kicker="Company"
           title="Built to keep capture, review, and source evidence aligned."
           body="Organisation-scoped records flow across mobile capture, web review, archive retrieval, and finance controls."
         />
-        <CompanySection />
+        <CompanySection session={session} />
       </PublicLayout>
     );
   }
 
   if (location.pathname === "/terms") {
     return (
-      <PublicLayout activePath="">
+      <PublicLayout activePath="" session={session}>
         <PublicPageIntro
           kicker="Terms"
           title="Terms and Conditions for Exdox."
@@ -5586,7 +5594,7 @@ function PublicSite() {
 
   if (location.pathname === "/privacy") {
     return (
-      <PublicLayout activePath="">
+      <PublicLayout activePath="" session={session}>
         <PublicPageIntro
           kicker="Privacy"
           title="Privacy policy for Exdox website and marketing pages."
@@ -5599,7 +5607,7 @@ function PublicSite() {
 
   if (location.pathname === "/account-deletion") {
     return (
-      <PublicLayout activePath="">
+      <PublicLayout activePath="" session={session}>
         <PublicPageIntro
           kicker="Account deletion"
           title="How to request deletion of an Exdox account."
@@ -5612,7 +5620,7 @@ function PublicSite() {
 
   if (location.pathname === "/cookies") {
     return (
-      <PublicLayout activePath="">
+      <PublicLayout activePath="" session={session}>
         <PublicPageIntro
           kicker="Cookies"
           title="Cookie policy for Exdox website and advertising services."
@@ -5624,7 +5632,7 @@ function PublicSite() {
   }
 
   return (
-    <PublicLayout activePath="/">
+    <PublicLayout activePath="/" session={session}>
       <section className="public-hero">
         <div className="public-hero-copy">
           <h1>Capture, review and publish business spend without chasing paper.</h1>
@@ -5633,22 +5641,32 @@ function PublicSite() {
             invoice review, document vault storage, expense claims, supplier rules and bank-led reconciliation.
           </p>
           <div className="hero-actions">
-            <Link className="public-primary" to="/register?plan=control&billingCycle=monthly">Start Free Trial</Link>
-            <Link className="secondary-inline-link" to="/pricing">See pricing structure</Link>
+            {session ? (
+              <>
+                <Link className="public-primary" to={signedInPublicPrimaryRoute(session)}>Back to Workspace</Link>
+                <Link className="secondary-inline-link" to={isRouteAllowed(session, "/billing") ? "/billing" : signedInPublicSecondaryRoute(session)}>Manage account</Link>
+              </>
+            ) : (
+              <>
+                <Link className="public-primary" to="/register?plan=control&billingCycle=monthly">Start Free Trial</Link>
+                <Link className="secondary-inline-link" to="/pricing">See pricing structure</Link>
+              </>
+            )}
           </div>
           <span>Card details are collected up front and the first charge is taken when the trial ends unless you cancel before renewal.</span>
         </div>
         <img src="/branding/exdox-platform-hero.webp" alt="Connected exdox accounting workspace" />
       </section>
-      <PlatformCapabilitiesSection />
-      <FlowSection />
-      <PricingTeaserSection />
+      <PlatformCapabilitiesSection session={session} />
+      <FlowSection session={session} />
+      <PricingTeaserSection session={session} />
     </PublicLayout>
   );
 }
 
-function PublicLayout(props: { activePath: string; children: React.ReactNode }) {
+function PublicLayout(props: { activePath: string; children: React.ReactNode; session?: SessionState | null }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const signedIn = Boolean(props.session);
 
   return (
     <div className="public-home">
@@ -5680,8 +5698,17 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
           <span />
         </button>
         <div className="public-actions">
-          <Link to="/login">Log In</Link>
-          <Link className="public-button" to="/register">Register</Link>
+          {signedIn && props.session ? (
+            <>
+              <Link to={signedInPublicSecondaryRoute(props.session)}>Profile</Link>
+              <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)}>Workspace</Link>
+            </>
+          ) : (
+            <>
+              <Link to="/login">Log In</Link>
+              <Link className="public-button" to="/register">Register</Link>
+            </>
+          )}
         </div>
         {mobileMenuOpen ? (
           <div className="public-mobile-menu">
@@ -5698,8 +5725,17 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode }) 
               ))}
             </nav>
             <div className="public-mobile-actions">
-              <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Log In</Link>
-              <Link className="public-button" to="/register" onClick={() => setMobileMenuOpen(false)}>Register</Link>
+              {signedIn && props.session ? (
+                <>
+                  <Link to={signedInPublicSecondaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>Profile</Link>
+                  <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>Workspace</Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Log In</Link>
+                  <Link className="public-button" to="/register" onClick={() => setMobileMenuOpen(false)}>Register</Link>
+                </>
+              )}
             </div>
           </div>
         ) : null}
@@ -6333,27 +6369,27 @@ function AccountDeletionSection() {
   );
 }
 
-function PlatformCapabilitiesSection() {
+function PlatformCapabilitiesSection({ session = null }: { session?: SessionState | null }) {
   return (
     <section className="capabilities-band">
       <h2>Key Platform Capabilities</h2>
       <div className="capabilities-grid">
-        <Link className="capability-card" to="/register?plan=capture&billingCycle=monthly"><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></Link>
-        <Link className="capability-card" to="/register?plan=control&billingCycle=monthly"><NavIcon name="workflow" /><strong>Approval Workflows</strong><span>Review, approve and publish in one place</span></Link>
-        <Link className="capability-card" to="/register?plan=operations&billingCycle=monthly"><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent coding and tax defaults</span></Link>
-        <Link className="capability-card" to="/register?plan=control&billingCycle=monthly"><NavIcon name="claims" /><strong>Mileage & Expense Claims</strong><span>Staff submission, mileage entry and approval</span></Link>
-        <Link className="capability-card" to="/register?plan=capture&billingCycle=monthly"><NavIcon name="health" /><strong>Client Data Health</strong><span>Unreadable, duplicate and low-confidence follow-up</span></Link>
-        <Link className="capability-card" to="/register?plan=operations&billingCycle=monthly"><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive and retrieve source evidence fast</span></Link>
-        <Link className="capability-card" to="/register?plan=operations&billingCycle=monthly"><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></Link>
-        <Link className="capability-card" to="/register?plan=operations&billingCycle=monthly"><NavIcon name="integrations" /><strong>Bank & Statement Review</strong><span>Imported bank activity and evidence-led review</span></Link>
-        <Link className="capability-card" to="/register?plan=control&billingCycle=monthly"><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></Link>
+        <Link className="capability-card" to={buildPublicPlanLink(session, "capture")}><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></Link>
+        <Link className="capability-card" to={buildPublicPlanLink(session, "control")}><NavIcon name="workflow" /><strong>Approval Workflows</strong><span>Review, approve and publish in one place</span></Link>
+        <Link className="capability-card" to={buildPublicPlanLink(session, "operations")}><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent categorisation and tax defaults</span></Link>
+        <Link className="capability-card" to={buildPublicPlanLink(session, "control")}><NavIcon name="claims" /><strong>Mileage & Expense Claims</strong><span>Staff submission, mileage entry and approval</span></Link>
+        <Link className="capability-card" to={buildPublicPlanLink(session, "capture")}><NavIcon name="health" /><strong>Client Data Health</strong><span>Unreadable, duplicate and low-confidence follow-up</span></Link>
+        <Link className="capability-card" to={buildPublicPlanLink(session, "operations")}><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive and retrieve source evidence fast</span></Link>
+        <Link className="capability-card" to={buildPublicPlanLink(session, "operations")}><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></Link>
+        <Link className="capability-card" to={buildPublicPlanLink(session, "operations")}><NavIcon name="integrations" /><strong>Bank & Statement Review</strong><span>Imported bank activity and evidence-led review</span></Link>
+        <Link className="capability-card" to={buildPublicPlanLink(session, "control")}><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></Link>
         <Link className="capability-card" to="/pricing"><NavIcon name="overview" /><strong>Organisation Switching</strong><span>Move between business contexts without leaving the workspace</span></Link>
       </div>
     </section>
   );
 }
 
-function CoverageSection() {
+function CoverageSection({ session = null }: { session?: SessionState | null }) {
   return (
     <section className="workflow-band">
       <div className="section-heading">
@@ -6367,18 +6403,18 @@ function CoverageSection() {
         </p>
       </div>
       <div className="document-grid">
-        <Link className="document-card" to="/register?plan=capture&billingCycle=monthly"><strong>Receipts</strong><span>Mobile capture, employee submission, and web upload</span></Link>
-        <Link className="document-card" to="/register?plan=capture&billingCycle=monthly"><strong>Purchase invoices</strong><span>Structured totals, tax fields, and review-ready coding</span></Link>
-        <Link className="document-card" to="/register?plan=control&billingCycle=monthly"><strong>Sales documents</strong><span>Separate sales workspace with the same synced review flow</span></Link>
-        <Link className="document-card" to="/register?plan=control&billingCycle=monthly"><strong>Mileage claims</strong><span>Staff mileage entry and approval-ready claim handling</span></Link>
-        <Link className="document-card" to="/register?plan=operations&billingCycle=monthly"><strong>Bank-led evidence</strong><span>Imported bank activity matched back to supporting records</span></Link>
-        <Link className="document-card" to="/register?plan=operations&billingCycle=monthly"><strong>Vault files</strong><span>Stored reference documents with protected retrieval</span></Link>
+        <Link className="document-card" to={buildPublicPlanLink(session, "capture")}><strong>Receipts</strong><span>Mobile capture, employee submission, and web upload</span></Link>
+        <Link className="document-card" to={buildPublicPlanLink(session, "capture")}><strong>Purchase invoices</strong><span>Structured totals, tax fields, and review-ready categorisation</span></Link>
+        <Link className="document-card" to={buildPublicPlanLink(session, "control")}><strong>Sales documents</strong><span>Separate sales workspace with the same synced review flow</span></Link>
+        <Link className="document-card" to={buildPublicPlanLink(session, "control")}><strong>Mileage claims</strong><span>Staff mileage entry and approval-ready claim handling</span></Link>
+        <Link className="document-card" to={buildPublicPlanLink(session, "operations")}><strong>Bank-led evidence</strong><span>Imported bank activity matched back to supporting records</span></Link>
+        <Link className="document-card" to={buildPublicPlanLink(session, "operations")}><strong>Vault files</strong><span>Stored reference documents with protected retrieval</span></Link>
       </div>
     </section>
   );
 }
 
-function FlowSection() {
+function FlowSection({ session = null }: { session?: SessionState | null }) {
   return (
     <section className="workflow-band">
       <div className="section-heading">
@@ -6393,17 +6429,17 @@ function FlowSection() {
         </p>
       </div>
       <div className="process-grid">
-        <Link className="process-card" to="/register?plan=capture&billingCycle=monthly"><span>1. Capture</span><strong>Collect receipts, invoices, and supporting files</strong><p>Use mobile capture, web upload, employee drop box flows, and bank-led intake.</p></Link>
-        <Link className="process-card" to="/register?plan=capture&billingCycle=monthly"><span>2. Extract</span><strong>Pull out totals, tax, supplier, and line detail</strong><p>Structured extraction, VAT-aware fields, and document detail all stay visible for review.</p></Link>
-        <Link className="process-card" to="/register?plan=control&billingCycle=monthly"><span>3. Review</span><strong>Work the exceptions instead of retyping everything</strong><p>Needs-review, duplicate, unreadable, and low-confidence signals surface the items that need attention.</p></Link>
-        <Link className="process-card" to="/register?plan=operations&billingCycle=monthly"><span>4. Store</span><strong>Keep the original evidence easy to retrieve</strong><p>Vault storage, protected document access, and searchable archive views keep source files close at hand.</p></Link>
-        <Link className="process-card" to="/register?plan=control&billingCycle=monthly"><span>5. Approve &amp; Publish</span><strong>Move claims, reviews, and handoff queues forward</strong><p>Approval-ready claims, ready queues, and export routes keep the downstream workflow moving.</p></Link>
+        <Link className="process-card" to={buildPublicPlanLink(session, "capture")}><span>1. Capture</span><strong>Collect receipts, invoices, and supporting files</strong><p>Use mobile capture, web upload, employee drop box flows, and bank-led intake.</p></Link>
+        <Link className="process-card" to={buildPublicPlanLink(session, "capture")}><span>2. Extract</span><strong>Pull out totals, tax, supplier, and line detail</strong><p>Structured extraction, VAT-aware fields, and document detail all stay visible for review.</p></Link>
+        <Link className="process-card" to={buildPublicPlanLink(session, "control")}><span>3. Review</span><strong>Work the exceptions instead of retyping everything</strong><p>Needs-review, duplicate, unreadable, and low-confidence signals surface the items that need attention.</p></Link>
+        <Link className="process-card" to={buildPublicPlanLink(session, "operations")}><span>4. Store</span><strong>Keep the original evidence easy to retrieve</strong><p>Vault storage, protected document access, and searchable archive views keep source files close at hand.</p></Link>
+        <Link className="process-card" to={buildPublicPlanLink(session, "control")}><span>5. Approve &amp; Publish</span><strong>Move claims, reviews, and handoff queues forward</strong><p>Approval-ready claims, ready queues, and export routes keep the downstream workflow moving.</p></Link>
       </div>
     </section>
   );
 }
 
-function WorkflowCoverageSection() {
+function WorkflowCoverageSection({ session = null }: { session?: SessionState | null }) {
   return (
     <section className="workflow-band">
       <div className="section-heading">
@@ -6417,7 +6453,7 @@ function WorkflowCoverageSection() {
         </p>
       </div>
       <div className="workflow-grid">
-        <Link className="workflow-card workflow-link" to="/register?plan=capture&billingCycle=monthly">
+        <Link className="workflow-card workflow-link" to={buildPublicPlanLink(session, "capture")}>
           <strong>Capture across every submission route</strong>
           <ul>
             <li>Mobile receipt capture in the app</li>
@@ -6428,7 +6464,7 @@ function WorkflowCoverageSection() {
             <li>Separate workspaces for purchase and sales documents</li>
           </ul>
         </Link>
-        <Link className="workflow-card workflow-link" to="/register?plan=operations&billingCycle=monthly">
+        <Link className="workflow-card workflow-link" to={buildPublicPlanLink(session, "operations")}>
           <strong>Automate the review layer</strong>
           <ul>
             <li>Supplier rules for category, tax rate and payment method</li>
@@ -6439,7 +6475,7 @@ function WorkflowCoverageSection() {
             <li>Audit-friendly document detail editing before publish</li>
           </ul>
         </Link>
-        <Link className="workflow-card workflow-link" to="/register?plan=operations&billingCycle=monthly">
+        <Link className="workflow-card workflow-link" to={buildPublicPlanLink(session, "operations")}>
           <strong>Close the loop with finance controls</strong>
           <ul>
             <li>Dedicated vault workspace for searchable archived evidence</li>
@@ -6456,7 +6492,7 @@ function WorkflowCoverageSection() {
   );
 }
 
-function IntegrationSection() {
+function IntegrationSection({ session = null }: { session?: SessionState | null }) {
   return (
     <section className="integration-band">
       <div>
@@ -6468,16 +6504,16 @@ function IntegrationSection() {
         </p>
       </div>
       <div className="integration-names" aria-label="Compatible accounting platforms">
-        <Link to="/register?plan=control&billingCycle=monthly">Sage</Link>
-        <Link to="/register?plan=control&billingCycle=monthly">Xero</Link>
-        <Link to="/register?plan=control&billingCycle=monthly">QuickBooks</Link>
-        <Link to="/register?plan=control&billingCycle=monthly">FreeAgent</Link>
+        <Link to={buildPublicPlanLink(session, "control")}>Sage</Link>
+        <Link to={buildPublicPlanLink(session, "control")}>Xero</Link>
+        <Link to={buildPublicPlanLink(session, "control")}>QuickBooks</Link>
+        <Link to={buildPublicPlanLink(session, "control")}>FreeAgent</Link>
       </div>
     </section>
   );
 }
 
-function PricingTeaserSection() {
+function PricingTeaserSection({ session = null }: { session?: SessionState | null }) {
   return (
     <section className="pricing-band">
       <div className="section-heading">
@@ -6495,7 +6531,7 @@ function PricingTeaserSection() {
           <Link
             key={plan.id}
             className="pricing-card pricing-link"
-            to={buildRegisterLink(plan.id, "monthly", {
+            to={buildPublicPlanLink(session, plan.id, {
               monthlyDocumentLimit: plan.monthlyDocumentLimit,
               includedUsers: plan.includedUsers,
             })}
@@ -6509,15 +6545,19 @@ function PricingTeaserSection() {
       </div>
       <div className="section-actions">
         <Link className="public-button" to="/pricing">View pricing page</Link>
-        <Link
-          className="secondary-inline-link"
-          to={buildRegisterLink("control", "monthly", {
-            monthlyDocumentLimit: 1500,
-            includedUsers: 30,
-          })}
-        >
-          Start Trial
-        </Link>
+        {session ? (
+          <Link className="secondary-inline-link" to={signedInPublicPrimaryRoute(session)}>Back to workspace</Link>
+        ) : (
+          <Link
+            className="secondary-inline-link"
+            to={buildRegisterLink("control", "monthly", {
+              monthlyDocumentLimit: 1500,
+              includedUsers: 30,
+            })}
+          >
+            Start Trial
+          </Link>
+        )}
       </div>
     </section>
   );
@@ -6755,7 +6795,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
   );
 }
 
-function CompanySection() {
+function CompanySection({ session = null }: { session?: SessionState | null }) {
   return (
     <section className="company-band">
       <div className="section-heading">
@@ -6772,12 +6812,12 @@ function CompanySection() {
         <article className="company-card">
           <strong>Secure operational model</strong>
           <p>Organisation-scoped routes, authenticated sessions and protected receipt asset retrieval.</p>
-          <Link className="secondary-inline-link company-card-link-row" to="/register?plan=control&billingCycle=monthly">Start Control trial</Link>
+          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=control&billingCycle=monthly"}>{session ? "Back to workspace" : "Start Control trial"}</Link>
         </article>
         <article className="company-card">
           <strong>Review-ready audit trail</strong>
           <p>Receipts, vault files, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
-          <Link className="secondary-inline-link company-card-link-row" to="/register?plan=operations&billingCycle=monthly">Start Operations trial</Link>
+          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=operations&billingCycle=monthly"}>{session ? "Back to workspace" : "Start Operations trial"}</Link>
         </article>
         <article className="company-card">
           <strong>Built for finance teams</strong>
@@ -7188,7 +7228,7 @@ function buildWorkspaceHealthIssues(store: AppStore, limit = 4) {
   if (pendingReviewCount) {
     issues.push({
       label: `${pendingReviewCount} document${pendingReviewCount === 1 ? " needs" : "s need"} review`,
-      detail: "Review-required items are still waiting on tax, coding, claim, or publish decisions.",
+      detail: "Review-required items are still waiting on tax, review, claim, or publish decisions.",
       route: firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"),
     });
   }
@@ -7951,6 +7991,20 @@ function buildRegisterLink(
     params.set("includedUsers", String(options.includedUsers));
   }
   return `/register?${params.toString()}`;
+}
+
+function buildPublicPlanLink(
+  session: SessionState | null | undefined,
+  planId: BillingPlanId,
+  options?: {
+    monthlyDocumentLimit?: number;
+    includedUsers?: number;
+  },
+) {
+  if (session) {
+    return signedInPublicPrimaryRoute(session);
+  }
+  return buildRegisterLink(planId, "monthly", options);
 }
 
 function normalizePublicPlan(value: string | null): BillingPlanId {
