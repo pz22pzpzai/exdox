@@ -1324,6 +1324,18 @@ input {
   background: #eef8fd;
 }
 
+.data-table tbody tr:focus-visible {
+  outline: 2px solid #28b5f3;
+  outline-offset: -2px;
+  background: #eef8fd;
+}
+
+.table-open-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+}
+
 .status-pill {
   min-width: 68px;
   justify-content: center;
@@ -2465,6 +2477,12 @@ input {
   margin: 12px 0 0;
   color: var(--muted);
   line-height: 1.6;
+}
+
+.company-card-link-row {
+  display: inline-flex;
+  margin-top: 14px;
+  font-weight: 600;
 }
 
 .pricing-feature-list {

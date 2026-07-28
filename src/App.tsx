@@ -458,6 +458,9 @@ function buildFallbackOrganisationSettings(session: SessionState): OrganisationS
 }
 
 function isSignedInPublicPage(pathname: string) {
+  if (pathname === "/pricing" || pathname === "/account-deletion") {
+    return true;
+  }
   return pathname === "/platform"
     || pathname === "/integrations"
     || pathname === "/faq"
@@ -465,6 +468,19 @@ function isSignedInPublicPage(pathname: string) {
     || pathname === "/terms"
     || pathname === "/privacy"
     || pathname === "/cookies";
+}
+
+function isPublicSeoPath(pathname: string) {
+  return pathname === "/"
+    || pathname === "/platform"
+    || pathname === "/integrations"
+    || pathname === "/pricing"
+    || pathname === "/faq"
+    || pathname === "/company"
+    || pathname === "/terms"
+    || pathname === "/privacy"
+    || pathname === "/cookies"
+    || pathname === "/account-deletion";
 }
 
 function SeoManager({ pathname, session }: { pathname: string; session: SessionState | null }) {
@@ -496,7 +512,7 @@ function SeoManager({ pathname, session }: { pathname: string; session: SessionS
 
 function buildSeoConfig(pathname: string, session: SessionState | null): SeoConfig {
   const normalizedPath = normalizeCanonicalPath(pathname);
-  if (!session) {
+  if (!session || isPublicSeoPath(normalizedPath)) {
     if (normalizedPath === "/platform") {
       return {
         title: "Expense Management Platform | Receipt Capture, Claims and Reconciliation | Exdox",
@@ -1624,10 +1640,35 @@ function OverviewPage({ store }: { store: AppStore }) {
             <span>Live totals</span>
           </div>
           <div className="status-strip">
-            {(["Processing", "Review", "Ready", "Published"] as InboxStatus[]).map((status) => (
-              <button className="status-box" type="button" key={status} onClick={() => navigate(firstInboxRouteForStatus(store, status))}>
-                <strong>{[...store.costs, ...store.sales, ...store.vault].filter((item) => item.status === status).length}</strong>
-                <span>{status}</span>
+            {[
+              {
+                key: "processing",
+                label: "Processing",
+                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => item.status === "Processing").length,
+                route: firstInboxRouteForStatus(store, "Processing"),
+              },
+              {
+                key: "needs-review",
+                label: "Needs review",
+                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => item.needsReview).length,
+                route: firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"),
+              },
+              {
+                key: "ready",
+                label: "Ready",
+                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => item.status === "Ready").length,
+                route: firstInboxRouteForStatus(store, "Ready"),
+              },
+              {
+                key: "published",
+                label: "Published",
+                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => item.status === "Published").length,
+                route: firstInboxRouteForStatus(store, "Published"),
+              },
+            ].map((item) => (
+              <button className="status-box" type="button" key={item.key} onClick={() => navigate(item.route)}>
+                <strong>{item.count}</strong>
+                <span>{item.label}</span>
               </button>
             ))}
           </div>
@@ -1769,7 +1810,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
     if (costReview > 0) {
       items.push({
         title: "Costs need review",
-        detail: `${costReview} cost records still need coding or final checks.`,
+        detail: `${costReview} cost records still need review or final checks.`,
         route: "/costs?issue=Needs%20review",
         count: costReview,
       });
@@ -1778,7 +1819,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
     if (salesReview > 0) {
       items.push({
         title: "Sales need review",
-        detail: `${salesReview} sales records still need coding or final checks.`,
+        detail: `${salesReview} sales records still need review or final checks.`,
         route: "/sales?issue=Needs%20review",
         count: salesReview,
       });
@@ -1820,12 +1861,14 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
     });
   }
 
+  const activeItemCount = items.reduce((sum, item) => sum + (item.count ?? 1), 0);
+
   return (
     <div className="stack-page">
       <section className="panel">
         <div className="panel-heading">
           <h2>Attention queue</h2>
-          <span>{items.length} active items</span>
+          <span>{activeItemCount} active item{activeItemCount === 1 ? "" : "s"}</span>
         </div>
         <p className="muted-copy">
           Review the live items that still need action across the workspace.
@@ -1845,7 +1888,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
                   <strong>{item.title}</strong>
                   <span>{item.detail}</span>
                 </div>
-                <span>{item.count ?? "Open"}</span>
+                <span>{item.count ? `${item.count} record${item.count === 1 ? "" : "s"}` : "Open"}</span>
               </button>
             ))}
           </div>
@@ -1901,7 +1944,7 @@ function DataHealthPage({ store }: { store: AppStore }) {
         <MetricCard
           label="Needs review"
           value={String(reviewCount)}
-          detail="Coding or publish decisions outstanding"
+          detail="Review or publish decisions are still outstanding"
           onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))}
         />
         <MetricCard
@@ -2210,7 +2253,7 @@ function WorkflowPage({ store }: { store: AppStore }) {
   return (
     <div className="stack-page">
       <section className="metrics-grid">
-        <MetricCard label="Review queue" value={String(documentsNeedingReview.length)} detail="Documents waiting on coding or final checks" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
+        <MetricCard label="Review queue" value={String(documentsNeedingReview.length)} detail="Documents waiting on review or publish decisions" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
         <MetricCard label="Cost approvals" value={String(costReady.length)} detail="Cost documents ready for handoff" onClick={() => navigate("/costs?status=Ready")} />
         <MetricCard label="Sales approvals" value={String(salesReady.length)} detail="Sales documents ready for handoff" onClick={() => navigate("/sales?status=Ready")} />
         <MetricCard label="Pending claims" value={String(pendingClaims.length)} detail="Expense claims awaiting approval" onClick={() => navigate("/claims?status=pending")} />
@@ -2702,7 +2745,7 @@ function InboxPage({
           <p>
             {isVaultInbox
               ? "Store archive-only evidence in a separate workspace so reference documents do not clutter expense or sales review."
-              : "Bulk ingestion, organisation-scoped review, and ledger-safe editing in a dedicated workspace."}
+              : "Bulk ingestion, organisation-scoped review, and controlled document updates in a dedicated workspace."}
           </p>
         </div>
         <div className="filter-row">
@@ -2814,12 +2857,23 @@ function InboxPage({
                   {vatTrackingEnabled ? <th>VAT Amount</th> : null}
                   <th>{vatTrackingEnabled ? "Gross Total" : "Total"}</th>
                   <th>Source</th>
+                  <th>Action</th>
                 </tr>
               )}
             </thead>
             <tbody>
               {filtered.map((record) => (
-                <tr key={record.id} onClick={() => navigate(`${basePath}/${record.id}`)}>
+                <tr
+                  key={record.id}
+                  onClick={() => navigate(`${basePath}/${record.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(`${basePath}/${record.id}`);
+                    }
+                  }}
+                  tabIndex={0}
+                >
                   {isVaultInbox ? (
                     <>
                       <td>
@@ -2834,6 +2888,18 @@ function InboxPage({
                       <td>{documentTypeLabel(record.documentType)}</td>
                       <td>{sourceLabel(record.receiptSource)}</td>
                       <td>{record.description ?? "Stored vault document"}</td>
+                      <td>
+                        <button
+                          className="secondary-action table-open-button"
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(`${basePath}/${record.id}`);
+                          }}
+                        >
+                          Open
+                        </button>
+                      </td>
                     </>
                   ) : (
                     <>
@@ -2851,6 +2917,18 @@ function InboxPage({
                       {vatTrackingEnabled ? <td>{currency(record.vatAmount)}</td> : null}
                       <td>{currency(receiptGrossAmount(record))}</td>
                       <td>{sourceLabel(record.receiptSource)}</td>
+                      <td>
+                        <button
+                          className="secondary-action table-open-button"
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(`${basePath}/${record.id}`);
+                          }}
+                        >
+                          Open
+                        </button>
+                      </td>
                     </>
                   )}
                 </tr>
@@ -3435,7 +3513,6 @@ function ClaimsPage({
   }, [location.search]);
 
   const filteredClaims = claims
-    .filter((claim) => claim.documentCount > 0)
     .filter((claim) => statusFilter === "all" || claim.status === statusFilter)
     .sort((left, right) => compareClaimRecords(left, right, sortOrder));
 
@@ -3673,17 +3750,40 @@ function EmployeeDropboxPage(props: {
                 {vatTrackingEnabled ? <th>Net</th> : null}
                 {vatTrackingEnabled ? <th>VAT</th> : null}
                 <th>{vatTrackingEnabled ? "Gross" : "Total"}</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {filteredReceipts.map((receipt) => (
-                <tr key={receipt.id} onClick={() => navigate(`/dropbox/${receipt.id}`)}>
+                <tr
+                  key={receipt.id}
+                  onClick={() => navigate(`/dropbox/${receipt.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(`/dropbox/${receipt.id}`);
+                    }
+                  }}
+                  tabIndex={0}
+                >
                   <td><StatusPill status={receipt.status} /></td>
                   <td>{receipt.createdAt.slice(0, 10)}</td>
                   <td>{receipt.vendorName ?? receipt.sourceFilename}</td>
                   {vatTrackingEnabled ? <td>{currency(receipt.netAmount)}</td> : null}
                   {vatTrackingEnabled ? <td>{currency(receipt.vatAmount)}</td> : null}
                   <td>{currency(receiptGrossAmount(receipt))}</td>
+                  <td>
+                    <button
+                      className="secondary-action table-open-button"
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate(`/dropbox/${receipt.id}`);
+                      }}
+                    >
+                      Open
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -4674,7 +4774,7 @@ function SettingsPage(props: {
             disabled={saving}
             onClick={() => setDraft({ ...draft, isVatRegistered: !draft.isVatRegistered })}
           >
-            {draft.isVatRegistered ? "True" : "False"}
+            {draft.isVatRegistered ? "On" : "Off"}
           </button>
         </label>
         <label>
@@ -6664,18 +6764,21 @@ function CompanySection() {
         </p>
       </div>
       <div className="company-grid">
-        <Link className="company-card company-link" to="/register?plan=control&billingCycle=monthly">
+        <article className="company-card">
           <strong>Secure operational model</strong>
           <p>Organisation-scoped routes, authenticated sessions and protected receipt asset retrieval.</p>
-        </Link>
-        <Link className="company-card company-link" to="/register?plan=operations&billingCycle=monthly">
+          <Link className="secondary-inline-link company-card-link-row" to="/register?plan=control&billingCycle=monthly">Start Control trial</Link>
+        </article>
+        <article className="company-card">
           <strong>Review-ready audit trail</strong>
           <p>Receipts, vault files, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
-        </Link>
-        <Link className="company-card company-link" to="/pricing">
+          <Link className="secondary-inline-link company-card-link-row" to="/register?plan=operations&billingCycle=monthly">Start Operations trial</Link>
+        </article>
+        <article className="company-card">
           <strong>Built for finance teams</strong>
           <p>Business admins get the full control surface, employees can still submit directly, and the active organisation context stays visible across the workspace.</p>
-        </Link>
+          <Link className="secondary-inline-link company-card-link-row" to="/pricing">Review pricing</Link>
+        </article>
       </div>
       <div className="section-heading" id="support">
         <div>
@@ -6688,22 +6791,26 @@ function CompanySection() {
         </p>
       </div>
       <div className="company-grid">
-        <Link className="company-card company-link" to="/faq">
+        <article className="company-card">
           <strong>Help and FAQs</strong>
           <p>Use this for everyday guidance on mobile capture, website review, duplicate receipts, claims, and document sync.</p>
-        </Link>
-        <a className="company-card company-link" href="mailto:hello@exdox.co.uk?subject=Access%20support">
+          <Link className="secondary-inline-link company-card-link-row" to="/faq">Open FAQs</Link>
+        </article>
+        <article className="company-card">
           <strong>Access support</strong>
           <p>Use this for login help, password resets, invite issues, and activation support.</p>
-        </a>
-        <a className="company-card company-link" href="mailto:hello@exdox.co.uk?subject=Billing%20support">
+          <a className="secondary-inline-link company-card-link-row" href="mailto:hello@exdox.co.uk?subject=Access%20support">Email access support</a>
+        </article>
+        <article className="company-card">
           <strong>Billing support</strong>
           <p>Use this for plan questions, workspace unlock requests, and commercial billing changes.</p>
-        </a>
-        <a className="company-card company-link" href="mailto:hello@exdox.co.uk?subject=Security%20request">
+          <a className="secondary-inline-link company-card-link-row" href="mailto:hello@exdox.co.uk?subject=Billing%20support">Email billing support</a>
+        </article>
+        <article className="company-card">
           <strong>Security contact</strong>
           <p>Use this for security requests, responsible disclosure, and document-handling concerns.</p>
-        </a>
+          <a className="secondary-inline-link company-card-link-row" href="mailto:hello@exdox.co.uk?subject=Security%20request">Email security contact</a>
+        </article>
       </div>
     </section>
   );
@@ -7601,10 +7708,14 @@ function downloadCsv(fileName: string, rows: Array<Record<string, string>>) {
   const link = document.createElement("a");
   link.href = url;
   link.download = fileName;
+  link.style.display = "none";
+  link.rel = "noopener";
   document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
+  link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+  window.setTimeout(() => {
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }, 1500);
 }
 
 function escapeCsvValue(value: string) {
