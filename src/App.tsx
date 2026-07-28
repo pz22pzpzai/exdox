@@ -99,7 +99,7 @@ const navItems = [
   { to: "/claims", label: "Expense Claims", icon: "claims" },
   { to: "/rules", label: "Supplier Rules", icon: "rules" },
   { to: "/reconciliation", label: "Bank Reconciliation", icon: "bank" },
-  { to: "/settings", label: "Company Settings", icon: "settings" },
+  { to: "/settings", label: "Settings", icon: "settings" },
   { to: "/requisitions", label: "Open Banking", icon: "open-banking" },
   { to: "/billing", label: "Billing", icon: "billing" },
 ];
@@ -451,10 +451,41 @@ function buildFallbackOrganisationSettings(session: SessionState): OrganisationS
 
   return {
     organisationId: activeOrganisation?.id ?? session.activeOrganisationId ?? session.user.organisationId,
-    organisationName: activeOrganisation?.name ?? "Active organisation",
+    organisationName: activeOrganisation?.name ?? "Exdox organisation",
     isVatRegistered: true,
     defaultTaxRate: "20% Standard",
   };
+}
+
+function workspaceShellKicker(pathname: string, businessAdmin: boolean) {
+  if (!businessAdmin) {
+    return "Employee submissions";
+  }
+  if (pathname.startsWith("/settings")) {
+    return "Company configuration";
+  }
+  if (pathname.startsWith("/billing")) {
+    return "Subscription and access";
+  }
+  if (pathname.startsWith("/claims")) {
+    return "Expenses and approvals";
+  }
+  if (pathname.startsWith("/costs")) {
+    return "Costs workflow";
+  }
+  if (pathname.startsWith("/sales")) {
+    return "Sales workflow";
+  }
+  if (pathname.startsWith("/vault")) {
+    return "Archive and storage";
+  }
+  if (pathname.startsWith("/reconciliation")) {
+    return "Finance controls";
+  }
+  if (pathname.startsWith("/overview")) {
+    return "Commercial finance workspace";
+  }
+  return "Exdox workspace";
 }
 
 function isSignedInPublicPage(pathname: string) {
@@ -1302,7 +1333,7 @@ function DashboardShell(props: {
       <main className="workspace">
         <header className="topbar">
           <div>
-            <p className="topbar-kicker">{activeOrganisation?.name ?? "Active workspace"}</p>
+            <p className="topbar-kicker">{workspaceShellKicker(location.pathname, businessAdmin)}</p>
             <h1>{businessAdmin ? routeTitle(location.pathname) : "Employee Drop Box"}</h1>
           </div>
           <div className="topbar-actions">
@@ -1313,7 +1344,7 @@ function DashboardShell(props: {
             >
               {props.session.organisations.map((organisation) => (
                 <option key={organisation.id} value={organisation.id}>
-                  {organisation.name}
+                  {props.session.organisations.length === 1 ? "Current organisation" : organisation.name}
                 </option>
                 ))}
             </select>
@@ -1328,7 +1359,7 @@ function DashboardShell(props: {
             </button>
             {isRouteAllowed(props.session, "/settings") ? (
               <button className="secondary-action" type="button" onClick={() => navigate("/settings")}>
-                Profile
+                Settings
               </button>
             ) : null}
             <button className="secondary-action" type="button" onClick={props.onSignOut}>
@@ -4754,14 +4785,14 @@ function SettingsPage(props: {
   return (
     <section className="panel settings-panel">
       <div className="panel-heading">
-        <h2>{draft.organisationName}</h2>
-        <span>Central company settings</span>
+        <h2>Company Settings</h2>
+        <span>Control tax defaults, employee access, and workspace settings</span>
       </div>
       {error ? <div className="error-banner">{error}</div> : null}
       {feedback ? <div className="success-banner">{feedback}</div> : null}
       <div className="summary-list">
         <div>
-          <strong>Organisation Profile</strong>
+          <strong>Organisation settings</strong>
           <span>Organisation #{draft.organisationId}</span>
         </div>
         <div>
@@ -5700,7 +5731,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
         <div className="public-actions">
           {signedIn && props.session ? (
             <>
-              <Link to={signedInPublicSecondaryRoute(props.session)}>Profile</Link>
+              <Link to={signedInPublicSecondaryRoute(props.session)}>Settings</Link>
               <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)}>Workspace</Link>
             </>
           ) : (
@@ -5727,7 +5758,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
             <div className="public-mobile-actions">
               {signedIn && props.session ? (
                 <>
-                  <Link to={signedInPublicSecondaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>Profile</Link>
+                  <Link to={signedInPublicSecondaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>Settings</Link>
                   <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>Workspace</Link>
                 </>
               ) : (
