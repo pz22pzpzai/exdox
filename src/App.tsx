@@ -461,6 +461,9 @@ function workspaceShellKicker(pathname: string, businessAdmin: boolean) {
   if (!businessAdmin) {
     return "Employee submissions";
   }
+  if (pathname.startsWith("/rules")) {
+    return "Supplier automation";
+  }
   if (pathname.startsWith("/settings")) {
     return "Company configuration";
   }
@@ -482,6 +485,9 @@ function workspaceShellKicker(pathname: string, businessAdmin: boolean) {
   if (pathname.startsWith("/reconciliation")) {
     return "Finance controls";
   }
+  if (pathname.startsWith("/requisitions")) {
+    return "Open banking setup";
+  }
   if (pathname.startsWith("/overview")) {
     return "Commercial finance workspace";
   }
@@ -502,11 +508,43 @@ function isSignedInPublicPage(pathname: string) {
 }
 
 function signedInPublicPrimaryRoute(session: SessionState) {
-  return isRouteAllowed(session, "/billing") ? "/billing" : getDefaultRoute(session);
+  return getDefaultRoute(session);
 }
 
 function signedInPublicSecondaryRoute(session: SessionState) {
   return isRouteAllowed(session, "/settings") ? "/settings" : getDefaultRoute(session);
+}
+
+function syncPageSearchParams(
+  pathname: string,
+  currentSearch: string,
+  navigate: (to: string, options?: { replace?: boolean }) => void,
+  entries: Record<string, string | null | undefined>,
+) {
+  const params = new URLSearchParams(currentSearch);
+  let changed = false;
+
+  Object.entries(entries).forEach(([key, value]) => {
+    if (value == null || value === "") {
+      if (params.has(key)) {
+        params.delete(key);
+        changed = true;
+      }
+      return;
+    }
+
+    if (params.get(key) !== value) {
+      params.set(key, value);
+      changed = true;
+    }
+  });
+
+  if (!changed) {
+    return;
+  }
+
+  const nextSearch = params.toString();
+  navigate(`${pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
 }
 
 function isPublicSeoPath(pathname: string) {
@@ -2708,6 +2746,7 @@ function InboxPage({
   onUpload: (files: File[]) => Promise<void>;
 }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
   const [issueFilter, setIssueFilter] = useState<"All" | "Needs review" | "Unreadable" | "Possible duplicates" | "Low confidence" | "Processing">("All");
@@ -2715,8 +2754,8 @@ function InboxPage({
   const [documentTypeFilter, setDocumentTypeFilter] = useState<ReceiptRecord["documentType"] | "All">("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total" | "lowest_confidence">("newest");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [filtersReady, setFiltersReady] = useState(false);
   const deferredQuery = useDeferredValue(query);
-  const navigate = useNavigate();
   const vatTrackingEnabled = isVatTrackingEnabled(settings);
 
   useEffect(() => {
@@ -2749,7 +2788,23 @@ function InboxPage({
         ? nextSort
         : "newest",
     );
+    setFiltersReady(true);
   }, [location.search]);
+
+  useEffect(() => {
+    if (!filtersReady) {
+      return;
+    }
+
+    syncPageSearchParams(location.pathname, location.search, navigate, {
+      search: query.trim() || null,
+      status: statusFilter !== "All" ? statusFilter : null,
+      issue: issueFilter !== "All" ? issueFilter : null,
+      source: sourceFilter !== "All" ? sourceFilter : null,
+      documentType: documentTypeFilter !== "All" ? documentTypeFilter : null,
+      sort: sortOrder !== "newest" ? sortOrder : null,
+    });
+  }, [documentTypeFilter, filtersReady, issueFilter, location.pathname, location.search, navigate, query, sortOrder, sourceFilter, statusFilter]);
 
   const search = deferredQuery.trim().toLowerCase();
   const isVaultInbox = basePath === "/vault";
@@ -3538,6 +3593,7 @@ function ClaimsPage({
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ClaimRecord["status"] | "all">("all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
+  const [filtersReady, setFiltersReady] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -3554,7 +3610,19 @@ function ClaimsPage({
         ? nextSort
         : "newest",
     );
+    setFiltersReady(true);
   }, [location.search]);
+
+  useEffect(() => {
+    if (!filtersReady) {
+      return;
+    }
+
+    syncPageSearchParams(location.pathname, location.search, navigate, {
+      status: statusFilter !== "all" ? statusFilter : null,
+      sort: sortOrder !== "newest" ? sortOrder : null,
+    });
+  }, [filtersReady, location.pathname, location.search, navigate, sortOrder, statusFilter]);
 
   const filteredClaims = claims
     .filter((claim) => statusFilter === "all" || claim.status === statusFilter)
@@ -3695,6 +3763,7 @@ function EmployeeDropboxPage(props: {
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [filtersReady, setFiltersReady] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const vatTrackingEnabled = isVatTrackingEnabled(props.settings);
 
@@ -3711,7 +3780,20 @@ function EmployeeDropboxPage(props: {
         ? nextSort
         : "newest",
     );
+    setFiltersReady(true);
   }, [location.search]);
+
+  useEffect(() => {
+    if (!filtersReady) {
+      return;
+    }
+
+    syncPageSearchParams(location.pathname, location.search, navigate, {
+      search: query.trim() || null,
+      status: statusFilter !== "All" ? statusFilter : null,
+      sort: sortOrder !== "newest" ? sortOrder : null,
+    });
+  }, [filtersReady, location.pathname, location.search, navigate, query, sortOrder, statusFilter]);
 
   const search = deferredQuery.trim().toLowerCase();
   const filteredReceipts = props.receipts.filter((receipt) => {
@@ -4048,6 +4130,7 @@ function RulesPage(props: {
   onDelete: (id: number) => Promise<void>;
 }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [sortOrder, setSortOrder] = useState<"a_z" | "z_a" | "active_first">("a_z");
@@ -4062,6 +4145,7 @@ function RulesPage(props: {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filtersReady, setFiltersReady] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const search = deferredQuery.trim().toLowerCase();
 
@@ -4074,7 +4158,20 @@ function RulesPage(props: {
     setQuery(nextSearch);
     setStatusFilter(nextStatus === "active" || nextStatus === "inactive" ? nextStatus : "all");
     setSortOrder(nextSort === "z_a" || nextSort === "active_first" ? nextSort : "a_z");
+    setFiltersReady(true);
   }, [location.search]);
+
+  useEffect(() => {
+    if (!filtersReady) {
+      return;
+    }
+
+    syncPageSearchParams(location.pathname, location.search, navigate, {
+      search: query.trim() || null,
+      status: statusFilter !== "all" ? statusFilter : null,
+      sort: sortOrder !== "a_z" ? sortOrder : null,
+    });
+  }, [filtersReady, location.pathname, location.search, navigate, query, sortOrder, statusFilter]);
 
   const filteredRules = props.rules.filter((rule) => {
     const matchesSearch =
@@ -4326,6 +4423,7 @@ function ReconciliationPage(props: {
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filtersReady, setFiltersReady] = useState(false);
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -4345,7 +4443,21 @@ function ReconciliationPage(props: {
         ? nextSort
         : "newest",
     );
+    setFiltersReady(true);
   }, [location.search]);
+
+  useEffect(() => {
+    if (!filtersReady) {
+      return;
+    }
+
+    syncPageSearchParams(location.pathname, location.search, navigate, {
+      search: query.trim() || null,
+      status: statusFilter !== "All" ? statusFilter : null,
+      candidates: candidateFilter !== "All" ? candidateFilter : null,
+      sort: sortOrder !== "newest" ? sortOrder : null,
+    });
+  }, [candidateFilter, filtersReady, location.pathname, location.search, navigate, query, sortOrder, statusFilter]);
 
   const search = deferredQuery.trim().toLowerCase();
   const filteredLines = props.lines.filter((line) => {
