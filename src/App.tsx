@@ -3729,7 +3729,7 @@ function ClaimsPage({
       <section className="card-grid">
         {filteredClaims.length ? (
           filteredClaims.map((claim) => (
-            <button className="claim-card" key={claim.id} type="button" onClick={() => navigate(`/claims/${claim.id}`)}>
+            <Link className="claim-card" key={claim.id} to={`/claims/${claim.id}`}>
               <strong>{formatClaimHeading(claim)}</strong>
               <span>Reference: {formatClaimReference(claim)}</span>
               <span>Total value: {currency(claim.totalAmount)}</span>
@@ -3738,7 +3738,7 @@ function ClaimsPage({
               <span>Approval status: {claimStatusLabel(claim.status)}</span>
               <span>{claim.documentCount} receipt lines</span>
               <StatusPill status={claimStatusToPill(claim.status)} />
-            </button>
+            </Link>
           ))
         ) : (
           <div className="empty-inline-state card-span-2">
