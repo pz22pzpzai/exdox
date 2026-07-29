@@ -1660,11 +1660,11 @@ function OverviewPage({ store }: { store: AppStore }) {
   return (
     <div className="stack-page">
       <section className="metrics-grid">
-        <MetricCard label="Costs ledger" value={currency(totalCosts)} detail={`${store.costs.length} documents`} onClick={() => navigate("/costs")} />
-        <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${store.sales.length} invoices`} onClick={() => navigate("/sales")} />
-        <MetricCard label="Vault archive" value={String(vaultDocuments)} detail="Stored reference files" onClick={() => navigate("/vault")} />
-        <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Approval workload" onClick={() => navigate(firstPendingClaimsRoute(store))} />
-        <MetricCard label="Open bank matches" value={String(openMatches)} detail="Awaiting audit pairing" onClick={() => navigate(firstOpenReconciliationRoute(store))} />
+        <MetricCard label="Costs ledger" value={currency(totalCosts)} detail={`${store.costs.length} documents`} to="/costs" />
+        <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${store.sales.length} invoices`} to="/sales" />
+        <MetricCard label="Vault archive" value={String(vaultDocuments)} detail="Stored reference files" to="/vault" />
+        <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Approval workload" to={firstPendingClaimsRoute(store)} />
+        <MetricCard label="Open bank matches" value={String(openMatches)} detail="Awaiting audit pairing" to={firstOpenReconciliationRoute(store)} />
         <MetricCard
           label="Duplicate review"
           value={String(duplicateInsights.groups.length)}
@@ -1673,7 +1673,7 @@ function OverviewPage({ store }: { store: AppStore }) {
               ? `${duplicateInsights.receiptIds.size} receipts need a duplicate check`
               : "No likely duplicate uploads detected"
           }
-          onClick={() => navigate(firstInboxRouteForDuplicateReview(store))}
+          to={firstInboxRouteForDuplicateReview(store)}
         />
       </section>
 
@@ -1827,9 +1827,9 @@ function OverviewPage({ store }: { store: AppStore }) {
             )}
           </ul>
           <div className="toolbar">
-            <button className="secondary-action" type="button" onClick={() => navigate("/overview/data-health")}>
+            <Link className="secondary-action" to="/overview/data-health">
               Open data health view
-            </button>
+            </Link>
           </div>
         </article>
       </section>
@@ -5090,7 +5090,7 @@ function UploadDropZone(props: {
   );
 }
 
-function MetricCard(props: { label: string; value: string; detail: string; onClick?: () => void }) {
+function MetricCard(props: { label: string; value: string; detail: string; onClick?: () => void; to?: string }) {
   const content = (
     <>
       <span>{props.label}</span>
@@ -5099,7 +5099,11 @@ function MetricCard(props: { label: string; value: string; detail: string; onCli
     </>
   );
 
-  return props.onClick ? (
+  return props.to ? (
+    <Link className="metric-card metric-card-button" to={props.to}>
+      {content}
+    </Link>
+  ) : props.onClick ? (
     <button className="metric-card metric-card-button" type="button" onClick={props.onClick}>
       {content}
     </button>
@@ -5732,7 +5736,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
           {signedIn && props.session ? (
             <>
               <Link to={signedInPublicSecondaryRoute(props.session)}>Settings</Link>
-              <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)}>Workspace</Link>
+              <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)}>Dashboard</Link>
             </>
           ) : (
             <>
@@ -5759,7 +5763,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
               {signedIn && props.session ? (
                 <>
                   <Link to={signedInPublicSecondaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>Settings</Link>
-                  <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>Workspace</Link>
+                  <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
                 </>
               ) : (
                 <>
@@ -6025,7 +6029,8 @@ function FaqSection() {
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Try login, duplicate, unknown supplier, claims..."
+          placeholder="Search FAQs"
+          aria-label="Search FAQs"
         />
         <p className="faq-search-meta">
           {normalizedQuery
