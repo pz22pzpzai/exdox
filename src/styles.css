@@ -270,6 +270,12 @@ a {
   flex-wrap: wrap;
 }
 
+.toolbar {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
+}
+
 .org-selector,
 .search-input,
 select,
