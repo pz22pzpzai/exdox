@@ -2573,6 +2573,14 @@ input {
   padding: 20px;
 }
 
+.pricing-card .public-button {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0 16px;
+  white-space: nowrap;
+  line-height: 1;
+}
+
 .pricing-page-band {
   padding-top: 34px;
   width: clamp(960px, 78vw, 2200px);
