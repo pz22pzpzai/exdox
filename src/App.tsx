@@ -1280,6 +1280,7 @@ function DashboardShell(props: {
     props.store.vault.filter((receipt) => receipt.needsReview || receipt.status === "Processing").length +
     props.store.claims.filter((claim) => claim.status === "pending").length +
     props.store.reconciliation.filter((line) => line.status === "Open").length;
+  const actionLabel = `${notificationCount} action${notificationCount === 1 ? "" : "s"} needed`;
   const visibleNavItems = businessAdmin
     ? navItems.map((item) => ({
         ...item,
@@ -1336,18 +1337,18 @@ function DashboardShell(props: {
             >
               {props.session.organisations.map((organisation) => (
                 <option key={organisation.id} value={organisation.id}>
-                  {props.session.organisations.length === 1 ? "Current organisation" : organisation.name}
+                  {organisation.name}
                 </option>
                 ))}
             </select>
             <button
-              className="icon-button"
+              className="icon-button action-count-button"
               type="button"
-              aria-label={`Attention items: ${notificationCount}`}
-              title={`${notificationCount} items need attention`}
+              aria-label={actionLabel}
+              title={actionLabel}
               onClick={() => navigate("/overview/attention")}
             >
-              {notificationCount}
+              {actionLabel}
             </button>
             {isRouteAllowed(props.session, "/settings") ? (
               <button className="secondary-action" type="button" onClick={() => navigate("/settings")}>
