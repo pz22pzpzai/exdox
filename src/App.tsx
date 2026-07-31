@@ -1899,16 +1899,21 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
   }
 
   const activeItemCount = items.reduce((sum, item) => sum + (item.count ?? 1), 0);
+  const activeGroupCount = items.length;
+  const activeSummary =
+    activeGroupCount > 0
+      ? `${activeItemCount} total action${activeItemCount === 1 ? "" : "s"} across ${activeGroupCount} group${activeGroupCount === 1 ? "" : "s"}`
+      : "No active actions";
 
   return (
     <div className="stack-page">
       <section className="panel">
         <div className="panel-heading">
           <h2>Attention queue</h2>
-          <span>{activeItemCount} active item{activeItemCount === 1 ? "" : "s"}</span>
+          <span>{activeSummary}</span>
         </div>
         <p className="muted-copy">
-          Review the live items that still need action across the workspace.
+          Review the live items that still need action across the workspace. The total adds up all actions listed below.
         </p>
       </section>
       <section className="panel">
@@ -1925,7 +1930,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
                   <strong>{item.title}</strong>
                   <span>{item.detail}</span>
                 </div>
-                <span>{item.count ? `${item.count} record${item.count === 1 ? "" : "s"}` : "Open"}</span>
+                <span>{item.count ? `${item.count} action${item.count === 1 ? "" : "s"}` : "Open"}</span>
               </button>
             ))}
           </div>
