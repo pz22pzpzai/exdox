@@ -5802,14 +5802,13 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
           </div>
           <div className="store-badges" aria-label="Download the Exdox mobile app">
             <a
-              className="store-badge"
+              className="store-badge store-badge-image"
               href="https://play.google.com/store/apps/details?id=uk.co.exdox.mobile"
               target="_blank"
               rel="noreferrer"
               aria-label="Download Exdox on Google Play"
             >
-              <span className="store-badge-caption">Download on</span>
-              <strong>Google Play</strong>
+              <img src="/branding/google-play-badge.jpg" alt="Get it on Google Play" />
             </a>
             <span className="store-badge store-badge-disabled" aria-disabled="true">
               <span className="store-badge-caption">iPhone app</span>
