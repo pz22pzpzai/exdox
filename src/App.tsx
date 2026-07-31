@@ -405,10 +405,21 @@ function buildFallbackOrganisationSettings(session: SessionState): OrganisationS
 
   return {
     organisationId: activeOrganisation?.id ?? session.activeOrganisationId ?? session.user.organisationId,
-    organisationName: activeOrganisation?.name ?? "Exdox organisation",
+    organisationName: customerFacingOrganisationName(activeOrganisation?.name),
     isVatRegistered: true,
     defaultTaxRate: "20% Standard",
   };
+}
+
+function customerFacingOrganisationName(name: string | null | undefined) {
+  const trimmedName = name?.trim();
+  if (!trimmedName) {
+    return "Exdox Workspace";
+  }
+  const normalizedName = trimmedName.replace(/\s+/g, " ").toLowerCase();
+  return normalizedName === "receiptflow test workspace" || normalizedName === "receipt flow test workspace"
+    ? "Exdox Workspace"
+    : trimmedName;
 }
 
 function workspaceShellKicker(pathname: string, businessAdmin: boolean) {
@@ -1270,17 +1281,21 @@ function DashboardShell(props: {
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
-  const activeOrganisation =
-    props.session.organisations.find((organisation) => organisation.id === props.session.activeOrganisationId) ??
-    props.session.organisations[0] ??
-    null;
-  const notificationCount =
-    props.store.costs.filter((receipt) => receipt.needsReview).length +
-    props.store.sales.filter((receipt) => receipt.needsReview).length +
-    props.store.vault.filter((receipt) => receipt.needsReview || receipt.status === "Processing").length +
-    props.store.claims.filter((claim) => claim.status === "pending").length +
-    props.store.reconciliation.filter((line) => line.status === "Open").length;
-  const actionLabel = `${notificationCount} action${notificationCount === 1 ? "" : "s"} needed`;
+  const costReviewCount = props.store.costs.filter((receipt) => receipt.needsReview).length;
+  const salesReviewCount = props.store.sales.filter((receipt) => receipt.needsReview).length;
+  const vaultAttentionCount = props.store.vault.filter((receipt) => receipt.needsReview || receipt.status === "Processing").length;
+  const pendingClaimCount = props.store.claims.filter((claim) => claim.status === "pending").length;
+  const openBankMatchCount = props.store.reconciliation.filter((line) => line.status === "Open").length;
+  const actionBreakdown = [
+    { count: costReviewCount, label: "cost review" },
+    { count: salesReviewCount, label: "sales review" },
+    { count: vaultAttentionCount, label: "vault upload" },
+    { count: pendingClaimCount, label: "pending claim" },
+    { count: openBankMatchCount, label: "bank match" },
+  ].filter((item) => item.count > 0);
+  const actionLabel = actionBreakdown.length
+    ? actionBreakdown.map((item) => `${item.count} ${item.label}${item.count === 1 ? "" : "s"}`).join(" + ")
+    : "No actions needed";
   const visibleNavItems = businessAdmin
     ? navItems.map((item) => ({
         ...item,
@@ -1337,7 +1352,7 @@ function DashboardShell(props: {
             >
               {props.session.organisations.map((organisation) => (
                 <option key={organisation.id} value={organisation.id}>
-                  {organisation.name}
+                  {customerFacingOrganisationName(organisation.name)}
                 </option>
                 ))}
             </select>
@@ -1833,7 +1848,7 @@ function OverviewPage({ store }: { store: AppStore }) {
 function AttentionPage({ session, store }: { session: SessionState; store: AppStore }) {
   const navigate = useNavigate();
   const isAdmin = isBusinessAdmin(session);
-  const items: Array<{ title: string; detail: string; route: string; count?: number }> = [];
+  const items: Array<{ title: string; detail: string; route: string; count?: number; countLabel?: string }> = [];
 
   if (isAdmin && session.billing && !isBillingStatusActive(session.billing.status)) {
     items.push({
@@ -1850,6 +1865,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
         detail: `${costReview} cost records still need review or final checks.`,
         route: "/costs?issue=Needs%20review",
         count: costReview,
+        countLabel: `${costReview} cost review${costReview === 1 ? "" : "s"}`,
       });
     }
     const salesReview = store.sales.filter((receipt) => receipt.needsReview).length;
@@ -1859,6 +1875,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
         detail: `${salesReview} sales records still need review or final checks.`,
         route: "/sales?issue=Needs%20review",
         count: salesReview,
+        countLabel: `${salesReview} sales review${salesReview === 1 ? "" : "s"}`,
       });
     }
     const vaultAttention = store.vault.filter((receipt) => receipt.needsReview || receipt.status === "Processing").length;
@@ -1868,6 +1885,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
         detail: `${vaultAttention} archived files still need review or are still processing.`,
         route: "/vault",
         count: vaultAttention,
+        countLabel: `${vaultAttention} vault upload${vaultAttention === 1 ? "" : "s"}`,
       });
     }
     const pendingClaims = store.claims.filter((claim) => claim.status === "pending").length;
@@ -1877,6 +1895,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
         detail: `${pendingClaims} claims are still waiting for approval or payment.`,
         route: "/claims?status=pending",
         count: pendingClaims,
+        countLabel: `${pendingClaims} pending claim${pendingClaims === 1 ? "" : "s"}`,
       });
     }
     const openMatches = store.reconciliation.filter((line) => line.status === "Open").length;
@@ -1886,6 +1905,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
         detail: `${openMatches} bank lines are still waiting for reconciliation review.`,
         route: "/reconciliation?status=Open",
         count: openMatches,
+        countLabel: `${openMatches} bank match${openMatches === 1 ? "" : "es"}`,
       });
     }
   } else if (store.claims.some((claim) => claim.status === "pending")) {
@@ -1895,14 +1915,14 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
       detail: `${pendingClaims} claims are still waiting for approval or payment.`,
       route: "/claims?status=pending",
       count: pendingClaims,
+      countLabel: `${pendingClaims} pending claim${pendingClaims === 1 ? "" : "s"}`,
     });
   }
 
-  const activeItemCount = items.reduce((sum, item) => sum + (item.count ?? 1), 0);
   const activeGroupCount = items.length;
   const activeSummary =
     activeGroupCount > 0
-      ? `${activeItemCount} total action${activeItemCount === 1 ? "" : "s"} across ${activeGroupCount} group${activeGroupCount === 1 ? "" : "s"}`
+      ? items.map((item) => item.countLabel ?? item.title).join(" + ")
       : "No active actions";
 
   return (
@@ -1930,7 +1950,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
                   <strong>{item.title}</strong>
                   <span>{item.detail}</span>
                 </div>
-                <span>{item.count ? `${item.count} action${item.count === 1 ? "" : "s"}` : "Open"}</span>
+                <span>{item.countLabel ?? (item.count ? `${item.count} action${item.count === 1 ? "" : "s"}` : "Open")}</span>
               </button>
             ))}
           </div>
