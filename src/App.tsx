@@ -160,7 +160,7 @@ const pricingPlans: Array<{
     tagline: "Receipt capture and review for lean teams",
     monthlyDocuments: "250 documents / month",
     users: "5 users included",
-    cta: "Start Capture Trial",
+    cta: "Start Free Capture Trial",
     trialLabel: "14-day trial",
     monthlyPrice: 15,
     annualMonthlyPrice: 12,
@@ -185,7 +185,7 @@ const pricingPlans: Array<{
     tagline: "Costs, sales, claims, and approval-ready workflows",
     monthlyDocuments: "1,500 documents / month",
     users: "30 users included",
-    cta: "Start Control Trial",
+    cta: "Start Free Control Trial",
     trialLabel: "14-day trial",
     monthlyPrice: 89,
     annualMonthlyPrice: 71.2,
@@ -210,7 +210,7 @@ const pricingPlans: Array<{
     tagline: "Rules, vault storage, open banking, and reconciliation",
     monthlyDocuments: "3,000 documents / month",
     users: "60 users included",
-    cta: "Start Operations Trial",
+    cta: "Start Free Operations Trial",
     trialLabel: "14-day trial",
     monthlyPrice: 173,
     annualMonthlyPrice: 138.4,
@@ -5808,7 +5808,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
               rel="noreferrer"
               aria-label="Download Exdox on Google Play"
             >
-              <img src="/branding/google-play-badge.jpg" alt="Get it on Google Play" />
+              <img src="/branding/google-play-badge.webp" alt="Get it on Google Play" />
             </a>
             <span className="store-badge store-badge-disabled" aria-disabled="true">
               <span className="store-badge-caption">iPhone app</span>
