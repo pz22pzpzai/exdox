@@ -2627,12 +2627,21 @@ input {
   box-shadow: 0 8px 22px rgba(32, 169, 234, 0.12);
 }
 
-.slider-pricing-layout {
+.pricing-page-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.8fr);
   gap: 18px;
   align-items: start;
-  margin-bottom: 28px;
+}
+
+.pricing-page-main,
+.pricing-page-side {
+  display: grid;
+  gap: 18px;
+}
+
+.pricing-page-main {
+  align-content: start;
 }
 
 .slider-pricing-card,
@@ -2847,9 +2856,16 @@ input {
   margin-top: 18px;
 }
 
-.pricing-notes-grid,
+.pricing-grid-detailed {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pricing-notes-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .pricing-faq-grid {
-  margin-top: 18px;
+  margin-top: 0;
 }
 
 .secondary-inline-link {
@@ -2950,7 +2966,7 @@ input {
   .policy-grid,
   .pricing-grid-expanded,
   .pricing-notes-grid,
-  .slider-pricing-layout,
+  .pricing-page-layout,
   .billing-metrics {
     grid-template-columns: 1fr;
   }

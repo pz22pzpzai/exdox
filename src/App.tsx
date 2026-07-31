@@ -6756,203 +6756,207 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
           Exdox plans are structured around document volume, users, control depth, and operational workflow coverage.
         </p>
       </div>
-      <div className="slider-pricing-layout">
-        <article className="slider-pricing-card">
-          <div className="slider-price-row">
-            <strong>{enterpriseSelected ? "Coming soon" : currency(selectedPrice)}</strong>
-            {enterpriseSelected ? null : <span>Per Month</span>}
-          </div>
-          <span className="slider-vat-note">
-            {enterpriseSelected ? "Enterprise self-serve rollout is coming soon." : "GBP, includes VAT"}
-          </span>
-          <div className="slider-capacity-copy">
-            <strong>{selectedStep.documents.toLocaleString()}</strong>
-            <span>Documents Per Month</span>
-          </div>
-          <div className="slider-capacity-copy">
-            <strong>{selectedStep.users}</strong>
-            <span>Users Included</span>
-          </div>
-          <input
-            className="pricing-slider"
-            type="range"
-            min={0}
-            max={pricingSliderSteps.length - 1}
-            step={1}
-            value={sliderIndex}
-            onChange={(event) => setSliderIndex(Number(event.target.value))}
-            aria-label="Pricing allowance slider"
-          />
-          <div className="slider-bands" aria-hidden="true">
-            {sliderBands.map((band) => (
-              <span
-                key={band.id}
-                className={selectedStep.planId === band.id ? "active" : ""}
-              >
-                {band.label}
-              </span>
-            ))}
-          </div>
-          <p className="slider-helper">Drag the slider to increase allowance.</p>
-          {selectedStep.planId === "enterprise" ? (
-            <span className="public-button public-button-disabled" aria-disabled="true">
-              Coming soon
-            </span>
-          ) : signedIn ? (
-            <Link className="public-button" to="/billing">
-              Manage in Billing
-            </Link>
-          ) : (
-            <Link
-              className="public-button"
-              to={buildRegisterLink(selectedStep.planId, "monthly", {
-                monthlyDocumentLimit:
-                  selectedStep.planId === "capture" ||
-                  selectedStep.planId === "control" ||
-                  selectedStep.planId === "operations"
-                    ? selectedStep.documents
-                    : undefined,
-                includedUsers:
-                  selectedStep.planId === "capture" ||
-                  selectedStep.planId === "control" ||
-                  selectedStep.planId === "operations"
-                    ? selectedStep.users
-                    : undefined,
-              })}
-            >
-              {selectedPlan.cta}
-            </Link>
-          )}
-        </article>
-        <div className="slider-side-stack">
-          <article className="slider-info-card">
-            <h2>Included extraction credits</h2>
-            <ul className="slider-credit-list">
-              {selectedCredits.map((credit) => (
-                <li key={credit.label}>
-                  <strong>{credit.value}</strong>
-                  <span>{credit.label}</span>
-                </li>
-              ))}
-            </ul>
-          </article>
-          <article className="slider-info-card slider-access-card">
-            <h2>{selectedStep.accessBand} access band</h2>
-            <p>{selectedStep.tagline}</p>
-            <div className="slider-access-group">
-              <strong>Unlocked</strong>
-              <div className="slider-access-tags">
-                {selectedStep.unlockedWorkspaces.map((item) => (
-                  <span key={item}>{item}</span>
-                ))}
-              </div>
+      <div className="pricing-page-layout">
+        <div className="pricing-page-main">
+          <article className="slider-pricing-card">
+            <div className="slider-price-row">
+              <strong>{enterpriseSelected ? "Coming soon" : currency(selectedPrice)}</strong>
+              {enterpriseSelected ? null : <span>Per Month</span>}
             </div>
-            {selectedStep.lockedWorkspaces.length ? (
-              <div className="slider-access-group">
-                <strong>Locked until next tier</strong>
-                <div className="slider-access-tags slider-access-tags-locked">
-                  {selectedStep.lockedWorkspaces.map((item) => (
-                    <span key={item}>{item}</span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            <ul className="slider-feature-list">
-              {selectedPlan.features.map((feature) => (
-                <li key={feature}>{feature}</li>
+            <span className="slider-vat-note">
+              {enterpriseSelected ? "Enterprise self-serve rollout is coming soon." : "GBP, includes VAT"}
+            </span>
+            <div className="slider-capacity-copy">
+              <strong>{selectedStep.documents.toLocaleString()}</strong>
+              <span>Documents Per Month</span>
+            </div>
+            <div className="slider-capacity-copy">
+              <strong>{selectedStep.users}</strong>
+              <span>Users Included</span>
+            </div>
+            <input
+              className="pricing-slider"
+              type="range"
+              min={0}
+              max={pricingSliderSteps.length - 1}
+              step={1}
+              value={sliderIndex}
+              onChange={(event) => setSliderIndex(Number(event.target.value))}
+              aria-label="Pricing allowance slider"
+            />
+            <div className="slider-bands" aria-hidden="true">
+              {sliderBands.map((band) => (
+                <span
+                  key={band.id}
+                  className={selectedStep.planId === band.id ? "active" : ""}
+                >
+                  {band.label}
+                </span>
               ))}
-            </ul>
-            <p className="slider-enterprise-note">
-              {selectedStep.planId === "enterprise"
-                ? "Enterprise rollout opens next, with tailored onboarding and commercial setup following the self-serve tiers."
-                : "Route access, users, and document allowance scale with the selected package band."}
-            </p>
-          </article>
-        </div>
-      </div>
-      <div className="pricing-grid pricing-grid-expanded">
-        {pricingPlans.map((plan) => (
-          <article
-            key={plan.id}
-            className={`pricing-card${selectedStep.planId === plan.id ? " current-plan" : ""}`}
-          >
-            <span>{plan.name}</span>
-            <strong>{plan.tagline}</strong>
-            <p>{plan.trialLabel}</p>
-            <p>
-              {plan.id === "enterprise"
-                ? "Custom rollout via sales"
-                : plan.monthlyPrice != null
-                  ? `${currency(priceWithVat(plan.monthlyPrice))} per month`
-                  : "Custom pricing"}
-            </p>
-            <p>{plan.monthlyDocuments}</p>
-            <p>{plan.users}</p>
-            <ul className="pricing-feature-list">
-              {plan.features.map((feature) => (
-                <li key={feature}>{feature}</li>
-              ))}
-            </ul>
-            {plan.id === "enterprise" ? (
-              <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
+            </div>
+            <p className="slider-helper">Drag the slider to increase allowance.</p>
+            {selectedStep.planId === "enterprise" ? (
+              <span className="public-button public-button-disabled" aria-disabled="true">
+                Coming soon
+              </span>
             ) : signedIn ? (
               <Link className="public-button" to="/billing">
-                Review in Billing
+                Manage in Billing
               </Link>
             ) : (
               <Link
                 className="public-button"
-                to={buildRegisterLink(plan.id, "monthly", {
-                  monthlyDocumentLimit: plan.monthlyDocumentLimit,
-                  includedUsers: plan.includedUsers,
+                to={buildRegisterLink(selectedStep.planId, "monthly", {
+                  monthlyDocumentLimit:
+                    selectedStep.planId === "capture" ||
+                    selectedStep.planId === "control" ||
+                    selectedStep.planId === "operations"
+                      ? selectedStep.documents
+                      : undefined,
+                  includedUsers:
+                    selectedStep.planId === "capture" ||
+                    selectedStep.planId === "control" ||
+                    selectedStep.planId === "operations"
+                      ? selectedStep.users
+                      : undefined,
                 })}
               >
-                {plan.cta}
+                {selectedPlan.cta}
               </Link>
             )}
           </article>
-        ))}
-      </div>
-      <div className="pricing-notes-grid">
-        <article className="company-card">
-          <strong>Operational control</strong>
-          <p>Plans are structured around access depth, team capacity, and monthly document volume.</p>
-        </article>
-        <article className="company-card">
-          <strong>Monthly pricing</strong>
-          <p>Self-serve plans are currently shown as monthly pricing while annual billing stays hidden.</p>
-        </article>
-        <article className="company-card">
-          <strong>Scales with volume</strong>
-          <p>Higher tiers expand user capacity, document throughput, and finance workflow coverage.</p>
-        </article>
-      </div>
-      <div className="workflow-grid pricing-faq-grid">
-        <article className="workflow-card">
-          <strong>Free trial</strong>
-          <ul>
-            <li>Capture, Control, and Operations start with a 14-day trial</li>
-            <li>Enterprise can use a longer onboarding window</li>
-            <li>Card details are collected before the trial begins</li>
-            <li>Cancel from Billing before renewal if you do not want the paid subscription to start</li>
-          </ul>
-        </article>
-        <article className="workflow-card">
-          <strong>Workflow coverage</strong>
-          <ul>
-            <li>Capture focuses on receipt and invoice intake</li>
-            <li>Control adds sales and broader approval workflow coverage</li>
-            <li>Operations adds rules, vault, open banking, and reconciliation</li>
-          </ul>
-        </article>
-        <article className="workflow-card">
-          <strong>Enterprise rollout</strong>
-          <ul>
-            <li>Custom document volume and user capacity</li>
-            <li>Priority rollout support</li>
-            <li>Multi-entity finance teams and tailored onboarding</li>
-          </ul>
-        </article>
+          <div className="pricing-grid pricing-grid-expanded pricing-grid-detailed">
+            {pricingPlans.map((plan) => (
+              <article
+                key={plan.id}
+                className={`pricing-card${selectedStep.planId === plan.id ? " current-plan" : ""}`}
+              >
+                <span>{plan.name}</span>
+                <strong>{plan.tagline}</strong>
+                <p>{plan.trialLabel}</p>
+                <p>
+                  {plan.id === "enterprise"
+                    ? "Custom rollout via sales"
+                    : plan.monthlyPrice != null
+                      ? `${currency(priceWithVat(plan.monthlyPrice))} per month`
+                      : "Custom pricing"}
+                </p>
+                <p>{plan.monthlyDocuments}</p>
+                <p>{plan.users}</p>
+                <ul className="pricing-feature-list">
+                  {plan.features.map((feature) => (
+                    <li key={feature}>{feature}</li>
+                  ))}
+                </ul>
+                {plan.id === "enterprise" ? (
+                  <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
+                ) : signedIn ? (
+                  <Link className="public-button" to="/billing">
+                    Review in Billing
+                  </Link>
+                ) : (
+                  <Link
+                    className="public-button"
+                    to={buildRegisterLink(plan.id, "monthly", {
+                      monthlyDocumentLimit: plan.monthlyDocumentLimit,
+                      includedUsers: plan.includedUsers,
+                    })}
+                  >
+                    {plan.cta}
+                  </Link>
+                )}
+              </article>
+            ))}
+          </div>
+          <div className="pricing-notes-grid">
+            <article className="company-card">
+              <strong>Operational control</strong>
+              <p>Plans are structured around access depth, team capacity, and monthly document volume.</p>
+            </article>
+            <article className="company-card">
+              <strong>Monthly pricing</strong>
+              <p>Self-serve plans are currently shown as monthly pricing while annual billing stays hidden.</p>
+            </article>
+            <article className="company-card">
+              <strong>Scales with volume</strong>
+              <p>Higher tiers expand user capacity, document throughput, and finance workflow coverage.</p>
+            </article>
+          </div>
+          <div className="workflow-grid pricing-faq-grid">
+            <article className="workflow-card">
+              <strong>Free trial</strong>
+              <ul>
+                <li>Capture, Control, and Operations start with a 14-day trial</li>
+                <li>Enterprise can use a longer onboarding window</li>
+                <li>Card details are collected before the trial begins</li>
+                <li>Cancel from Billing before renewal if you do not want the paid subscription to start</li>
+              </ul>
+            </article>
+            <article className="workflow-card">
+              <strong>Workflow coverage</strong>
+              <ul>
+                <li>Capture focuses on receipt and invoice intake</li>
+                <li>Control adds sales and broader approval workflow coverage</li>
+                <li>Operations adds rules, vault, open banking, and reconciliation</li>
+              </ul>
+            </article>
+            <article className="workflow-card">
+              <strong>Enterprise rollout</strong>
+              <ul>
+                <li>Custom document volume and user capacity</li>
+                <li>Priority rollout support</li>
+                <li>Multi-entity finance teams and tailored onboarding</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+        <div className="pricing-page-side">
+          <div className="slider-side-stack">
+            <article className="slider-info-card">
+              <h2>Included extraction credits</h2>
+              <ul className="slider-credit-list">
+                {selectedCredits.map((credit) => (
+                  <li key={credit.label}>
+                    <strong>{credit.value}</strong>
+                    <span>{credit.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+            <article className="slider-info-card slider-access-card">
+              <h2>{selectedStep.accessBand} access band</h2>
+              <p>{selectedStep.tagline}</p>
+              <div className="slider-access-group">
+                <strong>Unlocked</strong>
+                <div className="slider-access-tags">
+                  {selectedStep.unlockedWorkspaces.map((item) => (
+                    <span key={item}>{item}</span>
+                  ))}
+                </div>
+              </div>
+              {selectedStep.lockedWorkspaces.length ? (
+                <div className="slider-access-group">
+                  <strong>Locked until next tier</strong>
+                  <div className="slider-access-tags slider-access-tags-locked">
+                    {selectedStep.lockedWorkspaces.map((item) => (
+                      <span key={item}>{item}</span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <ul className="slider-feature-list">
+                {selectedPlan.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+              <p className="slider-enterprise-note">
+                {selectedStep.planId === "enterprise"
+                  ? "Enterprise rollout opens next, with tailored onboarding and commercial setup following the self-serve tiers."
+                  : "Route access, users, and document allowance scale with the selected package band."}
+              </p>
+            </article>
+          </div>
+        </div>
       </div>
     </section>
   );
