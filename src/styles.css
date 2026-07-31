@@ -1016,10 +1016,13 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 88px;
-  padding: 15px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+  min-height: 88px;
+  margin: 14px 12px 8px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 34px rgba(7, 16, 34, 0.18);
+  color: var(--navy);
   text-decoration: none;
 }
 
@@ -1031,7 +1034,7 @@ body {
 }
 
 .brand-lockup strong {
-  color: white;
+  color: var(--navy);
   font-family: "Space Grotesk", sans-serif;
   font-size: 2rem;
   letter-spacing: -0.055em;
