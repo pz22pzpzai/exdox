@@ -1702,7 +1702,7 @@ input {
     position: static;
     height: auto;
     overflow: visible;
-    padding: 0 12px 12px;
+    padding: 12px 12px 12px;
   }
 
   .sidebar-main,
@@ -1710,8 +1710,16 @@ input {
     min-height: auto;
   }
 
+  .sidebar-main {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
   .brand-lockup {
-    height: 72px;
+    min-height: 72px;
+    margin: 0;
+    flex: 0 0 auto;
   }
 
   .brand-lockup strong {
@@ -1720,11 +1728,13 @@ input {
 
   .sidebar-nav {
     display: flex;
-    flex: initial;
+    flex: 1 1 auto;
+    min-width: 0;
+    align-self: flex-end;
     gap: 6px;
     overflow-x: auto;
     overflow-y: hidden;
-    padding: 8px 0 2px;
+    padding: 0 0 6px;
   }
 
   .sidebar-link {
