@@ -1016,6 +1016,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  align-self: flex-start;
   min-height: 88px;
   margin: 14px 12px 8px;
   padding: 16px 18px;
@@ -1024,6 +1025,8 @@ body {
   box-shadow: 0 16px 34px rgba(7, 16, 34, 0.18);
   color: var(--navy);
   text-decoration: none;
+  width: fit-content;
+  max-width: calc(100% - 24px);
 }
 
 .brand-lockup .brand-mark {
