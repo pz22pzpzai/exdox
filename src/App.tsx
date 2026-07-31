@@ -146,9 +146,6 @@ const pricingPlans: Array<{
   trialLabel: string;
   monthlyPrice?: number;
   annualMonthlyPrice?: number;
-  bankStatementCredits?: number | null;
-  lineItemCredits?: number | null;
-  supplierStatementCredits?: number | null;
   unlockedWorkspaces?: string[];
   monthlyDocumentLimit?: number;
   includedUsers?: number;
@@ -164,9 +161,6 @@ const pricingPlans: Array<{
     trialLabel: "14-day trial",
     monthlyPrice: 15,
     annualMonthlyPrice: 12,
-    bankStatementCredits: 10,
-    lineItemCredits: 5,
-    supplierStatementCredits: 5,
     unlockedWorkspaces: ["Costs", "Claims"],
     monthlyDocumentLimit: 250,
     includedUsers: 5,
@@ -189,9 +183,6 @@ const pricingPlans: Array<{
     trialLabel: "14-day trial",
     monthlyPrice: 89,
     annualMonthlyPrice: 71.2,
-    bankStatementCredits: 120,
-    lineItemCredits: 60,
-    supplierStatementCredits: 25,
     unlockedWorkspaces: ["Costs", "Sales", "Claims"],
     monthlyDocumentLimit: 1500,
     includedUsers: 30,
@@ -214,9 +205,6 @@ const pricingPlans: Array<{
     trialLabel: "14-day trial",
     monthlyPrice: 173,
     annualMonthlyPrice: 138.4,
-    bankStatementCredits: 500,
-    lineItemCredits: 250,
-    supplierStatementCredits: 100,
     unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims"],
     monthlyDocumentLimit: 3000,
     includedUsers: 60,
@@ -237,9 +225,6 @@ const pricingPlans: Array<{
     users: "500 users included",
     cta: "Coming soon",
     trialLabel: "Coming soon",
-    bankStatementCredits: 2485,
-    lineItemCredits: 2480,
-    supplierStatementCredits: 500,
     unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims", "Multi-entity"],
     features: [
       "Everything in Operations",
@@ -259,9 +244,6 @@ const pricingSliderSteps: Array<{
   documents: number;
   monthlyPrice: number;
   annualMonthlyPrice: number;
-  bankStatementCredits: number;
-  lineItemCredits: number;
-  supplierStatementCredits: number;
   planId: BillingPlanId;
   accessBand: string;
   tagline: string;
@@ -275,9 +257,6 @@ const pricingSliderSteps: Array<{
     documents: 250,
     monthlyPrice: 15,
     annualMonthlyPrice: 12,
-    bankStatementCredits: 10,
-    lineItemCredits: 5,
-    supplierStatementCredits: 5,
     planId: "capture",
     accessBand: "Capture",
     tagline: "Receipt capture and review for lean teams",
@@ -291,9 +270,6 @@ const pricingSliderSteps: Array<{
     documents: 500,
     monthlyPrice: 30,
     annualMonthlyPrice: 24,
-    bankStatementCredits: 20,
-    lineItemCredits: 10,
-    supplierStatementCredits: 10,
     planId: "capture",
     accessBand: "Capture",
     tagline: "Expanded capture allowance for growing receipt volume",
@@ -307,9 +283,6 @@ const pricingSliderSteps: Array<{
     documents: 750,
     monthlyPrice: 45,
     annualMonthlyPrice: 36,
-    bankStatementCredits: 30,
-    lineItemCredits: 15,
-    supplierStatementCredits: 15,
     planId: "capture",
     accessBand: "Capture",
     tagline: "Scaled capture capacity for broader team usage",
@@ -323,9 +296,6 @@ const pricingSliderSteps: Array<{
     documents: 1000,
     monthlyPrice: 60,
     annualMonthlyPrice: 48,
-    bankStatementCredits: 40,
-    lineItemCredits: 20,
-    supplierStatementCredits: 20,
     planId: "capture",
     accessBand: "Capture",
     tagline: "Higher user allowance inside the capture package band",
@@ -339,9 +309,6 @@ const pricingSliderSteps: Array<{
     documents: 1250,
     monthlyPrice: 75,
     annualMonthlyPrice: 60,
-    bankStatementCredits: 50,
-    lineItemCredits: 25,
-    supplierStatementCredits: 25,
     planId: "capture",
     accessBand: "Capture",
     tagline: "Top end of the capture package range",
@@ -360,10 +327,6 @@ const pricingSliderSteps: Array<{
     }
     monthlyPrice = Number(monthlyPrice.toFixed(2));
     const annualMonthlyPrice = Number((monthlyPrice * 0.8).toFixed(2));
-    const progress = (users - 25) / 75;
-    const bankStatementCredits = Math.round(120 + progress * 380);
-    const lineItemCredits = Math.round(60 + progress * 190);
-    const supplierStatementCredits = Math.round(25 + progress * 75);
     const highlightedUsers = new Set([30, 45, 60, 75, 95]);
 
     return {
@@ -373,9 +336,6 @@ const pricingSliderSteps: Array<{
       documents: users * 50,
       monthlyPrice,
       annualMonthlyPrice,
-      bankStatementCredits,
-      lineItemCredits,
-      supplierStatementCredits,
       planId: (users >= 60 ? "operations" : "control") as BillingPlanId,
       accessBand: users >= 60 ? "Operations" : "Control",
       tagline:
@@ -393,9 +353,6 @@ const pricingSliderSteps: Array<{
     documents: 10000,
     monthlyPrice: 288.24,
     annualMonthlyPrice: 230.59,
-    bankStatementCredits: 500,
-    lineItemCredits: 250,
-    supplierStatementCredits: 100,
     planId: "operations",
     accessBand: "Operations",
     tagline: "Rules, vault storage, open banking, and reconciliation",
@@ -409,9 +366,6 @@ const pricingSliderSteps: Array<{
     documents: 50000,
     monthlyPrice: 455.13,
     annualMonthlyPrice: 364.1,
-    bankStatementCredits: 2485,
-    lineItemCredits: 2480,
-    supplierStatementCredits: 500,
     planId: "enterprise",
     accessBand: "Enterprise",
     tagline: "Custom rollout for multi-entity finance teams",
@@ -794,7 +748,7 @@ function buildPublicStructuredData(input: {
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "sales",
-        email: "hello@exdox.co.uk",
+        email: "contact@exdox.co.uk",
       },
     },
     {
@@ -6278,7 +6232,7 @@ function TermsSection() {
           body: (
             <>
               <p>To the extent permitted by law, Exdox is not liable for indirect, incidental, special, or consequential loss. Nothing in these terms limits liability where it cannot legally be excluded.</p>
-              <p>For billing, cancellation, legal, or account questions, contact <a href="mailto:hello@exdox.co.uk?subject=Exdox%20terms%20request">hello@exdox.co.uk</a>.</p>
+              <p>For billing, cancellation, legal, or account questions, contact <a href="mailto:contact@exdox.co.uk?subject=Exdox%20terms%20request">contact@exdox.co.uk</a>.</p>
             </>
           ),
         },
@@ -6381,7 +6335,7 @@ function PrivacyPolicySection() {
           body: (
             <>
               <p>You may be able to control cookies through our consent tools, your browser settings, and Google&apos;s advertising controls. You may also contact us to ask about access, correction, or deletion requests relating to information you have provided directly.</p>
-              <p>For privacy enquiries, contact <a href="mailto:hello@exdox.co.uk?subject=Privacy%20request">hello@exdox.co.uk</a>.</p>
+              <p>For privacy enquiries, contact <a href="mailto:contact@exdox.co.uk?subject=Privacy%20request">contact@exdox.co.uk</a>.</p>
             </>
           ),
         },
@@ -6457,7 +6411,7 @@ function CookiePolicySection() {
           heading: "Contact",
           body: (
             <>
-              <p>If you have questions about cookies or tracking technologies on Exdox, contact <a href="mailto:hello@exdox.co.uk?subject=Cookie%20policy%20request">hello@exdox.co.uk</a>.</p>
+              <p>If you have questions about cookies or tracking technologies on Exdox, contact <a href="mailto:contact@exdox.co.uk?subject=Cookie%20policy%20request">contact@exdox.co.uk</a>.</p>
             </>
           ),
         },
@@ -6485,7 +6439,7 @@ function AccountDeletionSection() {
           heading: "How to request deletion",
           body: (
             <>
-              <p>Email <a href="mailto:hello@exdox.co.uk?subject=Account%20deletion%20request">hello@exdox.co.uk</a> with the subject line <strong>Account deletion request</strong>.</p>
+              <p>Email <a href="mailto:contact@exdox.co.uk?subject=Account%20deletion%20request">contact@exdox.co.uk</a> with the subject line <strong>Account deletion request</strong>.</p>
               <p>Include the email address used for your Exdox login, your organisation name, and whether you are requesting deletion of only your user account or of the wider organisation workspace.</p>
               <p>If we need to verify identity or admin authority before deleting data, we may ask for confirmation from the registered account or workspace owner.</p>
             </>
@@ -6733,10 +6687,10 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
   const selectedPlan = pricingPlans.find((plan) => plan.id === selectedStep.planId) ?? pricingPlans[0]!;
   const enterpriseSelected = selectedStep.planId === "enterprise";
   const selectedPrice = priceWithVat(selectedStep.monthlyPrice);
-  const selectedCredits = [
-    { label: "Sheets of Bank Statement Extraction", value: selectedStep.bankStatementCredits },
-    { label: "Documents with Line Item Extraction", value: selectedStep.lineItemCredits },
-    { label: "Supplier Statement Extraction", value: selectedStep.supplierStatementCredits },
+  const selectedCapacity = [
+    { label: "documents processed per month", value: selectedStep.documents.toLocaleString() },
+    { label: "users included", value: selectedStep.users.toLocaleString() },
+    { label: "workspace areas unlocked", value: selectedStep.unlockedWorkspaces.length.toLocaleString() },
   ];
   const sliderBands: Array<{ id: BillingPlanId; label: string }> = [
     { id: "capture", label: "Capture" },
@@ -6913,12 +6867,12 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
         <div className="pricing-page-side">
           <div className="slider-side-stack">
             <article className="slider-info-card">
-              <h2>Included extraction credits</h2>
+              <h2>Included plan capacity</h2>
               <ul className="slider-credit-list">
-                {selectedCredits.map((credit) => (
-                  <li key={credit.label}>
-                    <strong>{credit.value}</strong>
-                    <span>{credit.label}</span>
+                {selectedCapacity.map((capacity) => (
+                  <li key={capacity.label}>
+                    <strong>{capacity.value}</strong>
+                    <span>{capacity.label}</span>
                   </li>
                 ))}
               </ul>
@@ -7011,17 +6965,17 @@ function CompanySection({ session = null }: { session?: SessionState | null }) {
         <article className="company-card">
           <strong>Access support</strong>
           <p>Use this for login help, password resets, invite issues, and activation support.</p>
-          <a className="secondary-inline-link company-card-link-row" href="mailto:hello@exdox.co.uk?subject=Access%20support">Email access support</a>
+          <a className="secondary-inline-link company-card-link-row" href="mailto:contact@exdox.co.uk?subject=Access%20support">Email access support</a>
         </article>
         <article className="company-card">
           <strong>Billing support</strong>
           <p>Use this for plan questions, workspace unlock requests, and commercial billing changes.</p>
-          <a className="secondary-inline-link company-card-link-row" href="mailto:hello@exdox.co.uk?subject=Billing%20support">Email billing support</a>
+          <a className="secondary-inline-link company-card-link-row" href="mailto:contact@exdox.co.uk?subject=Billing%20support">Email billing support</a>
         </article>
         <article className="company-card">
           <strong>Security contact</strong>
           <p>Use this for security requests, responsible disclosure, and document-handling concerns.</p>
-          <a className="secondary-inline-link company-card-link-row" href="mailto:hello@exdox.co.uk?subject=Security%20request">Email security contact</a>
+          <a className="secondary-inline-link company-card-link-row" href="mailto:contact@exdox.co.uk?subject=Security%20request">Email security contact</a>
         </article>
       </div>
     </section>
