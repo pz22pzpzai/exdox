@@ -1013,22 +1013,28 @@ body {
 }
 
 .brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   height: 88px;
   padding: 15px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  text-decoration: none;
 }
 
 .brand-lockup .brand-mark {
   width: 44px;
   height: 44px;
   object-fit: contain;
+  object-position: center;
 }
 
 .brand-lockup strong {
   color: white;
   font-family: "Space Grotesk", sans-serif;
-  font-size: 1.75rem;
-  letter-spacing: -0.05em;
+  font-size: 2rem;
+  letter-spacing: -0.055em;
 }
 
 .sidebar-nav {
@@ -2062,6 +2068,51 @@ input {
   font-weight: 600;
 }
 
+.store-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.store-badge {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 190px;
+  min-height: 64px;
+  padding: 10px 16px;
+  border: 1px solid #d6deea;
+  border-radius: 14px;
+  background: #0f172a;
+  color: white;
+  text-decoration: none;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12);
+}
+
+.store-badge strong {
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.store-badge-caption {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.74);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.store-badge-disabled {
+  background: #f5f7fb;
+  color: #12223b;
+  border-color: #d6deea;
+  box-shadow: none;
+}
+
+.store-badge-disabled .store-badge-caption {
+  color: #607089;
+}
+
 .public-hero-copy > span {
   display: block;
   margin: 9px 0 0 47px;
@@ -2986,6 +3037,14 @@ input {
   .hero-actions {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .store-badges {
+    width: 100%;
+  }
+
+  .store-badge {
+    width: min(100%, 260px);
   }
 
   .policy-meta {

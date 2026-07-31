@@ -1341,10 +1341,10 @@ function DashboardShell(props: {
     <div className="dashboard-shell">
       <aside className="sidebar">
         <div className="sidebar-main">
-          <div className="brand-lockup">
-            <img className="brand-mark" src={brandMarkSrc} alt="" />
+          <Link className="brand-lockup" to={defaultRoute} aria-label="Exdox workspace home">
+            <img className="brand-mark" src={publicBrandMarkSrc} alt="" />
             <strong>Exdox</strong>
-          </div>
+          </Link>
           <nav className="sidebar-nav" aria-label="Primary">
             {visibleNavItems.map((item) => (
               <NavLink
@@ -1362,9 +1362,9 @@ function DashboardShell(props: {
           </nav>
         </div>
         <div className="sidebar-card">
-          <span>Workspace boundary</span>
-          <strong>Organisation scoped</strong>
-          <p>All requests are expected to resolve with `organisation_id` checks.</p>
+          <span>Secure workspace</span>
+          <strong>Organisation-based access</strong>
+          <p>Uploads, review queues, and settings stay separated by organisation and user permissions.</p>
         </div>
       </aside>
 
@@ -3152,8 +3152,8 @@ function DocumentWorkspacePage(props: {
           )
         ) : (
           <div className="document-placeholder">
-            <img className="placeholder-logo" src={brandMarkSrc} alt="exdox preview placeholder" />
-            <strong>S3 document preview</strong>
+            <img className="placeholder-logo" src={brandMarkSrc} alt="Exdox document preview placeholder" />
+            <strong>Document preview</strong>
             <p>The secure source file preview will appear here when the stored document asset is available.</p>
           </div>
         )}
@@ -4706,7 +4706,7 @@ function RequisitionPage(props: {
         </label>
         <label>
           Institution Id
-          <input value={institutionId} onChange={(event) => setInstitutionId(event.target.value)} placeholder="required bank institution id" />
+          <input value={institutionId} onChange={(event) => setInstitutionId(event.target.value)} placeholder="Enter your bank institution ID" />
         </label>
       </div>
       <div className="toolbar">
@@ -5799,6 +5799,22 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
                 <Link className="secondary-inline-link" to="/pricing">See pricing structure</Link>
               </>
             )}
+          </div>
+          <div className="store-badges" aria-label="Download the Exdox mobile app">
+            <a
+              className="store-badge"
+              href="https://play.google.com/store/apps/details?id=uk.co.exdox.mobile"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Download Exdox on Google Play"
+            >
+              <span className="store-badge-caption">Download on</span>
+              <strong>Google Play</strong>
+            </a>
+            <span className="store-badge store-badge-disabled" aria-disabled="true">
+              <span className="store-badge-caption">iPhone app</span>
+              <strong>Launching shortly</strong>
+            </span>
           </div>
           <span>Card details are collected up front and the first charge is taken when the trial ends unless you cancel before renewal.</span>
         </div>
