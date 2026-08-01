@@ -1284,7 +1284,7 @@ function DashboardShell(props: {
   const costReviewCount = props.store.costs.filter((receipt) => receipt.needsReview).length;
   const salesReviewCount = props.store.sales.filter((receipt) => receipt.needsReview).length;
   const vaultAttentionCount = props.store.vault.filter((receipt) => receipt.needsReview || receipt.status === "Processing").length;
-  const pendingClaimCount = props.store.claims.filter((claim) => claim.status === "pending").length;
+  const pendingClaimCount = pendingClaimsNeedingAction(props.store.claims).length;
   const openBankMatchCount = props.store.reconciliation.filter((line) => line.status === "Open").length;
   const actionBreakdown = [
     { count: costReviewCount, label: "cost review" },
@@ -1888,7 +1888,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
         countLabel: `${vaultAttention} vault upload${vaultAttention === 1 ? "" : "s"}`,
       });
     }
-    const pendingClaims = store.claims.filter((claim) => claim.status === "pending").length;
+    const pendingClaims = pendingClaimsNeedingAction(store.claims).length;
     if (pendingClaims > 0) {
       items.push({
         title: "Claims are pending",
@@ -1908,8 +1908,8 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
         countLabel: `${openMatches} bank match${openMatches === 1 ? "" : "es"}`,
       });
     }
-  } else if (store.claims.some((claim) => claim.status === "pending")) {
-    const pendingClaims = store.claims.filter((claim) => claim.status === "pending").length;
+  } else if (pendingClaimsNeedingAction(store.claims).length > 0) {
+    const pendingClaims = pendingClaimsNeedingAction(store.claims).length;
     items.push({
       title: "Claims are pending",
       detail: `${pendingClaims} claims are still waiting for approval or payment.`,
@@ -3715,7 +3715,7 @@ function ClaimsPage({
               <span>Total value: {currency(claim.totalAmount)}</span>
               <span>Claiming employee: {claimEmployeeLabel(claim)}</span>
               <span>Submission date: {claim.createdAt.slice(0, 10)}</span>
-              <span>Approval status: {claimStatusLabel(claim.status)}</span>
+              <span>Approval status: {claimStatusSummary(claim)}</span>
               <span>{claim.documentCount} receipt lines</span>
               <StatusPill status={claimStatusToPill(claim.status)} />
             </Link>
@@ -7970,7 +7970,7 @@ function buildPendingReceipts(
 }
 
 function claimEmployeeLabel(claim: ClaimRecord) {
-  return claim.createdByUserId ? `User ${claim.createdByUserId}` : "Employee pending";
+  return claim.createdByUserId ? "Workspace user" : "Employee pending";
 }
 
 function formatClaimReference(claim: ClaimRecord) {
@@ -7978,11 +7978,34 @@ function formatClaimReference(claim: ClaimRecord) {
 }
 
 function formatClaimHeading(claim: ClaimRecord) {
-  return `${claim.name} · ${claim.createdAt.slice(0, 10)}`;
+  return `${customerFacingClaimName(claim.name)} · ${claim.createdAt.slice(0, 10)}`;
 }
 
 function formatClaimOptionLabel(claim: ClaimRecord) {
-  return `${formatClaimReference(claim)} · ${formatClaimHeading(claim)} · ${claimEmployeeLabel(claim)} (${claimStatusLabel(claim.status)})`;
+  return `${formatClaimReference(claim)} · ${formatClaimHeading(claim)} · ${claimEmployeeLabel(claim)} (${claimStatusSummary(claim)})`;
+}
+
+function customerFacingClaimName(name: string | null | undefined) {
+  const trimmedName = name?.trim();
+  if (!trimmedName) {
+    return "Expense Claim";
+  }
+  const normalizedName = trimmedName.replace(/\s+/g, " ").toLowerCase();
+  return normalizedName.startsWith("zzz ") ||
+    normalizedName.includes("qa live test") ||
+    normalizedName.includes("test claim")
+    ? "Expense Claim"
+    : trimmedName;
+}
+
+function pendingClaimsNeedingAction(claims: ClaimRecord[]) {
+  return claims.filter((claim) => claim.status === "pending" && claim.documentCount > 0);
+}
+
+function claimStatusSummary(claim: ClaimRecord) {
+  return claim.status === "pending" && claim.documentCount === 0
+    ? "Draft - no receipts attached"
+    : claimStatusLabel(claim.status);
 }
 
 function claimStatusLabel(status: ClaimRecord["status"]) {
