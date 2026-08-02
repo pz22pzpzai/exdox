@@ -6496,9 +6496,9 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
           body="Receipt capture, invoice review, claims, vault storage, supplier rules, reconciliation, and data health sit inside one connected Exdox platform."
         />
         <PlatformCapabilitiesSection session={session} />
-        <CoverageSection session={session} />
-        <FlowSection session={session} />
-        <WorkflowCoverageSection session={session} />
+        <CoverageSection session={session} linkTarget={null} />
+        <FlowSection session={session} linkTarget={null} />
+        <WorkflowCoverageSection session={session} linkTarget={null} />
       </PublicLayout>
     );
   }
@@ -6511,7 +6511,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
           title="Keep evidence, review queues, and accounting handoff in one operational flow."
           body="Exdox supports connected accounting workflows with ready and published queues, protected source evidence, and bank-led reconciliation."
         />
-        <IntegrationSection session={session} />
+        <IntegrationSection session={session} linkTarget={null} />
         <FlowSection session={session} />
         <WorkflowCoverageSection session={session} />
       </PublicLayout>
@@ -7391,7 +7391,14 @@ function PlatformCapabilitiesSection({ session = null }: { session?: SessionStat
   );
 }
 
-function CoverageSection({ session = null }: { session?: SessionState | null }) {
+function CoverageSection({ session = null, linkTarget = "/platform" }: { session?: SessionState | null; linkTarget?: string | null }) {
+  const DocumentCard = ({ title, detail }: { title: string; detail: string }) =>
+    linkTarget ? (
+      <Link className="document-card" to={linkTarget}><strong>{title}</strong><span>{detail}</span></Link>
+    ) : (
+      <article className="document-card"><strong>{title}</strong><span>{detail}</span></article>
+    );
+
   return (
     <section className="workflow-band">
       <div className="section-heading">
@@ -7405,18 +7412,25 @@ function CoverageSection({ session = null }: { session?: SessionState | null }) 
         </p>
       </div>
       <div className="document-grid">
-        <Link className="document-card" to="/platform"><strong>Receipts</strong><span>Mobile capture, employee submission, and web upload</span></Link>
-        <Link className="document-card" to="/platform"><strong>Purchase invoices</strong><span>Structured totals, tax fields, and review-ready categorisation</span></Link>
-        <Link className="document-card" to="/platform"><strong>Sales documents</strong><span>Separate sales workspace with the same synced review flow</span></Link>
-        <Link className="document-card" to="/platform"><strong>Mileage claims</strong><span>Staff mileage entry and approval-ready claim handling</span></Link>
-        <Link className="document-card" to="/platform"><strong>Bank-led evidence</strong><span>Imported bank activity matched back to supporting records</span></Link>
-        <Link className="document-card" to="/platform"><strong>Vault files</strong><span>Stored reference documents with protected retrieval</span></Link>
+        <DocumentCard title="Receipts" detail="Mobile capture, employee submission, and web upload" />
+        <DocumentCard title="Purchase invoices" detail="Structured totals, tax fields, and review-ready categorisation" />
+        <DocumentCard title="Sales documents" detail="Separate sales workspace with the same synced review flow" />
+        <DocumentCard title="Mileage claims" detail="Staff mileage entry and approval-ready claim handling" />
+        <DocumentCard title="Bank-led evidence" detail="Imported bank activity matched back to supporting records" />
+        <DocumentCard title="Vault files" detail="Stored reference documents with protected retrieval" />
       </div>
     </section>
   );
 }
 
-function FlowSection({ session = null }: { session?: SessionState | null }) {
+function FlowSection({ session = null, linkTarget = "/platform" }: { session?: SessionState | null; linkTarget?: string | null }) {
+  const ProcessCard = ({ step, title, detail }: { step: string; title: string; detail: string }) =>
+    linkTarget ? (
+      <Link className="process-card" to={linkTarget}><span>{step}</span><strong>{title}</strong><p>{detail}</p></Link>
+    ) : (
+      <article className="process-card"><span>{step}</span><strong>{title}</strong><p>{detail}</p></article>
+    );
+
   return (
     <section className="workflow-band">
       <div className="section-heading">
@@ -7431,17 +7445,38 @@ function FlowSection({ session = null }: { session?: SessionState | null }) {
         </p>
       </div>
       <div className="process-grid">
-        <Link className="process-card" to="/platform"><span>1. Capture</span><strong>Collect receipts, invoices, and supporting files</strong><p>Use mobile capture, web upload, employee drop box flows, and bank-led intake.</p></Link>
-        <Link className="process-card" to="/platform"><span>2. Extract</span><strong>Pull out totals, tax, supplier, and line detail</strong><p>Structured extraction, VAT-aware fields, and document detail all stay visible for review.</p></Link>
-        <Link className="process-card" to="/platform"><span>3. Review</span><strong>Work the exceptions instead of retyping everything</strong><p>Needs-review, duplicate, unreadable, and low-confidence signals surface the items that need attention.</p></Link>
-        <Link className="process-card" to="/platform"><span>4. Store</span><strong>Keep the original evidence easy to retrieve</strong><p>Vault storage, protected document access, and searchable archive views keep source files close at hand.</p></Link>
-        <Link className="process-card" to="/platform"><span>5. Approve &amp; Publish</span><strong>Move claims, reviews, and handoff queues forward</strong><p>Approval-ready claims, ready queues, and export routes keep the downstream workflow moving.</p></Link>
+        <ProcessCard step="1. Capture" title="Collect receipts, invoices, and supporting files" detail="Use mobile capture, web upload, employee drop box flows, and bank-led intake." />
+        <ProcessCard step="2. Extract" title="Pull out totals, tax, supplier, and line detail" detail="Structured extraction, VAT-aware fields, and document detail all stay visible for review." />
+        <ProcessCard step="3. Review" title="Work the exceptions instead of retyping everything" detail="Needs-review, duplicate, unreadable, and low-confidence signals surface the items that need attention." />
+        <ProcessCard step="4. Store" title="Keep the original evidence easy to retrieve" detail="Vault storage, protected document access, and searchable archive views keep source files close at hand." />
+        <ProcessCard step="5. Approve & Publish" title="Move claims, reviews, and handoff queues forward" detail="Approval-ready claims, ready queues, and export routes keep the downstream workflow moving." />
       </div>
     </section>
   );
 }
 
-function WorkflowCoverageSection({ session = null }: { session?: SessionState | null }) {
+function WorkflowCoverageSection({ session = null, linkTarget = "/platform" }: { session?: SessionState | null; linkTarget?: string | null }) {
+  const WorkflowCard = ({ title, items }: { title: string; items: string[] }) =>
+    linkTarget ? (
+      <Link className="workflow-card workflow-link" to={linkTarget}>
+        <strong>{title}</strong>
+        <ul>
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </Link>
+    ) : (
+      <article className="workflow-card">
+        <strong>{title}</strong>
+        <ul>
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </article>
+    );
+
   return (
     <section className="workflow-band">
       <div className="section-heading">
@@ -7455,46 +7490,46 @@ function WorkflowCoverageSection({ session = null }: { session?: SessionState | 
         </p>
       </div>
       <div className="workflow-grid">
-        <Link className="workflow-card workflow-link" to="/platform">
-          <strong>Capture across every submission route</strong>
-          <ul>
-            <li>Mobile receipt capture in the app</li>
-            <li>Drag-and-drop uploads in costs and sales inboxes</li>
-            <li>Dedicated employee drop box for non-admin users</li>
-            <li>Mileage entry and expense-claim capture for staff</li>
-            <li>Bank-line review against imported statement activity</li>
-            <li>Separate workspaces for purchase and sales documents</li>
-          </ul>
-        </Link>
-        <Link className="workflow-card workflow-link" to="/platform">
-          <strong>Automate the review layer</strong>
-          <ul>
-            <li>Supplier rules for category, tax rate and payment method</li>
-            <li>VAT-aware editable totals, net and tax fields</li>
-            <li>Needs-review queues across costs, sales and claims</li>
-            <li>Low-confidence and unreadable-document follow-up</li>
-            <li>Duplicate upload checks before final publish</li>
-            <li>Audit-friendly document detail editing before publish</li>
-          </ul>
-        </Link>
-        <Link className="workflow-card workflow-link" to="/platform">
-          <strong>Close the loop with finance controls</strong>
-          <ul>
-            <li>Dedicated vault workspace for searchable archived evidence</li>
-            <li>Open banking requisitions and callback handling</li>
-            <li>Approval-ready claims and document review handoff</li>
-            <li>Reconciliation matching against imported bank lines</li>
-            <li>Filtered CSV exports across queues and document views</li>
-            <li>Organisation-level VAT settings and tax defaults</li>
-            <li>Live sync with the same receipt records used in mobile</li>
-          </ul>
-        </Link>
+        <WorkflowCard
+          title="Capture across every submission route"
+          items={[
+            "Mobile receipt capture in the app",
+            "Drag-and-drop uploads in costs and sales inboxes",
+            "Dedicated employee drop box for non-admin users",
+            "Mileage entry and expense-claim capture for staff",
+            "Bank-line review against imported statement activity",
+            "Separate workspaces for purchase and sales documents",
+          ]}
+        />
+        <WorkflowCard
+          title="Automate the review layer"
+          items={[
+            "Supplier rules for category, tax rate and payment method",
+            "VAT-aware editable totals, net and tax fields",
+            "Needs-review queues across costs, sales and claims",
+            "Low-confidence and unreadable-document follow-up",
+            "Duplicate upload checks before final publish",
+            "Audit-friendly document detail editing before publish",
+          ]}
+        />
+        <WorkflowCard
+          title="Close the loop with finance controls"
+          items={[
+            "Dedicated vault workspace for searchable archived evidence",
+            "Open banking requisitions and callback handling",
+            "Approval-ready claims and document review handoff",
+            "Reconciliation matching against imported bank lines",
+            "Filtered CSV exports across queues and document views",
+            "Organisation-level VAT settings and tax defaults",
+            "Live sync with the same receipt records used in mobile",
+          ]}
+        />
       </div>
     </section>
   );
 }
 
-function IntegrationSection({ session = null }: { session?: SessionState | null }) {
+function IntegrationSection({ session = null, linkTarget = "/integrations" }: { session?: SessionState | null; linkTarget?: string | null }) {
   return (
     <section className="integration-band">
       <div>
@@ -7506,10 +7541,21 @@ function IntegrationSection({ session = null }: { session?: SessionState | null 
         </p>
       </div>
       <div className="integration-names" aria-label="Compatible accounting platforms">
-        <Link to="/integrations">Sage</Link>
-        <Link to="/integrations">Xero</Link>
-        <Link to="/integrations">QuickBooks</Link>
-        <Link to="/integrations">FreeAgent</Link>
+        {linkTarget ? (
+          <>
+            <Link to={linkTarget}>Sage</Link>
+            <Link to={linkTarget}>Xero</Link>
+            <Link to={linkTarget}>QuickBooks</Link>
+            <Link to={linkTarget}>FreeAgent</Link>
+          </>
+        ) : (
+          <>
+            <span>Sage</span>
+            <span>Xero</span>
+            <span>QuickBooks</span>
+            <span>FreeAgent</span>
+          </>
+        )}
       </div>
     </section>
   );
