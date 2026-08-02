@@ -7586,10 +7586,7 @@ function PricingTeaserSection({ session = null }: { session?: SessionState | nul
           <Link
             key={plan.id}
             className="pricing-card pricing-link"
-            to={buildPublicPlanLink(session, plan.id, {
-              monthlyDocumentLimit: plan.monthlyDocumentLimit,
-              includedUsers: plan.includedUsers,
-            })}
+            to="/pricing"
           >
             <span>{plan.name}</span>
             <strong>{plan.tagline}</strong>
