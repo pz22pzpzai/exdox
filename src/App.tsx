@@ -8028,6 +8028,8 @@ function BillingPage(props: { session: SessionState }) {
                   const response = await createBillingPortalSession(props.session.token);
                   if (response.portalUrl) {
                     window.location.href = response.portalUrl;
+                  } else {
+                    setMessage("The billing portal is not available for this workspace yet.");
                   }
                 } catch (error) {
                   setMessage(error instanceof Error ? error.message : "Could not open billing portal.");
@@ -8078,6 +8080,8 @@ function BillingPage(props: { session: SessionState }) {
                       });
                       if (response.checkoutUrl) {
                         window.location.href = response.checkoutUrl;
+                      } else {
+                        setMessage("Online checkout is not available for this workspace yet.");
                       }
                     } catch (error) {
                       setMessage(error instanceof Error ? error.message : "Could not start checkout.");
@@ -8117,6 +8121,8 @@ function BillingPage(props: { session: SessionState }) {
                       });
                       if (response.checkoutUrl) {
                         window.location.href = response.checkoutUrl;
+                      } else {
+                        setMessage("Online checkout is not available for this workspace yet.");
                       }
                     } catch (error) {
                       setMessage(error instanceof Error ? error.message : "Could not start checkout.");
