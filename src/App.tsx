@@ -2668,7 +2668,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
           <ul className="summary-list">
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate(firstExportRoute(store))}>
-                <strong>Queue CSV exports</strong>
+                <strong>Open CSV exports</strong>
                 <span>Costs, sales, vault, claims, and reconciliation all support filtered CSV export from their live queues.</span>
               </button>
             </li>
@@ -6582,7 +6582,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
             {session ? (
               <>
                 <Link className="public-primary" to={signedInPublicPrimaryRoute(session)}>Back to Workspace</Link>
-                <Link className="secondary-inline-link" to={isRouteAllowed(session, "/billing") ? "/billing" : signedInPublicSecondaryRoute(session)}>Manage account</Link>
+                <Link className="secondary-inline-link" to={signedInPublicSecondaryRoute(session)}>Manage account</Link>
               </>
             ) : (
               <>
