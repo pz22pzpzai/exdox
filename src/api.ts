@@ -257,9 +257,12 @@ export async function getReceipt(token: string, id: number): Promise<ReceiptReco
   return response.receipt;
 }
 
-export async function getReceiptAssetUrl(token: string, id: number): Promise<string | null> {
-  const response = await apiFetch<{ asset: { downloadUrl: string } }>(`/receipts/${id}/asset-url`, token);
-  return response.asset.downloadUrl;
+export async function getReceiptAssetUrl(token: string, id: number): Promise<{ previewUrl: string | null; downloadUrl: string | null }> {
+  const response = await apiFetch<{ asset: { previewUrl: string; downloadUrl: string } }>(`/receipts/${id}/asset-url`, token);
+  return {
+    previewUrl: response.asset.previewUrl,
+    downloadUrl: response.asset.downloadUrl,
+  };
 }
 
 export async function saveReceipt(

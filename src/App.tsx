@@ -1233,11 +1233,15 @@ export function App() {
                 setAuthError(null);
               }}
               loadReceipt={async (id) => {
-                const [receipt, assetUrl] = await Promise.all([
+                const [receipt, asset] = await Promise.all([
                   getReceipt(session.token, id),
                   getReceiptAssetUrl(session.token, id),
                 ]);
-                return { receipt, assetUrl };
+                return {
+                  receipt,
+                  assetUrl: asset.previewUrl,
+                  downloadUrl: asset.downloadUrl,
+                };
               }}
               loadClaim={async (id) => getClaim(session.token, id)}
             />
@@ -1274,7 +1278,7 @@ function DashboardShell(props: {
   onInviteEmployee: (payload: { email: string; fullName?: string }) => Promise<InviteResult>;
   onActiveOrganisationChange: (organisationId: number) => Promise<void>;
   onSignOut: () => void;
-  loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null }>;
+  loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null; downloadUrl: string | null }>;
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
 }) {
   const [uploadBusy, setUploadBusy] = useState(false);
@@ -3039,7 +3043,7 @@ function DocumentWorkspacePage(props: {
   onSave: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onAttachToClaim: (receiptId: number, claimId: number) => Promise<ReceiptRecord>;
-  loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null }>;
+  loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null; downloadUrl: string | null }>;
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -3047,6 +3051,7 @@ function DocumentWorkspacePage(props: {
     props.fallbackRecords.find((item) => item.id === Number(id)) ?? null,
   );
   const [assetUrl, setAssetUrl] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -3064,6 +3069,7 @@ function DocumentWorkspacePage(props: {
       .then((payload) => {
         setReceipt(payload.receipt);
         setAssetUrl(payload.assetUrl);
+        setDownloadUrl(payload.downloadUrl);
         setSelectedClaimId(payload.receipt.claimId ? String(payload.receipt.claimId) : "");
         setError(null);
       })
@@ -3126,21 +3132,11 @@ function DocumentWorkspacePage(props: {
                 <a className="secondary-action link-action" href={assetUrl} target="_blank" rel="noreferrer">
                   Open source file
                 </a>
-                <button
-                  className="secondary-action"
-                  type="button"
-                  onClick={async () => {
-                    setFeedback(null);
-                    setError(null);
-                    try {
-                      await downloadReceiptAsset(assetUrl, receipt.sourceFilename);
-                    } catch (downloadError) {
-                      setError(downloadError instanceof Error ? downloadError.message : "Could not download this file.");
-                    }
-                  }}
-                >
-                  Download file
-                </button>
+                {downloadUrl ? (
+                  <a className="secondary-action link-action" href={downloadUrl}>
+                    Download file
+                  </a>
+                ) : null}
               </>
             ) : null}
           </div>
@@ -7371,22 +7367,6 @@ function normalizeParsedDateParts(year: string, month: string, day: string) {
   const normalized = `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   const parsed = new Date(`${normalized}T00:00:00Z`);
   return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== normalized ? null : normalized;
-}
-
-async function downloadReceiptAsset(url: string, filename: string) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("Could not download this file.");
-  }
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = objectUrl;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(objectUrl);
 }
 
 type DuplicateInsightGroup = {
