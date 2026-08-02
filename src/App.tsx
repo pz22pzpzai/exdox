@@ -4942,6 +4942,9 @@ function SettingsPage(props: {
   onSignOut: () => void;
 }) {
   const navigate = useNavigate();
+  const openContactRoute = (subject: string) => {
+    navigate(`${contactPagePath}?subject=${encodeURIComponent(subject)}`);
+  };
   const [draft, setDraft] = useState<OrganisationSettings | null>(props.settings);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -5028,10 +5031,10 @@ function SettingsPage(props: {
             </div>
           </div>
           <div className="toolbar">
-            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Password%20reset%20support"}>
+            <button className="secondary-action" type="button" onClick={() => openContactRoute("Password reset support")}>
               Password help
             </button>
-            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Change%20account%20email"}>
+            <button className="secondary-action" type="button" onClick={() => openContactRoute("Change account email")}>
               Change email
             </button>
             <button className="danger-action" type="button" onClick={props.onSignOut}>
@@ -5368,10 +5371,10 @@ function SettingsPage(props: {
             </div>
           </div>
           <div className="toolbar">
-            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Security%20request"}>
+            <button className="secondary-action" type="button" onClick={() => openContactRoute("Security request")}>
               Contact security
             </button>
-            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Two-factor%20authentication%20request"}>
+            <button className="secondary-action" type="button" onClick={() => openContactRoute("Two-factor authentication request")}>
               Request 2FA
             </button>
           </div>
@@ -5466,13 +5469,13 @@ function SettingsPage(props: {
             </div>
           </div>
           <div className="toolbar">
-            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Access%20support"}>
+            <button className="secondary-action" type="button" onClick={() => openContactRoute("Access support")}>
               Access support
             </button>
-            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Billing%20support"}>
+            <button className="secondary-action" type="button" onClick={() => openContactRoute("Billing support")}>
               Billing support
             </button>
-            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Security%20request"}>
+            <button className="secondary-action" type="button" onClick={() => openContactRoute("Security request")}>
               Security contact
             </button>
           </div>
@@ -7429,11 +7432,27 @@ function CompanySection({ session = null }: { session?: SessionState | null }) {
 }
 
 function ContactSection() {
+  const location = useLocation();
+  const requestedSubject = new URLSearchParams(location.search).get("subject")?.trim();
+  const subjectOptions = [
+    "General enquiry",
+    "Access support",
+    "Billing support",
+    "Product demo",
+    "Onboarding help",
+    "Security request",
+  ];
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
-  const [subject, setSubject] = useState("General enquiry");
+  const [subject, setSubject] = useState(requestedSubject || "General enquiry");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (requestedSubject) {
+      setSubject(requestedSubject);
+    }
+  }, [requestedSubject]);
 
   const canSubmit = name.trim() && email.trim() && subject.trim() && message.trim();
 
@@ -7489,12 +7508,10 @@ function ContactSection() {
             <label>
               Subject
               <select value={subject} onChange={(event) => setSubject(event.target.value)}>
-                <option>General enquiry</option>
-                <option>Access support</option>
-                <option>Billing support</option>
-                <option>Product demo</option>
-                <option>Onboarding help</option>
-                <option>Security request</option>
+                {requestedSubject && !subjectOptions.includes(requestedSubject) ? <option>{requestedSubject}</option> : null}
+                {subjectOptions.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
               </select>
             </label>
             <label className="contact-form-message">
