@@ -3126,9 +3126,21 @@ function DocumentWorkspacePage(props: {
                 <a className="secondary-action link-action" href={assetUrl} target="_blank" rel="noreferrer">
                   Open source file
                 </a>
-                <a className="secondary-action link-action" href={assetUrl} download={receipt.sourceFilename}>
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={async () => {
+                    setFeedback(null);
+                    setError(null);
+                    try {
+                      await downloadReceiptAsset(assetUrl, receipt.sourceFilename);
+                    } catch (downloadError) {
+                      setError(downloadError instanceof Error ? downloadError.message : "Could not download this file.");
+                    }
+                  }}
+                >
                   Download file
-                </a>
+                </button>
               </>
             ) : null}
           </div>
@@ -7359,6 +7371,22 @@ function normalizeParsedDateParts(year: string, month: string, day: string) {
   const normalized = `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   const parsed = new Date(`${normalized}T00:00:00Z`);
   return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== normalized ? null : normalized;
+}
+
+async function downloadReceiptAsset(url: string, filename: string) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Could not download this file.");
+  }
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
 }
 
 type DuplicateInsightGroup = {
