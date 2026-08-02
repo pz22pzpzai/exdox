@@ -5230,7 +5230,7 @@ function SettingsPage(props: {
               Change password
             </button>
             <button className="secondary-action" type="button" onClick={() => openContactRoute("Change account email")}>
-              Change email
+              Request email change
             </button>
             <button className="danger-action" type="button" onClick={props.onSignOut}>
               Sign out
@@ -8024,7 +8024,7 @@ function BillingPage(props: { session: SessionState }) {
               Manage or cancel in billing portal
             </button>
           ) : (
-            <button className="secondary-action" type="button" onClick={() => navigate(supportPagePath)}>
+            <button className="secondary-action" type="button" onClick={() => navigate(`${supportPagePath}?subject=${encodeURIComponent("Billing support")}`)}>
               Contact billing
             </button>
           )}
