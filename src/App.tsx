@@ -487,6 +487,10 @@ function signedInPublicSecondaryRoute(session: SessionState) {
   return isRouteAllowed(session, "/settings") ? "/settings" : getDefaultRoute(session);
 }
 
+function signedInPublicSecondaryLabel(session: SessionState) {
+  return isRouteAllowed(session, "/settings") ? "Settings" : "Back to Workspace";
+}
+
 function syncPageSearchParams(
   pathname: string,
   currentSearch: string,
@@ -6630,7 +6634,9 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
             {session ? (
               <>
                 <Link className="public-primary" to={signedInPublicPrimaryRoute(session)}>Back to Workspace</Link>
-                <Link className="secondary-inline-link" to={signedInPublicSecondaryRoute(session)}>Manage account</Link>
+                <Link className="secondary-inline-link" to={signedInPublicSecondaryRoute(session)}>
+                  {isRouteAllowed(session, "/settings") ? "Manage account" : "Back to Workspace"}
+                </Link>
               </>
             ) : (
               <>
@@ -6701,7 +6707,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
         <div className="public-actions">
           {signedIn && props.session ? (
             <>
-              <Link to={signedInPublicSecondaryRoute(props.session)}>Settings</Link>
+              <Link to={signedInPublicSecondaryRoute(props.session)}>{signedInPublicSecondaryLabel(props.session)}</Link>
               <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)}>Dashboard</Link>
             </>
           ) : (
@@ -6728,7 +6734,9 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
             <div className="public-mobile-actions">
               {signedIn && props.session ? (
                 <>
-                  <Link to={signedInPublicSecondaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>Settings</Link>
+                  <Link to={signedInPublicSecondaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>
+                    {signedInPublicSecondaryLabel(props.session)}
+                  </Link>
                   <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
                 </>
               ) : (
