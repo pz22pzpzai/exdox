@@ -5496,7 +5496,7 @@ function SettingsPage(props: {
             }
           }}
         >
-          {inviteBusy ? "Sending..." : "Send invite"}
+          {inviteBusy ? "Creating..." : "Create invite"}
         </button>
       </div>
       {lastInvite ? (
