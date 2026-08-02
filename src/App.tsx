@@ -7691,7 +7691,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               </span>
             ) : signedIn && signedInBillingRoute ? (
               <Link className="public-button" to={signedInBillingRoute}>
-                {signedInBillingRoute === "/billing" ? "Manage in Billing" : "Back to Workspace"}
+                {signedInBillingRoute === "/billing" ? "Open Billing" : "Back to Workspace"}
               </Link>
             ) : (
               <Link
@@ -7742,7 +7742,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
                   <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
                 ) : signedIn && signedInBillingRoute ? (
                   <Link className="public-button" to={signedInBillingRoute}>
-                    {signedInBillingRoute === "/billing" ? "Review in Billing" : "Back to Workspace"}
+                    {signedInBillingRoute === "/billing" ? "Open Billing" : "Back to Workspace"}
                   </Link>
                 ) : (
                   <Link
