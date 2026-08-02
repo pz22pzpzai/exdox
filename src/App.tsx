@@ -7900,7 +7900,7 @@ function ContactSection() {
             </label>
             <div className="toolbar">
               <button className="primary-action" type="submit" disabled={!canSubmit}>
-                Send message
+                Open email draft
               </button>
             </div>
           </form>
