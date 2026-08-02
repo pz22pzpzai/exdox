@@ -1278,6 +1278,10 @@ input {
   white-space: nowrap;
 }
 
+.action-count-static {
+  cursor: default;
+}
+
 .primary-action,
 .upload-button,
 .dropzone-picker {

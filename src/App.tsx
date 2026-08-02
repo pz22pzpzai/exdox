@@ -1460,15 +1460,21 @@ function DashboardShell(props: {
                 </option>
                 ))}
             </select>
-            <button
-              className="icon-button action-count-button"
-              type="button"
-              aria-label={actionLabel}
-              title={actionLabel}
-              onClick={() => navigate("/overview/attention")}
-            >
-              {actionLabel}
-            </button>
+            {actionBreakdown.length ? (
+              <button
+                className="icon-button action-count-button"
+                type="button"
+                aria-label={actionLabel}
+                title={actionLabel}
+                onClick={() => navigate("/overview/attention")}
+              >
+                {actionLabel}
+              </button>
+            ) : (
+              <span className="icon-button action-count-button action-count-static" aria-label={actionLabel} title={actionLabel}>
+                {actionLabel}
+              </span>
+            )}
               {isRouteAllowed(props.session, "/settings") ? (
               <button className="secondary-action" type="button" onClick={() => navigate("/settings")}>
                 Profile/Settings
