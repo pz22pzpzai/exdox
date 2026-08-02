@@ -5486,7 +5486,11 @@ function SettingsPage(props: {
                 fullName: inviteName.trim() || undefined,
               });
               setLastInvite(invite);
-              setInviteFeedback(`Invite created for ${invite.email}.`);
+              setInviteFeedback(
+                invite.delivery?.delivered
+                  ? `Invite created for ${invite.email}.`
+                  : `Invite created for ${invite.email}. Email delivery did not complete, so use the invite link below.`,
+              );
               setInviteName("");
               setInviteEmail("");
             } catch (saveError) {
