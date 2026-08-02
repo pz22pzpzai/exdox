@@ -7506,10 +7506,10 @@ function IntegrationSection({ session = null }: { session?: SessionState | null 
         </p>
       </div>
       <div className="integration-names" aria-label="Compatible accounting platforms">
-        <Link to={buildPublicPlanLink(session, "control")}>Sage</Link>
-        <Link to={buildPublicPlanLink(session, "control")}>Xero</Link>
-        <Link to={buildPublicPlanLink(session, "control")}>QuickBooks</Link>
-        <Link to={buildPublicPlanLink(session, "control")}>FreeAgent</Link>
+        <Link to="/integrations">Sage</Link>
+        <Link to="/integrations">Xero</Link>
+        <Link to="/integrations">QuickBooks</Link>
+        <Link to="/integrations">FreeAgent</Link>
       </div>
     </section>
   );
