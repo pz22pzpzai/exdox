@@ -3159,6 +3159,7 @@ function DocumentWorkspacePage(props: {
   const [error, setError] = useState<string | null>(null);
   const [selectedClaimId, setSelectedClaimId] = useState("");
   const [imageZoomOpen, setImageZoomOpen] = useState(false);
+  const [postApprovePrompt, setPostApprovePrompt] = useState<null | { nextReceiptId: number | null }>(null);
   const imageZoomStageRef = useRef<HTMLDivElement | null>(null);
   const imagePanStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
 
@@ -3214,6 +3215,10 @@ function DocumentWorkspacePage(props: {
   const vatTrackingEnabled = isVatTrackingEnabled(props.settings ?? null);
   const receiptPublished = receipt.status === "Published";
   const receiptApproved = receipt.status === "Ready" && !receipt.needsReview;
+  const nextReviewReceipt =
+    props.mode === "cost"
+      ? props.fallbackRecords.find((record) => record.id !== receipt.id && record.needsReview)
+      : null;
   const claimAttachmentAllowed = receipt.paymentMethod === "cash_personal";
   const previewAsImage = canPreviewReceiptAsImage(receipt);
 
@@ -3572,6 +3577,9 @@ function DocumentWorkspacePage(props: {
                   setReceipt(nextReceipt);
                   await props.onSave(receipt.id, nextReceipt);
                   setFeedback(props.mode === "cost" ? "Expense approved and moved out of review." : "Document approved and moved out of review.");
+                  if (props.mode === "cost") {
+                    setPostApprovePrompt({ nextReceiptId: nextReviewReceipt?.id ?? null });
+                  }
                 } catch (approveError) {
                   setError(approveError instanceof Error ? approveError.message : "Could not approve this document.");
                 } finally {
@@ -3689,6 +3697,54 @@ function DocumentWorkspacePage(props: {
         </div>
       </section>
     </div>
+    {postApprovePrompt ? (
+      <div className="review-next-overlay" role="dialog" aria-modal="true" aria-label="Expense review prompt">
+        <button className="review-next-backdrop" type="button" aria-label="Close expense review prompt" onClick={() => setPostApprovePrompt(null)} />
+        <div className="review-next-panel">
+          <div className="panel-heading">
+            <h2>{postApprovePrompt.nextReceiptId ? "Review the next expense" : "All caught up"}</h2>
+            <span>
+              {postApprovePrompt.nextReceiptId
+                ? "This expense is approved. Move straight into the next one."
+                : "There are no more expenses waiting for review right now."}
+            </span>
+          </div>
+          <div className="toolbar">
+            {postApprovePrompt.nextReceiptId ? (
+              <button
+                className="primary-action"
+                type="button"
+                onClick={() => {
+                  const nextId = postApprovePrompt.nextReceiptId;
+                  setPostApprovePrompt(null);
+                  navigate(`/costs/${nextId}`);
+                }}
+              >
+                Review the next expense
+              </button>
+            ) : (
+              <button
+                className="primary-action"
+                type="button"
+                onClick={() => {
+                  downloadCsv(
+                    `expenses-${new Date().toISOString().slice(0, 10)}.csv`,
+                    buildInboxExportRows(props.fallbackRecords, props.settings ?? null),
+                  );
+                  setFeedback("Expenses CSV downloaded.");
+                  setPostApprovePrompt(null);
+                }}
+              >
+                Export CSV for expenses
+              </button>
+            )}
+            <button className="secondary-action" type="button" onClick={() => setPostApprovePrompt(null)}>
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
     {assetUrl && previewAsImage && imageZoomOpen ? (
       <div className="image-zoom-overlay" role="dialog" aria-modal="true" aria-label="Receipt image preview">
         <button className="image-zoom-backdrop" type="button" aria-label="Close image preview" onClick={() => setImageZoomOpen(false)} />
