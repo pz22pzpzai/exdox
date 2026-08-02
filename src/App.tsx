@@ -7405,12 +7405,12 @@ function CoverageSection({ session = null }: { session?: SessionState | null }) 
         </p>
       </div>
       <div className="document-grid">
-        <Link className="document-card" to={buildPublicPlanLink(session, "capture")}><strong>Receipts</strong><span>Mobile capture, employee submission, and web upload</span></Link>
-        <Link className="document-card" to={buildPublicPlanLink(session, "capture")}><strong>Purchase invoices</strong><span>Structured totals, tax fields, and review-ready categorisation</span></Link>
-        <Link className="document-card" to={buildPublicPlanLink(session, "control")}><strong>Sales documents</strong><span>Separate sales workspace with the same synced review flow</span></Link>
-        <Link className="document-card" to={buildPublicPlanLink(session, "control")}><strong>Mileage claims</strong><span>Staff mileage entry and approval-ready claim handling</span></Link>
-        <Link className="document-card" to={buildPublicPlanLink(session, "operations")}><strong>Bank-led evidence</strong><span>Imported bank activity matched back to supporting records</span></Link>
-        <Link className="document-card" to={buildPublicPlanLink(session, "operations")}><strong>Vault files</strong><span>Stored reference documents with protected retrieval</span></Link>
+        <Link className="document-card" to="/platform"><strong>Receipts</strong><span>Mobile capture, employee submission, and web upload</span></Link>
+        <Link className="document-card" to="/platform"><strong>Purchase invoices</strong><span>Structured totals, tax fields, and review-ready categorisation</span></Link>
+        <Link className="document-card" to="/platform"><strong>Sales documents</strong><span>Separate sales workspace with the same synced review flow</span></Link>
+        <Link className="document-card" to="/platform"><strong>Mileage claims</strong><span>Staff mileage entry and approval-ready claim handling</span></Link>
+        <Link className="document-card" to="/platform"><strong>Bank-led evidence</strong><span>Imported bank activity matched back to supporting records</span></Link>
+        <Link className="document-card" to="/platform"><strong>Vault files</strong><span>Stored reference documents with protected retrieval</span></Link>
       </div>
     </section>
   );
@@ -7431,11 +7431,11 @@ function FlowSection({ session = null }: { session?: SessionState | null }) {
         </p>
       </div>
       <div className="process-grid">
-        <Link className="process-card" to={buildPublicPlanLink(session, "capture")}><span>1. Capture</span><strong>Collect receipts, invoices, and supporting files</strong><p>Use mobile capture, web upload, employee drop box flows, and bank-led intake.</p></Link>
-        <Link className="process-card" to={buildPublicPlanLink(session, "capture")}><span>2. Extract</span><strong>Pull out totals, tax, supplier, and line detail</strong><p>Structured extraction, VAT-aware fields, and document detail all stay visible for review.</p></Link>
-        <Link className="process-card" to={buildPublicPlanLink(session, "control")}><span>3. Review</span><strong>Work the exceptions instead of retyping everything</strong><p>Needs-review, duplicate, unreadable, and low-confidence signals surface the items that need attention.</p></Link>
-        <Link className="process-card" to={buildPublicPlanLink(session, "operations")}><span>4. Store</span><strong>Keep the original evidence easy to retrieve</strong><p>Vault storage, protected document access, and searchable archive views keep source files close at hand.</p></Link>
-        <Link className="process-card" to={buildPublicPlanLink(session, "control")}><span>5. Approve &amp; Publish</span><strong>Move claims, reviews, and handoff queues forward</strong><p>Approval-ready claims, ready queues, and export routes keep the downstream workflow moving.</p></Link>
+        <Link className="process-card" to="/platform"><span>1. Capture</span><strong>Collect receipts, invoices, and supporting files</strong><p>Use mobile capture, web upload, employee drop box flows, and bank-led intake.</p></Link>
+        <Link className="process-card" to="/platform"><span>2. Extract</span><strong>Pull out totals, tax, supplier, and line detail</strong><p>Structured extraction, VAT-aware fields, and document detail all stay visible for review.</p></Link>
+        <Link className="process-card" to="/platform"><span>3. Review</span><strong>Work the exceptions instead of retyping everything</strong><p>Needs-review, duplicate, unreadable, and low-confidence signals surface the items that need attention.</p></Link>
+        <Link className="process-card" to="/platform"><span>4. Store</span><strong>Keep the original evidence easy to retrieve</strong><p>Vault storage, protected document access, and searchable archive views keep source files close at hand.</p></Link>
+        <Link className="process-card" to="/platform"><span>5. Approve &amp; Publish</span><strong>Move claims, reviews, and handoff queues forward</strong><p>Approval-ready claims, ready queues, and export routes keep the downstream workflow moving.</p></Link>
       </div>
     </section>
   );
@@ -7455,7 +7455,7 @@ function WorkflowCoverageSection({ session = null }: { session?: SessionState | 
         </p>
       </div>
       <div className="workflow-grid">
-        <Link className="workflow-card workflow-link" to={buildPublicPlanLink(session, "capture")}>
+        <Link className="workflow-card workflow-link" to="/platform">
           <strong>Capture across every submission route</strong>
           <ul>
             <li>Mobile receipt capture in the app</li>
@@ -7466,7 +7466,7 @@ function WorkflowCoverageSection({ session = null }: { session?: SessionState | 
             <li>Separate workspaces for purchase and sales documents</li>
           </ul>
         </Link>
-        <Link className="workflow-card workflow-link" to={buildPublicPlanLink(session, "operations")}>
+        <Link className="workflow-card workflow-link" to="/platform">
           <strong>Automate the review layer</strong>
           <ul>
             <li>Supplier rules for category, tax rate and payment method</li>
@@ -7477,7 +7477,7 @@ function WorkflowCoverageSection({ session = null }: { session?: SessionState | 
             <li>Audit-friendly document detail editing before publish</li>
           </ul>
         </Link>
-        <Link className="workflow-card workflow-link" to={buildPublicPlanLink(session, "operations")}>
+        <Link className="workflow-card workflow-link" to="/platform">
           <strong>Close the loop with finance controls</strong>
           <ul>
             <li>Dedicated vault workspace for searchable archived evidence</li>
