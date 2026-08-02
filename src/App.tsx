@@ -6495,7 +6495,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
           title="A finance workspace built for operational review."
           body="Receipt capture, invoice review, claims, vault storage, supplier rules, reconciliation, and data health sit inside one connected Exdox platform."
         />
-        <PlatformCapabilitiesSection session={session} />
+        <PlatformCapabilitiesSection session={session} linkTarget={null} />
         <CoverageSection session={session} linkTarget={null} />
         <FlowSection session={session} linkTarget={null} />
         <WorkflowCoverageSection session={session} linkTarget={null} />
@@ -7371,20 +7371,27 @@ function AccountDeletionSection() {
   );
 }
 
-function PlatformCapabilitiesSection({ session = null }: { session?: SessionState | null }) {
+function PlatformCapabilitiesSection({ session = null, linkTarget = "/platform" }: { session?: SessionState | null; linkTarget?: string | null }) {
+  const CapabilityCard = ({ icon, title, detail }: { icon: string; title: string; detail: string }) =>
+    linkTarget ? (
+      <Link className="capability-card" to={linkTarget}><NavIcon name={icon} /><strong>{title}</strong><span>{detail}</span></Link>
+    ) : (
+      <article className="capability-card"><NavIcon name={icon} /><strong>{title}</strong><span>{detail}</span></article>
+    );
+
   return (
     <section className="capabilities-band">
       <h2>Key Platform Capabilities</h2>
       <div className="capabilities-grid">
-        <Link className="capability-card" to="/platform"><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></Link>
-        <Link className="capability-card" to="/platform"><NavIcon name="workflow" /><strong>Approval Workflows</strong><span>Review, approve and publish in one place</span></Link>
-        <Link className="capability-card" to="/platform"><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent categorisation and tax defaults</span></Link>
-        <Link className="capability-card" to="/platform"><NavIcon name="claims" /><strong>Mileage & Expense Claims</strong><span>Staff submission, mileage entry and approval</span></Link>
-        <Link className="capability-card" to="/platform"><NavIcon name="health" /><strong>Client Data Health</strong><span>Unreadable, duplicate and low-confidence follow-up</span></Link>
-        <Link className="capability-card" to="/platform"><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive and retrieve source evidence fast</span></Link>
-        <Link className="capability-card" to="/platform"><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></Link>
-        <Link className="capability-card" to="/platform"><NavIcon name="integrations" /><strong>Bank & Statement Review</strong><span>Imported bank activity and evidence-led review</span></Link>
-        <Link className="capability-card" to="/platform"><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></Link>
+        <CapabilityCard icon="costs" title="Receipt & Invoice Capture" detail="Mobile and web submission" />
+        <CapabilityCard icon="workflow" title="Approval Workflows" detail="Review, approve and publish in one place" />
+        <CapabilityCard icon="rules" title="Supplier Rules" detail="Consistent categorisation and tax defaults" />
+        <CapabilityCard icon="claims" title="Mileage & Expense Claims" detail="Staff submission, mileage entry and approval" />
+        <CapabilityCard icon="health" title="Client Data Health" detail="Unreadable, duplicate and low-confidence follow-up" />
+        <CapabilityCard icon="claims" title="Document Vault" detail="Archive and retrieve source evidence fast" />
+        <CapabilityCard icon="bank" title="Bank Reconciliation" detail="Match bank-line evidence back to spend" />
+        <CapabilityCard icon="integrations" title="Bank & Statement Review" detail="Imported bank activity and evidence-led review" />
+        <CapabilityCard icon="open-banking" title="Queue Exports" detail="CSV handoff across inboxes, claims, and reconciliation" />
         <Link className="capability-card" to="/pricing"><NavIcon name="overview" /><strong>Pricing & Plans</strong><span>Compare plan tiers, document volumes, and included users</span></Link>
       </div>
     </section>
