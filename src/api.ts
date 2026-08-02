@@ -249,12 +249,12 @@ export async function listReceipts(
     `/receipts?workspace_context=${workspaceContext}&limit=200`,
     token,
   );
-  return response.receipts;
+  return response.receipts.map(normalizeVaultReceiptRecord);
 }
 
 export async function getReceipt(token: string, id: number): Promise<ReceiptRecord> {
   const response = await apiFetch<{ receipt: ReceiptRecord }>(`/receipts/${id}`, token);
-  return response.receipt;
+  return normalizeVaultReceiptRecord(response.receipt);
 }
 
 export async function getReceiptAssetUrl(token: string, id: number): Promise<{ previewUrl: string | null; downloadUrl: string | null }> {
@@ -274,13 +274,23 @@ export async function saveReceipt(
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  return response.receipt;
+  return normalizeVaultReceiptRecord(response.receipt);
 }
 
 export async function deleteReceipt(token: string, id: number): Promise<void> {
   await apiFetch(`/receipts/${id}`, token, {
     method: "DELETE",
   });
+}
+
+function normalizeVaultReceiptRecord(receipt: ReceiptRecord): ReceiptRecord {
+  if (receipt.workspaceContext !== "vault" || receipt.status !== "Processing" || receipt.needsReview) {
+    return receipt;
+  }
+  return {
+    ...receipt,
+    status: "Ready",
+  };
 }
 
 export async function listClaims(token: string): Promise<ClaimRecord[]> {

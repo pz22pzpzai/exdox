@@ -2911,7 +2911,7 @@ function InboxPage({
             ? "Files upload straight into secure processing and land in the costs inbox with a Processing status."
             : basePath === "/sales"
               ? "Bulk sales files route into the sales ledger workspace without mixing into expense review."
-              : "Store reference files in a separate archive workspace without forcing them into costs or sales review."
+              : "Store reference files in a separate archive workspace and mark them as Processed once they are safely stored."
         }
         busy={uploadBusy}
         onFiles={onUpload}
@@ -2961,7 +2961,7 @@ function InboxPage({
                     <>
                       <td>
                         <div className="stacked-cell">
-                          <StatusPill status={record.status} />
+                          <StatusPill status={record.status} label={vaultStatusLabel(record)} />
                           {duplicateInsights.byReceiptId.has(record.id) ? <SignalPill tone="warning">Possible duplicate</SignalPill> : null}
                           {isLowConfidence(record) ? <SignalPill tone="info">Low confidence</SignalPill> : null}
                         </div>
@@ -5290,9 +5290,15 @@ function normalizeInboxStatusLabel(status: "pending" | "approved" | "paid" | "re
   return "Review";
 }
 
-function StatusPill({ status }: { status: "pending" | "approved" | "paid" | "rejected" | InboxStatus | string }) {
+function StatusPill({
+  status,
+  label,
+}: {
+  status: "pending" | "approved" | "paid" | "rejected" | InboxStatus | string;
+  label?: string;
+}) {
   const normalized = normalizeInboxStatusLabel(status);
-  return <span className={`status-pill status-${normalized.toLowerCase()}`}>{normalized}</span>;
+  return <span className={`status-pill status-${normalized.toLowerCase()}`}>{label ?? normalized}</span>;
 }
 
 function SignalPill({ tone, children }: { tone: "warning" | "info"; children: string }) {
@@ -8040,7 +8046,7 @@ function buildPendingReceipts(
     paymentMethod:
       workspaceContext === "sales" ? "bank_transfer" : workspaceContext === "vault" ? "not_applicable" : "business_card",
     claimId: null,
-    status: "Processing",
+    status: workspaceContext === "vault" ? "Ready" : "Processing",
     category:
       workspaceContext === "sales" ? "Accounts receivable" : workspaceContext === "vault" ? "Vault" : "Uncategorised",
     description: null,
@@ -8064,6 +8070,10 @@ function buildPendingReceipts(
     createdAt: now,
     updatedAt: now,
   }));
+}
+
+function vaultStatusLabel(record: ReceiptRecord) {
+  return record.workspaceContext === "vault" && record.status === "Ready" && !record.needsReview ? "Processed" : undefined;
 }
 
 function claimEmployeeLabel(claim: ClaimRecord) {
