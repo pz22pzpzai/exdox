@@ -8152,7 +8152,7 @@ function BillingPage(props: { session: SessionState }) {
                   type="button"
                   onClick={() => navigate(`${supportPagePath}?subject=${encodeURIComponent("Billing support")}`)}
                 >
-                  Contact billing support
+                  Open billing support
                 </button>
               ) : (
                 <button
