@@ -5628,10 +5628,10 @@ function SettingsPage(props: {
           </div>
           <div className="toolbar">
             <button className="secondary-action" type="button" onClick={() => openContactRoute("Security request")}>
-              Contact security
+              Open security contact
             </button>
             <button className="secondary-action" type="button" onClick={() => openContactRoute("Two-factor authentication request")}>
-              Request 2FA
+              Open 2FA request
             </button>
           </div>
         </div>
@@ -5727,13 +5727,13 @@ function SettingsPage(props: {
           </div>
           <div className="toolbar">
             <button className="secondary-action" type="button" onClick={() => openContactRoute("Access support")}>
-              Access support
+              Open access support
             </button>
             <button className="secondary-action" type="button" onClick={() => openContactRoute("Billing support")}>
-              Billing support
+              Open billing support
             </button>
             <button className="secondary-action" type="button" onClick={() => openContactRoute("Security request")}>
-              Security contact
+              Open security contact
             </button>
           </div>
         </div>
@@ -8090,7 +8090,7 @@ function BillingPage(props: { session: SessionState }) {
             </button>
           ) : (
             <button className="secondary-action" type="button" onClick={() => navigate(`${supportPagePath}?subject=${encodeURIComponent("Billing support")}`)}>
-              Contact billing
+              Open billing support
             </button>
           )}
         </div>
