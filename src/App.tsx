@@ -2902,6 +2902,18 @@ function InboxPage({
 
   const search = deferredQuery.trim().toLowerCase();
   const isVaultInbox = basePath === "/vault";
+  const inboxExportLabel =
+    basePath === "/vault"
+      ? "vault archive"
+      : basePath === "/sales"
+        ? "sales inbox"
+        : "costs inbox";
+  const inboxExportSuccessMessage =
+    basePath === "/vault"
+      ? "Vault CSV downloaded."
+      : basePath === "/sales"
+        ? "Sales CSV downloaded."
+        : "Costs CSV downloaded.";
   const duplicateInsights = buildDuplicateInsights(records);
   const hasActiveFilters = Boolean(
     search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || documentTypeFilter !== "All",
@@ -2993,13 +3005,13 @@ function InboxPage({
             className="secondary-action"
             type="button"
             disabled={!filtered.length}
-            title={filtered.length ? "Download the current inbox view as CSV" : "No documents match the current filters yet"}
+            title={filtered.length ? `Download the current ${inboxExportLabel} view as CSV` : "No documents match the current filters yet"}
             onClick={async () => {
               if (await downloadCsv(
                 `${basePath.replace("/", "") || "inbox"}-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildInboxExportRows(filtered, settings),
               )) {
-                setFeedback("Inbox CSV downloaded.");
+                setFeedback(inboxExportSuccessMessage);
               }
             }}
           >
