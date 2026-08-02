@@ -5635,10 +5635,10 @@ function SettingsPage(props: {
             >
               Export settings CSV
             </button>
-            <button className="secondary-action" type="button" onClick={() => navigate(accountDeletionPagePath)}>
+            <button className="secondary-action" type="button" onClick={() => window.location.assign(accountDeletionPagePath)}>
               Account deletion
             </button>
-            <button className="secondary-action" type="button" onClick={() => navigate("/privacy")}>
+            <button className="secondary-action" type="button" onClick={() => window.location.assign("/privacy")}>
               Privacy policy
             </button>
           </div>
