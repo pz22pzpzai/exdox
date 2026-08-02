@@ -1953,17 +1953,21 @@ function OverviewPage({ store }: { store: AppStore }) {
 
 function AttentionPage({ session, store }: { session: SessionState; store: AppStore }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const isAdmin = isBusinessAdmin(session);
-  const items: Array<{ title: string; detail: string; route: string; count?: number; countLabel?: string }> = [];
+  const issueFilter = parseAttentionIssueFilter(new URLSearchParams(location.search).get("issue"));
+  const items: Array<{ title: string; detail: string; route: string; count?: number; countLabel?: string }> = issueFilter
+    ? buildAttentionItemsForIssue(store, issueFilter)
+    : [];
 
-  if (isAdmin && session.billing && !isBillingStatusActive(session.billing.status)) {
+  if (!issueFilter && isAdmin && session.billing && !isBillingStatusActive(session.billing.status)) {
     items.push({
       title: "Billing needs attention",
       detail: "The current workspace plan is not active.",
       route: "/billing",
     });
   }
-  if (isAdmin) {
+  if (!issueFilter && isAdmin) {
     const costReview = store.costs.filter((receipt) => receipt.needsReview).length;
     if (costReview > 0) {
       items.push({
@@ -2029,7 +2033,9 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
   const activeSummary =
     activeGroupCount > 0
       ? items.map((item) => item.countLabel ?? item.title).join(" + ")
-      : "No active actions";
+      : issueFilter
+        ? `No ${issueFilter.toLowerCase()} actions`
+        : "No active actions";
 
   return (
     <div className="stack-page">
@@ -2039,7 +2045,9 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
           <span>{activeSummary}</span>
         </div>
         <p className="muted-copy">
-          Review the live items that still need action across the workspace. The total adds up all actions listed below.
+          {issueFilter
+            ? `Review the live ${issueFilter.toLowerCase()} items across the workspace. The total adds up all actions listed below.`
+            : "Review the live items that still need action across the workspace. The total adds up all actions listed below."}
         </p>
       </section>
       <section className="panel">
@@ -8432,6 +8440,14 @@ function firstInboxRouteForIssue(
   predicate: (record: ReceiptRecord) => boolean,
   issue: "Unreadable" | "Processing" | "Low confidence" | "Needs review",
 ) {
+  const matchingWorkspaces = [
+    store.costs.some(predicate),
+    store.sales.some(predicate),
+    store.vault.some(predicate),
+  ].filter(Boolean).length;
+  if (matchingWorkspaces > 1) {
+    return `/overview/attention?issue=${encodeURIComponent(issue)}`;
+  }
   if (store.costs.some(predicate)) {
     return `/costs?issue=${encodeURIComponent(issue)}`;
   }
@@ -8442,6 +8458,61 @@ function firstInboxRouteForIssue(
     return `/vault?issue=${encodeURIComponent(issue)}`;
   }
   return `/costs?issue=${encodeURIComponent(issue)}`;
+}
+
+function parseAttentionIssueFilter(value: string | null): "Unreadable" | "Processing" | "Low confidence" | "Needs review" | null {
+  if (value === "Unreadable" || value === "Processing" || value === "Low confidence" || value === "Needs review") {
+    return value;
+  }
+  return null;
+}
+
+function buildAttentionItemsForIssue(
+  store: AppStore,
+  issue: "Unreadable" | "Processing" | "Low confidence" | "Needs review",
+) {
+  const issueMatches = (records: ReceiptRecord[]) => {
+    if (issue === "Unreadable") {
+      return records.filter((record) => looksUnreadable(record));
+    }
+    if (issue === "Processing") {
+      return records.filter((record) => record.status === "Processing");
+    }
+    if (issue === "Low confidence") {
+      return records.filter((record) => isLowConfidence(record));
+    }
+    return records.filter((record) => record.needsReview);
+  };
+
+  const workspaceGroups = [
+    { label: "Costs", route: `/costs?issue=${encodeURIComponent(issue)}`, records: issueMatches(store.costs) },
+    { label: "Sales", route: `/sales?issue=${encodeURIComponent(issue)}`, records: issueMatches(store.sales) },
+    { label: "Vault", route: `/vault?issue=${encodeURIComponent(issue)}`, records: issueMatches(store.vault) },
+  ];
+
+  return workspaceGroups
+    .filter((group) => group.records.length > 0)
+    .map((group) => ({
+      title:
+        issue === "Processing"
+          ? `${group.label} still processing`
+          : issue === "Low confidence"
+            ? `${group.label} have low-confidence records`
+            : issue === "Unreadable"
+              ? `${group.label} have unreadable records`
+              : `${group.label} need review`,
+      detail:
+        issue === "Processing"
+          ? `${group.records.length} ${group.label.toLowerCase()} document${group.records.length === 1 ? " is" : "s are"} still settling into review.`
+          : issue === "Low confidence"
+            ? `${group.records.length} ${group.label.toLowerCase()} document${group.records.length === 1 ? " still needs" : " still need"} a closer extraction check.`
+            : issue === "Unreadable"
+              ? `${group.records.length} ${group.label.toLowerCase()} document${group.records.length === 1 ? " needs" : "s need"} manual fallback or re-upload.`
+              : `${group.records.length} ${group.label.toLowerCase()} document${group.records.length === 1 ? " still needs" : "s still need"} review or a publish decision.`,
+      route: group.route,
+      count: group.records.length,
+      countLabel: `${group.records.length} ${group.label.toLowerCase()} ${issue === "Processing" ? "upload" : "review"}${group.records.length === 1 ? "" : "s"}`,
+    }));
 }
 
 function firstInboxRouteForSource(store: AppStore, source: ReceiptRecord["receiptSource"]) {
