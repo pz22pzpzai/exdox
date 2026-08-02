@@ -9104,6 +9104,65 @@ function formatExportNumber(value: number | null) {
   return value == null ? "" : value.toFixed(2);
 }
 
+async function saveBlobAsFile(fileName: string, blob: Blob) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const saveWindow = window as Window & {
+    showSaveFilePicker?: (options: {
+      suggestedName?: string;
+      types?: Array<{
+        description?: string;
+        accept: Record<string, string[]>;
+      }>;
+    }) => Promise<{
+      createWritable: () => Promise<{
+        write: (data: Blob) => Promise<void>;
+        close: () => Promise<void>;
+      }>;
+    }>;
+  };
+  const extensionMatch = fileName.match(/\.[^.]+$/);
+  const extension = extensionMatch?.[0] ?? "";
+
+  if (typeof saveWindow.showSaveFilePicker === "function") {
+    try {
+      const handle = await saveWindow.showSaveFilePicker({
+        suggestedName: fileName,
+        types: [{
+          description: blob.type.includes("csv") ? "CSV file" : "Downloaded file",
+          accept: {
+            [blob.type || "application/octet-stream"]: extension ? [extension] : [],
+          },
+        }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return true;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return false;
+      }
+    }
+  }
+
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.style.display = "none";
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  window.setTimeout(() => {
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }, 1500);
+  return true;
+}
+
 async function downloadCsv(fileName: string, rows: Array<Record<string, string>>) {
   if (!rows.length || typeof window === "undefined") {
     return false;
@@ -9115,23 +9174,7 @@ async function downloadCsv(fileName: string, rows: Array<Record<string, string>>
     ...rows.map((row) => headers.map((header) => escapeCsvValue(row[header] ?? "")).join(",")),
   ];
   const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8" });
-  const startAnchorDownload = () => {
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    link.style.display = "none";
-    link.rel = "noopener";
-    document.body.appendChild(link);
-    link.click();
-    window.setTimeout(() => {
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    }, 1500);
-    return true;
-  };
-
-  return startAnchorDownload();
+  return saveBlobAsFile(fileName, blob);
 }
 
 async function downloadFileFromUrl(url: string, fileName: string) {
@@ -9159,19 +9202,7 @@ async function downloadFileFromUrl(url: string, fileName: string) {
       throw new Error("Could not download the file.");
     }
     const blob = await response.blob();
-    const objectUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = objectUrl;
-    link.download = fileName;
-    link.style.display = "none";
-    link.rel = "noopener";
-    document.body.appendChild(link);
-    link.click();
-    window.setTimeout(() => {
-      link.remove();
-      window.URL.revokeObjectURL(objectUrl);
-    }, 1500);
-    return true;
+    return saveBlobAsFile(fileName, blob);
   } catch {
     return startUrlDownload();
   }
