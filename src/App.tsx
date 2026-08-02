@@ -483,6 +483,14 @@ function signedInPublicPrimaryRoute(session: SessionState) {
   return getDefaultRoute(session);
 }
 
+function signedInPublicPrimaryHeroLabel(session: SessionState) {
+  return signedInPublicPrimaryRoute(session) === "/billing" ? "Open Billing" : "Back to Workspace";
+}
+
+function signedInPublicPrimaryNavLabel(session: SessionState) {
+  return signedInPublicPrimaryRoute(session) === "/billing" ? "Billing" : "Dashboard";
+}
+
 function signedInPublicSecondaryRoute(session: SessionState) {
   return isRouteAllowed(session, "/settings") ? "/settings" : getDefaultRoute(session);
 }
@@ -6633,7 +6641,9 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
           <div className="hero-actions">
             {session ? (
               <>
-                <Link className="public-primary" to={signedInPublicPrimaryRoute(session)}>Back to Workspace</Link>
+                <Link className="public-primary" to={signedInPublicPrimaryRoute(session)}>
+                  {signedInPublicPrimaryHeroLabel(session)}
+                </Link>
                 <Link className="secondary-inline-link" to={signedInPublicSecondaryRoute(session)}>
                   {isRouteAllowed(session, "/settings") ? "Manage account" : "Back to Workspace"}
                 </Link>
@@ -6708,7 +6718,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
           {signedIn && props.session ? (
             <>
               <Link to={signedInPublicSecondaryRoute(props.session)}>{signedInPublicSecondaryLabel(props.session)}</Link>
-              <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)}>Dashboard</Link>
+              <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)}>{signedInPublicPrimaryNavLabel(props.session)}</Link>
             </>
           ) : (
             <>
@@ -6737,7 +6747,9 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
                   <Link to={signedInPublicSecondaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>
                     {signedInPublicSecondaryLabel(props.session)}
                   </Link>
-                  <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
+                  <Link className="public-button" to={signedInPublicPrimaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>
+                    {signedInPublicPrimaryNavLabel(props.session)}
+                  </Link>
                 </>
               ) : (
                 <>
