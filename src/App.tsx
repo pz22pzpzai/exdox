@@ -1390,8 +1390,8 @@ function DashboardShell(props: {
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
-  const costReviewCount = props.store.costs.filter((receipt) => receipt.needsReview).length;
-  const salesReviewCount = props.store.sales.filter((receipt) => receipt.needsReview).length;
+  const costReviewCount = props.store.costs.filter((receipt) => countsAsManualReview(receipt)).length;
+  const salesReviewCount = props.store.sales.filter((receipt) => countsAsManualReview(receipt)).length;
   const vaultAttentionCount = props.store.vault.filter((receipt) => receipt.needsReview || receipt.status === "Processing").length;
   const pendingClaimCount = pendingClaimsNeedingAction(props.store.claims).length;
   const openBankMatchCount = props.store.reconciliation.filter((line) => line.status === "Open").length;
@@ -1979,7 +1979,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
     });
   }
   if (!issueFilter && isAdmin) {
-    const costReview = store.costs.filter((receipt) => receipt.needsReview).length;
+    const costReview = store.costs.filter((receipt) => countsAsManualReview(receipt)).length;
     if (costReview > 0) {
       items.push({
         title: "Costs need review",
@@ -1989,7 +1989,7 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
         countLabel: `${costReview} cost review${costReview === 1 ? "" : "s"}`,
       });
     }
-    const salesReview = store.sales.filter((receipt) => receipt.needsReview).length;
+    const salesReview = store.sales.filter((receipt) => countsAsManualReview(receipt)).length;
     if (salesReview > 0) {
       items.push({
         title: "Sales need review",
@@ -3250,7 +3250,7 @@ function DocumentWorkspacePage(props: {
   const receiptApproved = receipt.status === "Ready" && !receipt.needsReview;
   const nextReviewReceipt =
     props.mode === "cost"
-      ? props.fallbackRecords.find((record) => record.id !== receipt.id && record.needsReview)
+      ? props.fallbackRecords.find((record) => record.id !== receipt.id && countsAsManualReview(record))
       : null;
   const claimAttachmentAllowed = receipt.paymentMethod === "cash_personal";
   const previewAsImage = canPreviewReceiptAsImage(receipt);
@@ -8461,7 +8461,7 @@ function workspaceLabel(context: ReceiptRecord["workspaceContext"]) {
 }
 
 function countsAsManualReview(record: ReceiptRecord) {
-  return record.workspaceContext !== "vault" && record.needsReview;
+  return record.workspaceContext !== "vault" && record.status === "Review" && record.needsReview;
 }
 
 function duplicateCandidateKeys(record: ReceiptRecord) {
@@ -9289,10 +9289,10 @@ function getAttentionRoute(session: SessionState, store: AppStore) {
     }
     return "/dropbox";
   }
-  if (store.costs.some((receipt) => receipt.needsReview)) {
+  if (store.costs.some((receipt) => countsAsManualReview(receipt))) {
     return "/costs";
   }
-  if (store.sales.some((receipt) => receipt.needsReview)) {
+  if (store.sales.some((receipt) => countsAsManualReview(receipt))) {
     return "/sales";
   }
   if (store.vault.some((receipt) => receipt.needsReview || receipt.status === "Processing")) {
