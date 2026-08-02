@@ -9096,7 +9096,7 @@ function buildPendingReceipts(
     netAmount: null,
     vatAmount: null,
     taxRateApplied: null,
-    needsReview: true,
+    needsReview: workspaceContext === "vault" ? false : true,
     rawTextSummary: "Uploading into processing queue...",
     createdAt: now,
     updatedAt: now,

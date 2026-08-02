@@ -298,13 +298,23 @@ export async function deleteReceipt(token: string, id: number): Promise<void> {
 }
 
 function normalizeVaultReceiptRecord(receipt: ReceiptRecord): ReceiptRecord {
-  if (receipt.workspaceContext !== "vault" || receipt.status !== "Processing" || receipt.needsReview) {
+  if (receipt.workspaceContext !== "vault") {
     return receipt;
   }
-  return {
-    ...receipt,
-    status: "Ready",
-  };
+  if (receipt.status === "Processing") {
+    return receipt.needsReview
+      ? receipt
+      : {
+          ...receipt,
+          status: "Ready",
+        };
+  }
+  return receipt.needsReview
+    ? {
+        ...receipt,
+        needsReview: false,
+      }
+    : receipt;
 }
 
 export async function listClaims(token: string): Promise<ClaimRecord[]> {
