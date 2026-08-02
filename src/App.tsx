@@ -7376,15 +7376,15 @@ function PlatformCapabilitiesSection({ session = null }: { session?: SessionStat
     <section className="capabilities-band">
       <h2>Key Platform Capabilities</h2>
       <div className="capabilities-grid">
-        <Link className="capability-card" to={buildPublicPlanLink(session, "capture")}><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></Link>
-        <Link className="capability-card" to={buildPublicPlanLink(session, "control")}><NavIcon name="workflow" /><strong>Approval Workflows</strong><span>Review, approve and publish in one place</span></Link>
-        <Link className="capability-card" to={buildPublicPlanLink(session, "operations")}><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent categorisation and tax defaults</span></Link>
-        <Link className="capability-card" to={buildPublicPlanLink(session, "control")}><NavIcon name="claims" /><strong>Mileage & Expense Claims</strong><span>Staff submission, mileage entry and approval</span></Link>
-        <Link className="capability-card" to={buildPublicPlanLink(session, "capture")}><NavIcon name="health" /><strong>Client Data Health</strong><span>Unreadable, duplicate and low-confidence follow-up</span></Link>
-        <Link className="capability-card" to={buildPublicPlanLink(session, "operations")}><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive and retrieve source evidence fast</span></Link>
-        <Link className="capability-card" to={buildPublicPlanLink(session, "operations")}><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></Link>
-        <Link className="capability-card" to={buildPublicPlanLink(session, "operations")}><NavIcon name="integrations" /><strong>Bank & Statement Review</strong><span>Imported bank activity and evidence-led review</span></Link>
-        <Link className="capability-card" to={buildPublicPlanLink(session, "control")}><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></Link>
+        <Link className="capability-card" to="/platform"><NavIcon name="costs" /><strong>Receipt & Invoice Capture</strong><span>Mobile and web submission</span></Link>
+        <Link className="capability-card" to="/platform"><NavIcon name="workflow" /><strong>Approval Workflows</strong><span>Review, approve and publish in one place</span></Link>
+        <Link className="capability-card" to="/platform"><NavIcon name="rules" /><strong>Supplier Rules</strong><span>Consistent categorisation and tax defaults</span></Link>
+        <Link className="capability-card" to="/platform"><NavIcon name="claims" /><strong>Mileage & Expense Claims</strong><span>Staff submission, mileage entry and approval</span></Link>
+        <Link className="capability-card" to="/platform"><NavIcon name="health" /><strong>Client Data Health</strong><span>Unreadable, duplicate and low-confidence follow-up</span></Link>
+        <Link className="capability-card" to="/platform"><NavIcon name="claims" /><strong>Document Vault</strong><span>Archive and retrieve source evidence fast</span></Link>
+        <Link className="capability-card" to="/platform"><NavIcon name="bank" /><strong>Bank Reconciliation</strong><span>Match bank-line evidence back to spend</span></Link>
+        <Link className="capability-card" to="/platform"><NavIcon name="integrations" /><strong>Bank & Statement Review</strong><span>Imported bank activity and evidence-led review</span></Link>
+        <Link className="capability-card" to="/platform"><NavIcon name="open-banking" /><strong>Queue Exports</strong><span>CSV handoff across inboxes, claims, and reconciliation</span></Link>
         <Link className="capability-card" to="/pricing"><NavIcon name="overview" /><strong>Pricing & Plans</strong><span>Compare plan tiers, document volumes, and included users</span></Link>
       </div>
     </section>
