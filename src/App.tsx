@@ -1808,8 +1808,8 @@ function OverviewPage({ store }: { store: AppStore }) {
               {
                 key: "needs-review",
                 label: "Needs review",
-                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => item.needsReview).length,
-                route: firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"),
+                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => countsAsManualReview(item)).length,
+                route: firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"),
               },
               {
                 key: "ready",
@@ -2094,7 +2094,7 @@ function DataHealthPage({ store }: { store: AppStore }) {
   const unreadableCount = allRecords.filter((record) => looksUnreadable(record)).length;
   const processingCount = allRecords.filter((record) => record.status === "Processing").length;
   const lowConfidenceCount = allRecords.filter((record) => isLowConfidence(record)).length;
-  const reviewCount = allRecords.filter((record) => record.needsReview).length;
+  const reviewCount = allRecords.filter((record) => countsAsManualReview(record)).length;
 
   return (
     <div className="stack-page">
@@ -2121,7 +2121,7 @@ function DataHealthPage({ store }: { store: AppStore }) {
           label="Needs review"
           value={String(reviewCount)}
           detail="Review or publish decisions are still outstanding"
-          onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))}
+          onClick={() => navigate(firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"))}
         />
         <MetricCard
           label="Duplicate groups"
@@ -2398,16 +2398,16 @@ function IntegrationsPage({ store }: { store: AppStore }) {
 function WorkflowPage({ store }: { store: AppStore }) {
   const navigate = useNavigate();
   const allDocuments = [...store.costs, ...store.sales, ...store.vault];
-  const documentsNeedingReview = allDocuments.filter((record) => record.needsReview);
+  const documentsNeedingReview = allDocuments.filter((record) => countsAsManualReview(record));
   const costReady = store.costs.filter((record) => record.status === "Ready");
   const salesReady = store.sales.filter((record) => record.status === "Ready");
   const pendingClaims = store.claims.filter((claim) => claim.status === "pending");
   const publishedDocuments = allDocuments.filter((record) => record.status === "Published");
   const processingDocuments = allDocuments.filter((record) => record.status === "Processing");
   const reviewByWorkspace = [
-    { label: "Costs review", route: "/costs?issue=Needs+review", records: store.costs.filter((record) => record.needsReview) },
-    { label: "Sales review", route: "/sales?issue=Needs+review", records: store.sales.filter((record) => record.needsReview) },
-    { label: "Vault review", route: "/vault?issue=Needs+review", records: store.vault.filter((record) => record.needsReview) },
+    { label: "Costs review", route: "/costs?issue=Needs+review", records: store.costs.filter((record) => countsAsManualReview(record)) },
+    { label: "Sales review", route: "/sales?issue=Needs+review", records: store.sales.filter((record) => countsAsManualReview(record)) },
+    { label: "Vault review", route: "/vault?issue=Needs+review", records: store.vault.filter((record) => countsAsManualReview(record)) },
   ];
   const nextActions = [
     ...documentsNeedingReview.map((record) => ({
@@ -2429,7 +2429,7 @@ function WorkflowPage({ store }: { store: AppStore }) {
   return (
     <div className="stack-page">
       <section className="metrics-grid">
-        <MetricCard label="Review queue" value={String(documentsNeedingReview.length)} detail="Documents waiting on review or publish decisions" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
+        <MetricCard label="Review queue" value={String(documentsNeedingReview.length)} detail="Documents waiting on review or publish decisions" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"))} />
         <MetricCard label="Cost approvals" value={String(costReady.length)} detail="Cost documents ready for handoff" onClick={() => navigate("/costs?status=Ready")} />
         <MetricCard label="Sales approvals" value={String(salesReady.length)} detail="Sales documents ready for handoff" onClick={() => navigate("/sales?status=Ready")} />
         <MetricCard label="Pending claims" value={String(pendingClaims.length)} detail="Expense claims awaiting approval" onClick={() => navigate("/claims?status=pending")} />
@@ -2546,7 +2546,7 @@ function WorkflowPage({ store }: { store: AppStore }) {
 function ProductivityPage({ store }: { store: AppStore }) {
   const navigate = useNavigate();
   const allDocuments = [...store.costs, ...store.sales, ...store.vault];
-  const reviewDocuments = allDocuments.filter((record) => record.needsReview);
+  const reviewDocuments = allDocuments.filter((record) => countsAsManualReview(record));
   const readyDocuments = allDocuments.filter((record) => record.status === "Ready");
   const publishedDocuments = allDocuments.filter((record) => record.status === "Published");
   const processingDocuments = allDocuments.filter((record) => record.status === "Processing");
@@ -2575,7 +2575,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
     <div className="stack-page">
       <section className="metrics-grid">
         <MetricCard label="Automation coverage" value={`${automatedCoverage}%`} detail="Ready or published records across all queues" onClick={() => navigate(readyDocuments.length ? firstInboxRouteForStatus(store, "Ready") : firstPublishedOrArchiveRoute(store))} />
-        <MetricCard label="Review completion" value={`${reviewCompletion}%`} detail="Records that no longer need manual review" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
+        <MetricCard label="Review completion" value={`${reviewCompletion}%`} detail="Records that no longer need manual review" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"))} />
         <MetricCard label="Bank audit coverage" value={`${bankCoverage}%`} detail="Imported bank lines already audited" onClick={() => navigate("/reconciliation?status=Audited")} />
         <MetricCard label="Claim completion" value={`${claimCompletion}%`} detail="Claims approved or fully paid" onClick={() => navigate(firstClaimCompletionRoute(store))} />
         <MetricCard label="Low-confidence drag" value={String(lowConfidenceDocuments.length)} detail="Records still slowing down review quality" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))} />
@@ -2596,7 +2596,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
               </button>
             </li>
             <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))}>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"))}>
                 <strong>Manual review load</strong>
                 <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? " still needs" : "s still need"} review, tax, or publish decisions.</span>
               </button>
@@ -2697,7 +2697,7 @@ function AutomationPage({ store }: { store: AppStore }) {
   const activeRules = store.rules.filter((rule) => rule.isActive);
   const readyDocuments = allDocuments.filter((record) => record.status === "Ready");
   const lowConfidenceDocuments = allDocuments.filter((record) => isLowConfidence(record));
-  const reviewDocuments = allDocuments.filter((record) => record.needsReview);
+  const reviewDocuments = allDocuments.filter((record) => countsAsManualReview(record));
   const duplicateInsights = buildDuplicateInsights([...store.costs, ...store.sales]);
   const ruleCoverage = allDocuments.length
     ? Math.round((allDocuments.filter((record) => (record.category ?? "").trim()).length / allDocuments.length) * 100)
@@ -2712,7 +2712,7 @@ function AutomationPage({ store }: { store: AppStore }) {
         <MetricCard label="Active rules" value={String(activeRules.length)} detail="Supplier automation rules currently enabled" onClick={() => navigate("/rules?status=active")} />
         <MetricCard label="Rule coverage" value={`${ruleCoverage}%`} detail="Records already carrying category output" onClick={() => navigate(firstInboxRouteForCategorizedRecords(store))} />
         <MetricCard label="Ready output" value={`${reviewEscapeRate}%`} detail="Documents already reaching the ready state" onClick={() => navigate(firstInboxRouteForStatus(store, "Ready"))} />
-        <MetricCard label="Needs review" value={String(reviewDocuments.length)} detail="Records still breaking out of the automated path" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))} />
+        <MetricCard label="Needs review" value={String(reviewDocuments.length)} detail="Records still breaking out of the automated path" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"))} />
         <MetricCard label="Low confidence" value={String(lowConfidenceDocuments.length)} detail="Extractions still needing a manual check" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))} />
         <MetricCard label="Duplicate groups" value={String(duplicateInsights.groups.length)} detail="Likely repeat uploads slowing clean automation" onClick={() => navigate(firstInboxRouteForDuplicateReview(store))} />
       </section>
@@ -2752,7 +2752,7 @@ function AutomationPage({ store }: { store: AppStore }) {
           </div>
           <ul className="summary-list">
             <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"))}>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"))}>
                 <strong>Manual review fallback</strong>
                 <span>{reviewDocuments.length} document{reviewDocuments.length === 1 ? " still needs" : "s still need"} human review, tax, or publish decisions.</span>
               </button>
@@ -2919,7 +2919,7 @@ function InboxPage({
       issueFilter === "All"
         ? true
         : issueFilter === "Needs review"
-          ? record.needsReview
+          ? countsAsManualReview(record)
           : issueFilter === "Unreadable"
             ? looksUnreadable(record)
             : issueFilter === "Possible duplicates"
@@ -8319,7 +8319,7 @@ function buildWorkspaceHealthIssues(store: AppStore, limit = 4) {
   const unreadableCount = allRecords.filter((record) => looksUnreadable(record)).length;
   const processingCount = allRecords.filter((record) => record.status === "Processing").length;
   const duplicateGroups = buildDuplicateInsights([...store.costs, ...store.sales]).groups.length;
-  const pendingReviewCount = allRecords.filter((record) => record.needsReview).length;
+  const pendingReviewCount = allRecords.filter((record) => countsAsManualReview(record)).length;
   const lowConfidenceCount = allRecords.filter((record) => isLowConfidence(record)).length;
   const issues: Array<{ label: string; detail: string; route: string }> = [];
 
@@ -8359,7 +8359,7 @@ function buildWorkspaceHealthIssues(store: AppStore, limit = 4) {
     issues.push({
       label: `${pendingReviewCount} document${pendingReviewCount === 1 ? " needs" : "s need"} review`,
       detail: "Review-required items are still waiting on tax, review, claim, or publish decisions.",
-      route: firstInboxRouteForIssue(store, (record) => record.needsReview, "Needs review"),
+      route: firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"),
     });
   }
 
@@ -8383,7 +8383,7 @@ function buildAttentionRecords(
       if (record.status === "Processing") reasons.push("Processing");
       if (duplicateGroupsByReceiptId.has(record.id)) reasons.push("Possible duplicate");
       if (isLowConfidence(record)) reasons.push("Low confidence");
-      if (record.needsReview) reasons.push("Needs review");
+      if (countsAsManualReview(record)) reasons.push("Needs review");
       if (needsCodingAttention(record)) reasons.push("Missing details");
       return { record, reasons };
     })
@@ -8414,6 +8414,10 @@ function workspaceRoute(context: ReceiptRecord["workspaceContext"]) {
 
 function workspaceLabel(context: ReceiptRecord["workspaceContext"]) {
   return context === "sales" ? "Sales" : context === "vault" ? "Vault" : "Costs";
+}
+
+function countsAsManualReview(record: ReceiptRecord) {
+  return record.workspaceContext !== "vault" && record.needsReview;
 }
 
 function duplicateCandidateKeys(record: ReceiptRecord) {
@@ -8512,7 +8516,7 @@ function buildAttentionItemsForIssue(
     if (issue === "Low confidence") {
       return records.filter((record) => isLowConfidence(record));
     }
-    return records.filter((record) => record.needsReview);
+    return records.filter((record) => countsAsManualReview(record));
   };
 
   const workspaceGroups = [
