@@ -2679,8 +2679,8 @@ function ProductivityPage({ store }: { store: AppStore }) {
           <ul className="summary-list">
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate(firstExportRoute(store))}>
-                <strong>Open CSV exports</strong>
-                <span>Costs, sales, vault, claims, and reconciliation all support filtered CSV export from their live queues.</span>
+                <strong>Open an export-ready queue</strong>
+                <span>Open the first live queue that already supports filtered CSV export for costs, sales, vault, claims, or reconciliation.</span>
               </button>
             </li>
             <li>
