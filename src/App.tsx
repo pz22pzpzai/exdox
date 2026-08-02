@@ -3561,33 +3561,51 @@ function DocumentWorkspacePage(props: {
         <div className="toolbar">
           {!isVaultRecord ? (
             <button
-              className="primary-action"
+              className={receiptApproved && !receiptPublished ? "secondary-action" : "primary-action"}
               type="button"
-              disabled={saving || receiptApproved || receiptPublished}
+              disabled={saving || receiptPublished}
               onClick={async () => {
                 setSaving(true);
                 setFeedback(null);
                 setError(null);
                 try {
-                  const nextReceipt = {
-                    ...(receipt.invoiceDate || !inferredReceiptDate ? receipt : { ...receipt, invoiceDate: inferredReceiptDate }),
-                    status: "Ready" as ReceiptRecord["status"],
-                    needsReview: false,
-                  };
+                  const nextReceipt = receiptApproved && !receiptPublished
+                    ? {
+                        ...receipt,
+                        status: "Review" as ReceiptRecord["status"],
+                        needsReview: true,
+                      }
+                    : {
+                        ...(receipt.invoiceDate || !inferredReceiptDate ? receipt : { ...receipt, invoiceDate: inferredReceiptDate }),
+                        status: "Ready" as ReceiptRecord["status"],
+                        needsReview: false,
+                      };
                   setReceipt(nextReceipt);
                   await props.onSave(receipt.id, nextReceipt);
-                  setFeedback(props.mode === "cost" ? "Expense approved and moved out of review." : "Document approved and moved out of review.");
-                  if (props.mode === "cost") {
+                  setFeedback(
+                    receiptApproved && !receiptPublished
+                      ? "Approval removed. The expense is back in review."
+                      : props.mode === "cost"
+                        ? "Expense approved and moved out of review."
+                        : "Document approved and moved out of review.",
+                  );
+                  if (!receiptApproved && props.mode === "cost") {
                     setPostApprovePrompt({ nextReceiptId: nextReviewReceipt?.id ?? null });
                   }
                 } catch (approveError) {
-                  setError(approveError instanceof Error ? approveError.message : "Could not approve this document.");
+                  setError(
+                    approveError instanceof Error
+                      ? approveError.message
+                      : receiptApproved && !receiptPublished
+                        ? "Could not undo this approval."
+                        : "Could not approve this document.",
+                  );
                 } finally {
                   setSaving(false);
                 }
               }}
             >
-              {receiptPublished ? "Already Published" : receiptApproved ? "Already Approved" : props.mode === "cost" ? "Approve Expense" : "Approve"}
+              {receiptPublished ? "Already Published" : receiptApproved ? "Undo Approval" : props.mode === "cost" ? "Approve Expense" : "Approve"}
             </button>
           ) : null}
           <button
