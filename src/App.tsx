@@ -6708,7 +6708,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
           {" | "}
           <Link to="/cookies">Cookies</Link>
           {" | "}
-          <Link to={supportPagePath}>Security</Link>
+          <Link to={supportPagePath}>Contact</Link>
         </span>
       </footer>
     </div>
