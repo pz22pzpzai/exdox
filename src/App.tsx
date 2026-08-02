@@ -3176,6 +3176,7 @@ function DocumentWorkspacePage(props: {
   const [assetUrl, setAssetUrl] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [downloadingSourceFile, setDownloadingSourceFile] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedClaimId, setSelectedClaimId] = useState("");
@@ -3262,9 +3263,29 @@ function DocumentWorkspacePage(props: {
                   Open source file
                 </a>
                 {downloadUrl ? (
-                  <a className="secondary-action link-action" href={downloadUrl}>
-                    Download file
-                  </a>
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    disabled={downloadingSourceFile}
+                    onClick={async () => {
+                      setDownloadingSourceFile(true);
+                      setError(null);
+                      try {
+                        const downloaded = await downloadFileFromUrl(downloadUrl, receipt.sourceFilename);
+                        if (downloaded) {
+                          setFeedback("File downloaded.");
+                        } else {
+                          setError("Could not download the file.");
+                        }
+                      } catch (downloadError) {
+                        setError(downloadError instanceof Error ? downloadError.message : "Could not download the file.");
+                      } finally {
+                        setDownloadingSourceFile(false);
+                      }
+                    }}
+                  >
+                    {downloadingSourceFile ? "Downloading..." : "Download file"}
+                  </button>
                 ) : null}
               </>
             ) : null}
@@ -9046,6 +9067,49 @@ async function downloadCsv(fileName: string, rows: Array<Record<string, string>>
   };
 
   return startAnchorDownload();
+}
+
+async function downloadFileFromUrl(url: string, fileName: string) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const startUrlDownload = () => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.style.display = "none";
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    window.setTimeout(() => {
+      link.remove();
+    }, 1500);
+    return true;
+  };
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("Could not download the file.");
+    }
+    const blob = await response.blob();
+    const objectUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = fileName;
+    link.style.display = "none";
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    window.setTimeout(() => {
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    }, 1500);
+    return true;
+  } catch {
+    return startUrlDownload();
+  }
 }
 
 function escapeCsvValue(value: string) {
