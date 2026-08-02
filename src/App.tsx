@@ -5227,7 +5227,7 @@ function SettingsPage(props: {
           </div>
           <div className="toolbar">
             <button className="secondary-action" type="button" onClick={openForgotPasswordRoute}>
-              Change password
+              Request password reset
             </button>
             <button className="secondary-action" type="button" onClick={() => openContactRoute("Change account email")}>
               Request email change
