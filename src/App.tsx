@@ -31,6 +31,8 @@ import {
   listRules,
   loginWithEmail,
   loadStoredSession,
+  requestPasswordReset,
+  resetPasswordWithToken,
   resendConfirmationEmail,
   registerWithEmail,
   matchReconciliation,
@@ -134,6 +136,8 @@ const publicNavItems = [
 const supportPagePath = "/contact";
 const contactPagePath = "/contact";
 const contactEmailAddress = "contact@exdox.co.uk";
+const forgotPasswordPagePath = "/forgot-password";
+const resetPasswordPagePath = "/reset-password";
 const termsPagePath = "/terms";
 const accountDeletionPagePath = "/account-deletion";
 const termsVersion = "2026-07-26";
@@ -733,6 +737,22 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
         robots: "noindex,nofollow",
       };
     }
+    if (normalizedPath === forgotPasswordPagePath) {
+      return {
+        title: "Forgot Password | Exdox",
+        description: "Request a secure Exdox password reset link for your account.",
+        canonicalPath: normalizedPath,
+        robots: "noindex,nofollow",
+      };
+    }
+    if (normalizedPath === resetPasswordPagePath) {
+      return {
+        title: "Reset Password | Exdox",
+        description: "Choose a new password for your Exdox account.",
+        canonicalPath: normalizedPath,
+        robots: "noindex,nofollow",
+      };
+    }
     return {
       title: "Exdox | Expense Management Software for Receipt Capture, VAT Review and Claims",
       description:
@@ -947,6 +967,67 @@ export function App() {
 
   if (session && location.pathname === "/confirm-email") {
     return <Navigate to={getDefaultRoute(session)} replace />;
+  }
+
+  if (location.pathname === forgotPasswordPagePath) {
+    return (
+      <>
+        <SeoManager pathname={location.pathname} session={session} />
+        <PublicLayout activePath="">
+          <ForgotPasswordState
+            busy={authBusy}
+            error={authError ?? error}
+            initialEmail={new URLSearchParams(location.search).get("email") ?? session?.user.email ?? ""}
+            embeddedInPublicShell
+            onRequest={async (email) => {
+              setAuthBusy(true);
+              setAuthError(null);
+              setError(null);
+              try {
+                const response = await requestPasswordReset({ email });
+                return response.message;
+              } catch (requestError) {
+                setAuthError(requestError instanceof Error ? requestError.message : "Could not start password reset.");
+                return null;
+              } finally {
+                setAuthBusy(false);
+              }
+            }}
+          />
+        </PublicLayout>
+      </>
+    );
+  }
+
+  if (location.pathname === resetPasswordPagePath) {
+    return (
+      <>
+        <SeoManager pathname={location.pathname} session={session} />
+        <PublicLayout activePath="">
+          <ResetPasswordState
+            busy={authBusy}
+            error={authError ?? error}
+            email={new URLSearchParams(location.search).get("email") ?? ""}
+            token={new URLSearchParams(location.search).get("token") ?? ""}
+            embeddedInPublicShell
+            onReset={async (email, token, password) => {
+              setAuthBusy(true);
+              setAuthError(null);
+              setError(null);
+              try {
+                const response = await resetPasswordWithToken({ email, token, password });
+                return response.message;
+              } catch (resetError) {
+                setAuthError(resetError instanceof Error ? resetError.message : "Could not reset the password.");
+                return null;
+              } finally {
+                setAuthBusy(false);
+              }
+            }}
+          />
+        </PublicLayout>
+      </>
+    );
   }
 
   if (!session && location.pathname !== "/login") {
@@ -4945,6 +5026,9 @@ function SettingsPage(props: {
   const openContactRoute = (subject: string) => {
     navigate(`${contactPagePath}?subject=${encodeURIComponent(subject)}`);
   };
+  const openForgotPasswordRoute = () => {
+    navigate(`${forgotPasswordPagePath}?email=${encodeURIComponent(props.session.user.email)}`);
+  };
   const [draft, setDraft] = useState<OrganisationSettings | null>(props.settings);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -5031,8 +5115,8 @@ function SettingsPage(props: {
             </div>
           </div>
           <div className="toolbar">
-            <button className="secondary-action" type="button" onClick={() => openContactRoute("Password reset support")}>
-              Password help
+            <button className="secondary-action" type="button" onClick={openForgotPasswordRoute}>
+              Change password
             </button>
             <button className="secondary-action" type="button" onClick={() => openContactRoute("Change account email")}>
               Change email
@@ -5709,7 +5793,7 @@ function LoginState(props: {
               </button>
             </form>
             <div className="login-links">
-              <Link to={supportPagePath}>Forgot Password?</Link>
+              <Link to={`${forgotPasswordPagePath}?email=${encodeURIComponent(email)}`}>Forgot Password?</Link>
               <Link to="/register">Register</Link>
               {needsEmailConfirmation ? <Link to={`/confirm-email?email=${encodeURIComponent(email)}`}>Resend confirmation email</Link> : null}
             </div>
@@ -5734,6 +5818,185 @@ function LoginState(props: {
             <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
           </footer>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ForgotPasswordState(props: {
+  busy: boolean;
+  error: string | null;
+  initialEmail: string;
+  embeddedInPublicShell?: boolean;
+  onRequest: (email: string) => Promise<string | null>;
+}) {
+  const [email, setEmail] = useState(props.initialEmail);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
+  const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
+
+  useEffect(() => {
+    setEmail(props.initialEmail);
+  }, [props.initialEmail]);
+
+  useEffect(() => {
+    if (props.error) {
+      setSuccessMessage(null);
+    }
+  }, [props.error]);
+
+  return (
+    <div className={loginStateClassName}>
+      <div className={loginShellClassName}>
+        <main className="login-main">
+          <section className="login-visual" aria-label="Password reset request">
+            <img src="/branding/exdox-login-hero.webp" alt="Cafe owner capturing a receipt with exdox" />
+            <span className="login-callout callout-snap">Password Reset</span>
+            <span className="login-callout callout-hmrc">Secure Account Recovery</span>
+            <span className="login-callout callout-total">Email Link Delivery</span>
+          </section>
+          <div className="login-panel">
+            <h1>Reset your Exdox password</h1>
+            <p>Enter the email address linked to your account and we will send a secure password reset link.</p>
+            <form
+              className="login-form"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                const nextMessage = await props.onRequest(email);
+                if (nextMessage) {
+                  setSuccessMessage(nextMessage);
+                }
+              }}
+            >
+              <label>
+                Registered Email
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="your.name@company.co.uk"
+                  required
+                />
+              </label>
+              {successMessage ? <div className="success-banner">{successMessage}</div> : null}
+              {props.error ? <div className="error-banner">{props.error}</div> : null}
+              <button className="primary-action login-submit" type="submit" disabled={props.busy}>
+                {props.busy ? "Sending reset link..." : "Send reset link"}
+              </button>
+            </form>
+            <div className="login-links">
+              <Link to="/login">Back to login</Link>
+              <Link to={contactPagePath}>Need more help?</Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function ResetPasswordState(props: {
+  busy: boolean;
+  error: string | null;
+  email: string;
+  token: string;
+  embeddedInPublicShell?: boolean;
+  onReset: (email: string, token: string, password: string) => Promise<string | null>;
+}) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
+  const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
+  const missingDetails = !props.email || !props.token;
+
+  useEffect(() => {
+    if (props.error) {
+      setSuccessMessage(null);
+    }
+  }, [props.error]);
+
+  return (
+    <div className={loginStateClassName}>
+      <div className={loginShellClassName}>
+        <main className="login-main">
+          <section className="login-visual" aria-label="Choose a new Exdox password">
+            <img src="/branding/exdox-platform-hero.webp" alt="Exdox finance workspace with synced receipt controls" />
+            <span className="login-callout callout-snap">Set New Password</span>
+            <span className="login-callout callout-hmrc">Secure Link Check</span>
+            <span className="login-callout callout-total">Account Update</span>
+          </section>
+          <div className="login-panel">
+            <h1>Choose a new password</h1>
+            <p>
+              {missingDetails
+                ? "This password reset link is incomplete. Request a fresh password reset email."
+                : `Create a new password for ${props.email}.`}
+            </p>
+            <form
+              className="login-form"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                setLocalError(null);
+                if (missingDetails) {
+                  setLocalError("This reset link is incomplete. Request a new one.");
+                  return;
+                }
+                if (password.length < 8) {
+                  setLocalError("Use a password with at least 8 characters.");
+                  return;
+                }
+                if (password !== confirmPassword) {
+                  setLocalError("The password confirmation does not match.");
+                  return;
+                }
+                const nextMessage = await props.onReset(props.email, props.token, password);
+                if (nextMessage) {
+                  setSuccessMessage(nextMessage);
+                  setPassword("");
+                  setConfirmPassword("");
+                }
+              }}
+            >
+              <label>
+                New password
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="At least 8 characters"
+                  minLength={8}
+                  required
+                />
+              </label>
+              <label>
+                Confirm new password
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Repeat your new password"
+                  minLength={8}
+                  required
+                />
+              </label>
+              {successMessage ? <div className="success-banner">{successMessage}</div> : null}
+              {localError ? <div className="error-banner">{localError}</div> : null}
+              {props.error ? <div className="error-banner">{props.error}</div> : null}
+              <button className="primary-action login-submit" type="submit" disabled={props.busy || missingDetails}>
+                {props.busy ? "Updating password..." : "Save new password"}
+              </button>
+            </form>
+            <div className="login-links">
+              <Link to="/login">Back to login</Link>
+              <Link to={`${forgotPasswordPagePath}?email=${encodeURIComponent(props.email)}`}>Request a fresh reset link</Link>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );

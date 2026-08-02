@@ -195,6 +195,20 @@ export async function resendConfirmationEmail(input: { email: string }): Promise
   });
 }
 
+export async function requestPasswordReset(input: { email: string }): Promise<{ message: string; delivered?: boolean }> {
+  return apiFetch("/password-reset/request", "", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function resetPasswordWithToken(input: { email: string; token: string; password: string }): Promise<{ message: string }> {
+  return apiFetch("/password-reset/complete", "", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function fetchSession(token: string): Promise<SessionState> {
   const response = await apiFetch<{
     user: SessionState["user"];
