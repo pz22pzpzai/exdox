@@ -3072,6 +3072,17 @@ function DocumentWorkspacePage(props: {
       });
   }, [id, props]);
 
+  useEffect(() => {
+    if (!receipt || receipt.invoiceDate?.trim()) {
+      return;
+    }
+
+    const inferredDate = inferredReceiptTextDate(receipt);
+    if (inferredDate) {
+      setReceipt({ ...receipt, invoiceDate: inferredDate });
+    }
+  }, [receipt?.id, receipt?.invoiceDate, receipt?.description, receipt?.rawTextSummary]);
+
   if (!receipt) {
     return <div className="empty-state">{error ?? "Receipt workspace unavailable."}</div>;
   }
@@ -3556,6 +3567,7 @@ function DocumentWorkspacePage(props: {
               if (!imageZoomStageRef.current) {
                 return;
               }
+              event.preventDefault();
               imagePanStartRef.current = {
                 x: event.clientX,
                 y: event.clientY,
@@ -3568,6 +3580,7 @@ function DocumentWorkspacePage(props: {
               if (!imageZoomStageRef.current || !imagePanStartRef.current) {
                 return;
               }
+              event.preventDefault();
               const deltaX = event.clientX - imagePanStartRef.current.x;
               const deltaY = event.clientY - imagePanStartRef.current.y;
               imageZoomStageRef.current.scrollLeft = imagePanStartRef.current.left - deltaX;
@@ -7317,7 +7330,7 @@ function receiptDocumentDate(record: {
   description?: string | null;
   rawTextSummary?: string | null;
 }) {
-  return record.invoiceDate ?? inferredReceiptTextDate(record) ?? record.createdAt?.slice(0, 10) ?? "";
+  return normalizeSavedDate(record.invoiceDate) ?? inferredReceiptTextDate(record) ?? record.createdAt?.slice(0, 10) ?? "";
 }
 
 function inferredReceiptTextDate(record: { description?: string | null; rawTextSummary?: string | null }) {
@@ -7330,7 +7343,16 @@ function inferredReceiptTextDate(record: { description?: string | null; rawTextS
   if (ukMatch) {
     return normalizeParsedDateParts(ukMatch[3], ukMatch[2], ukMatch[1]);
   }
+  const shortUkMatch = text.match(/\b(0?[1-9]|[12]\d|3[01])[-\/.](0?[1-9]|1[0-2])[-\/.](\d{2})\b/);
+  if (shortUkMatch) {
+    return normalizeParsedDateParts(`20${shortUkMatch[3]}`, shortUkMatch[2], shortUkMatch[1]);
+  }
   return null;
+}
+
+function normalizeSavedDate(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
 }
 
 function normalizeParsedDateParts(year: string, month: string, day: string) {
