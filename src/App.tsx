@@ -530,7 +530,12 @@ function isPublicSeoPath(pathname: string) {
     || pathname === "/terms"
     || pathname === "/privacy"
     || pathname === "/cookies"
-    || pathname === "/account-deletion";
+    || pathname === "/account-deletion"
+    || pathname === "/login"
+    || pathname === "/register"
+    || pathname === "/confirm-email"
+    || pathname === forgotPasswordPagePath
+    || pathname === resetPasswordPagePath;
 }
 
 function SeoManager({ pathname, session }: { pathname: string; session: SessionState | null }) {
