@@ -3213,6 +3213,7 @@ function DocumentWorkspacePage(props: {
   const isVaultRecord = props.mode === "vault";
   const vatTrackingEnabled = isVatTrackingEnabled(props.settings ?? null);
   const receiptPublished = receipt.status === "Published";
+  const receiptApproved = receipt.status === "Ready" && !receipt.needsReview;
   const claimAttachmentAllowed = receipt.paymentMethod === "cash_personal";
   const previewAsImage = canPreviewReceiptAsImage(receipt);
 
@@ -3553,8 +3554,36 @@ function DocumentWorkspacePage(props: {
         ) : null}
 
         <div className="toolbar">
+          {!isVaultRecord ? (
+            <button
+              className="primary-action"
+              type="button"
+              disabled={saving || receiptApproved || receiptPublished}
+              onClick={async () => {
+                setSaving(true);
+                setFeedback(null);
+                setError(null);
+                try {
+                  const nextReceipt = {
+                    ...(receipt.invoiceDate || !inferredReceiptDate ? receipt : { ...receipt, invoiceDate: inferredReceiptDate }),
+                    status: "Ready" as ReceiptRecord["status"],
+                    needsReview: false,
+                  };
+                  setReceipt(nextReceipt);
+                  await props.onSave(receipt.id, nextReceipt);
+                  setFeedback(props.mode === "cost" ? "Expense approved and moved out of review." : "Document approved and moved out of review.");
+                } catch (approveError) {
+                  setError(approveError instanceof Error ? approveError.message : "Could not approve this document.");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              {receiptPublished ? "Already Published" : receiptApproved ? "Already Approved" : props.mode === "cost" ? "Approve Expense" : "Approve"}
+            </button>
+          ) : null}
           <button
-            className="primary-action"
+            className="secondary-action"
             type="button"
             disabled={saving}
             onClick={async () => {
