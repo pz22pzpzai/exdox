@@ -129,9 +129,11 @@ const publicNavItems = [
   { to: "/integrations", label: "Integrations" },
   { to: "/pricing", label: "Pricing" },
   { to: "/faq", label: "FAQs" },
-  { to: "/company", label: "Company" },
+  { to: "/company", label: "About" },
 ] as const;
-const supportPagePath = "/company#support";
+const supportPagePath = "/contact";
+const contactPagePath = "/contact";
+const contactEmailAddress = "contact@exdox.co.uk";
 const termsPagePath = "/terms";
 const accountDeletionPagePath = "/account-deletion";
 const termsVersion = "2026-07-26";
@@ -467,6 +469,7 @@ function isSignedInPublicPage(pathname: string) {
     || pathname === "/integrations"
     || pathname === "/faq"
     || pathname === "/company"
+    || pathname === "/contact"
     || pathname === "/terms"
     || pathname === "/privacy"
     || pathname === "/cookies";
@@ -519,6 +522,7 @@ function isPublicSeoPath(pathname: string) {
     || pathname === "/pricing"
     || pathname === "/faq"
     || pathname === "/company"
+    || pathname === "/contact"
     || pathname === "/terms"
     || pathname === "/privacy"
     || pathname === "/cookies"
@@ -609,9 +613,24 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
         robots: "index,follow",
         structuredData: buildPublicStructuredData({
           path: normalizedPath,
-          pageName: "Company",
+          pageName: "About",
           pageDescription:
             "Learn how Exdox keeps mobile capture, web review, archived evidence, VAT edits, and finance controls aligned in one workspace.",
+        }),
+      };
+    }
+    if (normalizedPath === "/contact") {
+      return {
+        title: "Contact Exdox | Access, Billing and Product Support",
+        description:
+          "Contact Exdox for access support, billing questions, product enquiries, and security-related requests.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Contact Us",
+          pageDescription:
+            "Get in touch with Exdox for access support, billing coordination, and product enquiries.",
         }),
       };
     }
@@ -5704,7 +5723,9 @@ function LoginState(props: {
               {" | "}
               <Link to="/cookies">Cookies</Link>
               {" | "}
-              <Link to="/company">Company</Link>
+              <Link to="/company">About</Link>
+              {" | "}
+              <Link to={contactPagePath}>Contact Us</Link>
             </span>
             <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
             <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
@@ -5929,7 +5950,9 @@ function RegisterState(props: {
               {" | "}
               <Link to="/cookies">Cookies</Link>
               {" | "}
-              <Link to="/company">Company</Link>
+              <Link to="/company">About</Link>
+              {" | "}
+              <Link to={contactPagePath}>Contact Us</Link>
             </span>
             <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
             <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
@@ -6081,11 +6104,24 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
     return (
       <PublicLayout activePath="/company" session={session}>
         <PublicPageIntro
-          kicker="Company"
+          kicker="About"
           title="Built to keep capture, review, and source evidence aligned."
           body="Organisation-scoped records flow across mobile capture, web review, archive retrieval, and finance controls."
         />
         <CompanySection session={session} />
+      </PublicLayout>
+    );
+  }
+
+  if (location.pathname === "/contact") {
+    return (
+      <PublicLayout activePath={contactPagePath} session={session}>
+        <PublicPageIntro
+          kicker="Contact Us"
+          title="Talk to Exdox about access, billing, or product questions."
+          body="Send a message to the Exdox team and we will route it to the right place through contact@exdox.co.uk."
+        />
+        <ContactSection />
       </PublicLayout>
     );
   }
@@ -6314,7 +6350,7 @@ function FaqSection() {
           answer: (
             <p>
               Use the same registered email address and password on both the website and the mobile app. If you cannot sign in,
-              first confirm you are using the correct workspace email, then use the access support route on the Company page if you
+              first confirm you are using the correct workspace email, then use the access support route on the About or Contact Us page if you
               still need help.
             </p>
           ),
@@ -6472,11 +6508,11 @@ function FaqSection() {
           question: "Where do I go for account, billing, or security help?",
           answer: (
             <p>
-              Use the support options on the Company page. There are separate contact routes for access support, billing support,
+              Use the support options on the About or Contact Us page. There are separate contact routes for access support, billing support,
               and security requests so the issue reaches the right place quickly.
             </p>
           ),
-          searchText: "account billing security help support company page access support billing support security requests",
+          searchText: "account billing security help support about page contact us page access support billing support security requests",
         },
       ],
     },
@@ -6541,7 +6577,7 @@ function FaqSection() {
         </article>
         <article className="company-card">
           <strong>Use support when it does not settle</strong>
-          <p>If a login, sync, or security issue still looks wrong after refresh and review, use the support routes on the Company page.</p>
+          <p>If a login, sync, or security issue still looks wrong after refresh and review, use the support routes on the About or Contact Us page.</p>
         </article>
       </div>
 
@@ -7331,7 +7367,7 @@ function CompanySection({ session = null }: { session?: SessionState | null }) {
     <section className="company-band">
       <div className="section-heading">
         <div>
-          <p className="section-kicker">Company</p>
+          <p className="section-kicker">About</p>
           <h2>One evidence trail across mobile capture and the web workspace</h2>
         </div>
         <p>
@@ -7373,20 +7409,128 @@ function CompanySection({ session = null }: { session?: SessionState | null }) {
           <Link className="secondary-inline-link company-card-link-row" to="/faq">Open FAQs</Link>
         </article>
         <article className="company-card">
+          <strong>Contact Exdox</strong>
+          <p>Use the contact form for general product questions, demos, onboarding, and customer support requests.</p>
+          <Link className="secondary-inline-link company-card-link-row" to={contactPagePath}>Open contact page</Link>
+        </article>
+        <article className="company-card">
           <strong>Access support</strong>
           <p>Use this for login help, password resets, invite issues, and activation support.</p>
-          <a className="secondary-inline-link company-card-link-row" href="mailto:contact@exdox.co.uk?subject=Access%20support">Email access support</a>
+          <a className="secondary-inline-link company-card-link-row" href={`mailto:${contactEmailAddress}?subject=Access%20support`}>Email access support</a>
         </article>
         <article className="company-card">
           <strong>Billing support</strong>
           <p>Use this for plan questions, workspace unlock requests, and commercial billing changes.</p>
-          <a className="secondary-inline-link company-card-link-row" href="mailto:contact@exdox.co.uk?subject=Billing%20support">Email billing support</a>
+          <a className="secondary-inline-link company-card-link-row" href={`mailto:${contactEmailAddress}?subject=Billing%20support`}>Email billing support</a>
         </article>
-        <article className="company-card">
-          <strong>Security contact</strong>
-          <p>Use this for security requests, responsible disclosure, and document-handling concerns.</p>
-          <a className="secondary-inline-link company-card-link-row" href="mailto:contact@exdox.co.uk?subject=Security%20request">Email security contact</a>
-        </article>
+      </div>
+    </section>
+  );
+}
+
+function ContactSection() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
+  const [subject, setSubject] = useState("General enquiry");
+  const [message, setMessage] = useState("");
+
+  const canSubmit = name.trim() && email.trim() && subject.trim() && message.trim();
+
+  return (
+    <section className="company-band contact-band">
+      <div className="section-heading">
+        <div>
+          <p className="section-kicker">Contact Us</p>
+          <h2>Send your message to the Exdox team</h2>
+        </div>
+        <p>
+          This form prepares an email to <a href={`mailto:${contactEmailAddress}`}>{contactEmailAddress}</a> so access,
+          billing, onboarding, and product questions all go to the main Exdox contact route.
+        </p>
+      </div>
+
+      <div className="contact-layout">
+        <div className="contact-form-card">
+          <div className="panel-heading">
+            <h2>Contact form</h2>
+            <span>Tell us what you need and your email app will open with everything filled in.</span>
+          </div>
+          <form
+            className="contact-form-grid"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!canSubmit) {
+                return;
+              }
+              const composedBody = [
+                `Name: ${name.trim()}`,
+                `Email: ${email.trim()}`,
+                `Organisation: ${company.trim() || "Not provided"}`,
+                "",
+                "Message:",
+                message.trim(),
+              ].join("\n");
+              window.location.href = `mailto:${contactEmailAddress}?subject=${encodeURIComponent(subject.trim())}&body=${encodeURIComponent(composedBody)}`;
+            }}
+          >
+            <label>
+              Full name
+              <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Your full name" required />
+            </label>
+            <label>
+              Email address
+              <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@business.co.uk" required />
+            </label>
+            <label>
+              Organisation
+              <input value={company} onChange={(event) => setCompany(event.target.value)} placeholder="Your business name" />
+            </label>
+            <label>
+              Subject
+              <select value={subject} onChange={(event) => setSubject(event.target.value)}>
+                <option>General enquiry</option>
+                <option>Access support</option>
+                <option>Billing support</option>
+                <option>Product demo</option>
+                <option>Onboarding help</option>
+                <option>Security request</option>
+              </select>
+            </label>
+            <label className="contact-form-message">
+              Message
+              <textarea
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder="Tell us what you need help with."
+                rows={8}
+                required
+              />
+            </label>
+            <div className="toolbar">
+              <button className="primary-action" type="submit" disabled={!canSubmit}>
+                Send message
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div className="contact-side-grid">
+          <article className="company-card">
+            <strong>Main contact email</strong>
+            <p>All customer-facing enquiries should go through the main Exdox inbox.</p>
+            <a className="secondary-inline-link company-card-link-row" href={`mailto:${contactEmailAddress}`}>{contactEmailAddress}</a>
+          </article>
+          <article className="company-card">
+            <strong>Best reasons to use this page</strong>
+            <p>Product questions, onboarding, pricing follow-up, access support, billing queries, and security contact.</p>
+          </article>
+          <article className="company-card">
+            <strong>Need quick answers first?</strong>
+            <p>If your question is about logging in, uploading receipts, or review flow, the FAQ page may answer it straight away.</p>
+            <Link className="secondary-inline-link company-card-link-row" to="/faq">Open FAQs</Link>
+          </article>
+        </div>
       </div>
     </section>
   );
