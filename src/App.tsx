@@ -5968,7 +5968,7 @@ function LoginState(props: {
             <div className="login-links">
               <Link to={`${forgotPasswordPagePath}?email=${encodeURIComponent(email)}`}>Forgot Password?</Link>
               <Link to="/register">Register</Link>
-              {needsEmailConfirmation ? <Link to={`/confirm-email?email=${encodeURIComponent(email)}`}>Resend confirmation email</Link> : null}
+              {needsEmailConfirmation ? <Link to={`/confirm-email?email=${encodeURIComponent(email)}`}>Open confirmation resend</Link> : null}
             </div>
           </div>
         </main>
@@ -6166,7 +6166,7 @@ function ResetPasswordState(props: {
             </form>
             <div className="login-links">
               <Link to="/login">Back to login</Link>
-              <Link to={`${forgotPasswordPagePath}?email=${encodeURIComponent(props.email)}`}>Request a fresh reset link</Link>
+              <Link to={`${forgotPasswordPagePath}?email=${encodeURIComponent(props.email)}`}>Open reset link request</Link>
             </div>
           </div>
         </main>
