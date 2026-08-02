@@ -5476,7 +5476,7 @@ function SettingsPage(props: {
             setInviteError(null);
             setInviteFeedback(null);
             if (!inviteEmail.trim()) {
-              setInviteError("Enter an employee email before sending the invite.");
+              setInviteError("Enter an employee email before creating the invite.");
               return;
             }
             setInviteBusy(true);
@@ -7520,6 +7520,7 @@ function PricingTeaserSection({ session = null }: { session?: SessionState | nul
 function PricingSection({ session = null }: { session?: SessionState | null }) {
   const [sliderIndex, setSliderIndex] = useState(0);
   const signedIn = Boolean(session);
+  const signedInBillingRoute = session && isRouteAllowed(session, "/billing") ? "/billing" : session ? signedInPublicPrimaryRoute(session) : null;
   const selectedStep = pricingSliderSteps[sliderIndex] ?? pricingSliderSteps[0]!;
   const selectedPlan = pricingPlans.find((plan) => plan.id === selectedStep.planId) ?? pricingPlans[0]!;
   const enterpriseSelected = selectedStep.planId === "enterprise";
@@ -7590,9 +7591,9 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               <span className="public-button public-button-disabled" aria-disabled="true">
                 Coming soon
               </span>
-            ) : signedIn ? (
-              <Link className="public-button" to="/billing">
-                Manage in Billing
+            ) : signedIn && signedInBillingRoute ? (
+              <Link className="public-button" to={signedInBillingRoute}>
+                {signedInBillingRoute === "/billing" ? "Manage in Billing" : "Back to Workspace"}
               </Link>
             ) : (
               <Link
@@ -7641,9 +7642,9 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
                 </ul>
                 {plan.id === "enterprise" ? (
                   <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
-                ) : signedIn ? (
-                  <Link className="public-button" to="/billing">
-                    Review in Billing
+                ) : signedIn && signedInBillingRoute ? (
+                  <Link className="public-button" to={signedInBillingRoute}>
+                    {signedInBillingRoute === "/billing" ? "Review in Billing" : "Back to Workspace"}
                   </Link>
                 ) : (
                   <Link
@@ -8094,7 +8095,13 @@ function BillingPage(props: { session: SessionState }) {
               ) : plan.id === "enterprise" ? (
                 <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
               ) : !billing.stripeConfigured || Boolean(billing.stripeSubscriptionId) ? (
-                <span className="public-button public-button-disabled" aria-disabled="true">Billing support</span>
+                <button
+                  className="public-button"
+                  type="button"
+                  onClick={() => navigate(`${supportPagePath}?subject=${encodeURIComponent("Billing support")}`)}
+                >
+                  Contact billing support
+                </button>
               ) : (
                 <button
                   className="public-button"
@@ -9011,35 +9018,6 @@ async function downloadCsv(fileName: string, rows: Array<Record<string, string>>
     }, 1500);
     return true;
   };
-
-  const pickerWindow = window as Window & {
-    showSaveFilePicker?: (options: {
-      suggestedName?: string;
-      types?: Array<{ description?: string; accept: Record<string, string[]> }>;
-    }) => Promise<{
-      createWritable: () => Promise<{
-        write: (data: Blob) => Promise<void>;
-        close: () => Promise<void>;
-      }>;
-    }>;
-  };
-
-  if (typeof pickerWindow.showSaveFilePicker === "function") {
-    try {
-      const handle = await pickerWindow.showSaveFilePicker({
-        suggestedName: fileName,
-        types: [{ description: "CSV file", accept: { "text/csv": [".csv"] } }],
-      });
-      const writable = await handle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      return true;
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        return false;
-      }
-    }
-  }
 
   return startAnchorDownload();
 }
