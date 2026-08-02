@@ -2994,12 +2994,13 @@ function InboxPage({
             type="button"
             disabled={!filtered.length}
             title={filtered.length ? "Download the current inbox view as CSV" : "No documents match the current filters yet"}
-            onClick={() => {
-              downloadCsv(
+            onClick={async () => {
+              if (await downloadCsv(
                 `${basePath.replace("/", "") || "inbox"}-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildInboxExportRows(filtered, settings),
-              );
-              setFeedback("Inbox CSV downloaded.");
+              )) {
+                setFeedback("Inbox CSV downloaded.");
+              }
             }}
           >
             Export CSV
@@ -3436,12 +3437,13 @@ function DocumentWorkspacePage(props: {
                 <button
                   className="secondary-action"
                   type="button"
-                  onClick={() => {
-                    downloadCsv(
+                  onClick={async () => {
+                    if (await downloadCsv(
                       `document-${receipt.id}-summary-${new Date().toISOString().slice(0, 10)}.csv`,
                       buildReceiptSummaryExportRows(receipt, props.settings ?? null),
-                    );
-                    setFeedback("Receipt summary CSV downloaded.");
+                    )) {
+                      setFeedback("Receipt summary CSV downloaded.");
+                    }
                   }}
                 >
                   Export summary CSV
@@ -3469,12 +3471,13 @@ function DocumentWorkspacePage(props: {
                 <button
                   className="secondary-action"
                   type="button"
-                  onClick={() => {
-                    downloadCsv(
+                  onClick={async () => {
+                    if (await downloadCsv(
                       `document-${receipt.id}-line-items-${new Date().toISOString().slice(0, 10)}.csv`,
                       buildLineItemExportRows(receipt),
-                    );
-                    setFeedback("Line items CSV downloaded.");
+                    )) {
+                      setFeedback("Line items CSV downloaded.");
+                    }
                   }}
                 >
                   Export line items CSV
@@ -3517,12 +3520,13 @@ function DocumentWorkspacePage(props: {
                 <button
                   className="secondary-action"
                   type="button"
-                  onClick={() => {
-                    downloadCsv(
+                  onClick={async () => {
+                    if (await downloadCsv(
                       `document-${receipt.id}-tax-breakdown-${new Date().toISOString().slice(0, 10)}.csv`,
                       buildTaxBreakdownExportRows(receipt),
-                    );
-                    setFeedback("Tax breakdown CSV downloaded.");
+                    )) {
+                      setFeedback("Tax breakdown CSV downloaded.");
+                    }
                   }}
                 >
                   Export tax CSV
@@ -3752,12 +3756,13 @@ function DocumentWorkspacePage(props: {
               <button
                 className="primary-action"
                 type="button"
-                onClick={() => {
-                  downloadCsv(
+                onClick={async () => {
+                  if (await downloadCsv(
                     `expenses-${new Date().toISOString().slice(0, 10)}.csv`,
                     buildInboxExportRows(props.fallbackRecords, props.settings ?? null),
-                  );
-                  setFeedback("Expenses CSV downloaded.");
+                  )) {
+                    setFeedback("Expenses CSV downloaded.");
+                  }
                   setPostApprovePrompt(null);
                 }}
               >
@@ -3915,12 +3920,13 @@ function ClaimsPage({
             type="button"
             disabled={!filteredClaims.length}
             title={filteredClaims.length ? "Download the current claims view as CSV" : "No claims match the current filters yet"}
-            onClick={() => {
-              downloadCsv(
+            onClick={async () => {
+              if (await downloadCsv(
                 `claims-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildClaimsListExportRows(filteredClaims),
-              );
-              setFeedback("Claims CSV downloaded.");
+              )) {
+                setFeedback("Claims CSV downloaded.");
+              }
               setError(null);
             }}
           >
@@ -4103,12 +4109,13 @@ function EmployeeDropboxPage(props: {
             className="secondary-action"
             type="button"
             disabled={!filteredReceipts.length}
-            onClick={() => {
-              downloadCsv(
+            onClick={async () => {
+              if (await downloadCsv(
                 `employee-dropbox-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildInboxExportRows(filteredReceipts, props.settings),
-              );
-              setFeedback("Employee drop box CSV downloaded.");
+              )) {
+                setFeedback("Employee drop box CSV downloaded.");
+              }
             }}
           >
             Export CSV
@@ -4258,12 +4265,13 @@ function ClaimDetailPage(props: {
             type="button"
             disabled={!filteredReceipts.length}
             title={filteredReceipts.length ? "Download the current claim receipt view as CSV" : "This claim has no receipts in the current view yet"}
-            onClick={() => {
-              downloadCsv(
+            onClick={async () => {
+              if (await downloadCsv(
                 `claim-${claim.id}-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildClaimExportRows(claim, filteredReceipts, props.settings ?? null),
-              );
-              setFeedback("Claim CSV downloaded.");
+              )) {
+                setFeedback("Claim CSV downloaded.");
+              }
               setError(null);
             }}
           >
@@ -4581,12 +4589,13 @@ function RulesPage(props: {
             type="button"
             disabled={!filteredRules.length}
             title={filteredRules.length ? "Download the current supplier rules view as CSV" : "No supplier rules match the current filters yet"}
-            onClick={() => {
-              downloadCsv(
+            onClick={async () => {
+              if (await downloadCsv(
                 `supplier-rules-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildRuleExportRows(filteredRules),
-              );
-              setFeedback("Rules CSV downloaded.");
+              )) {
+                setFeedback("Rules CSV downloaded.");
+              }
               setError(null);
             }}
           >
@@ -4774,12 +4783,13 @@ function ReconciliationPage(props: {
             type="button"
             disabled={!filteredLines.length}
             title={filteredLines.length ? "Download the current reconciliation view as CSV" : "No bank lines match the current filters yet"}
-            onClick={() => {
-              downloadCsv(
+            onClick={async () => {
+              if (await downloadCsv(
                 `reconciliation-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildReconciliationExportRows(filteredLines),
-              );
-              setFeedback("Reconciliation CSV downloaded.");
+              )) {
+                setFeedback("Reconciliation CSV downloaded.");
+              }
               setError(null);
             }}
           >
@@ -4995,12 +5005,13 @@ function RequisitionPage(props: {
         <button
           className="secondary-action"
           type="button"
-          onClick={() => {
-            downloadCsv(
+          onClick={async () => {
+            if (await downloadCsv(
               `requisition-draft-${new Date().toISOString().slice(0, 10)}.csv`,
               buildRequisitionDraftExportRows(provider, institutionId),
-            );
-            setFeedback("Setup CSV downloaded.");
+            )) {
+              setFeedback("Setup CSV downloaded.");
+            }
           }}
         >
           Export setup CSV
@@ -5410,12 +5421,13 @@ function SettingsPage(props: {
         <button
           className="secondary-action"
           type="button"
-          onClick={() => {
-            downloadCsv(
+          onClick={async () => {
+            if (await downloadCsv(
               `organisation-settings-${new Date().toISOString().slice(0, 10)}.csv`,
               buildOrganisationSettingsExportRows(draft),
-            );
-            setCopyFeedback("Settings CSV downloaded.");
+            )) {
+              setCopyFeedback("Settings CSV downloaded.");
+            }
           }}
         >
           Export settings CSV
@@ -5526,12 +5538,13 @@ function SettingsPage(props: {
           <button
             className="secondary-action"
             type="button"
-            onClick={() => {
-              downloadCsv(
+            onClick={async () => {
+              if (await downloadCsv(
                 `latest-invite-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildInviteExportRows(lastInvite),
-              );
-              setCopyFeedback("Invite CSV downloaded.");
+              )) {
+                setCopyFeedback("Invite CSV downloaded.");
+              }
             }}
           >
             Export invite CSV
@@ -5625,12 +5638,13 @@ function SettingsPage(props: {
             <button
               className="secondary-action"
               type="button"
-              onClick={() => {
-                downloadCsv(
+              onClick={async () => {
+                if (await downloadCsv(
                   `organisation-settings-${new Date().toISOString().slice(0, 10)}.csv`,
                   buildOrganisationSettingsExportRows(draft),
-                );
-                setCopyFeedback("Settings CSV downloaded.");
+                )) {
+                  setCopyFeedback("Settings CSV downloaded.");
+                }
               }}
             >
               Export settings CSV
@@ -8971,9 +8985,9 @@ function formatExportNumber(value: number | null) {
   return value == null ? "" : value.toFixed(2);
 }
 
-function downloadCsv(fileName: string, rows: Array<Record<string, string>>) {
+async function downloadCsv(fileName: string, rows: Array<Record<string, string>>) {
   if (!rows.length || typeof window === "undefined") {
-    return;
+    return false;
   }
 
   const headers = Object.keys(rows[0]!);
@@ -8982,18 +8996,52 @@ function downloadCsv(fileName: string, rows: Array<Record<string, string>>) {
     ...rows.map((row) => headers.map((header) => escapeCsvValue(row[header] ?? "")).join(",")),
   ];
   const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8" });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  link.style.display = "none";
-  link.rel = "noopener";
-  document.body.appendChild(link);
-  link.click();
-  window.setTimeout(() => {
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  }, 1500);
+  const startAnchorDownload = () => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.style.display = "none";
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    window.setTimeout(() => {
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    }, 1500);
+    return true;
+  };
+
+  const pickerWindow = window as Window & {
+    showSaveFilePicker?: (options: {
+      suggestedName?: string;
+      types?: Array<{ description?: string; accept: Record<string, string[]> }>;
+    }) => Promise<{
+      createWritable: () => Promise<{
+        write: (data: Blob) => Promise<void>;
+        close: () => Promise<void>;
+      }>;
+    }>;
+  };
+
+  if (typeof pickerWindow.showSaveFilePicker === "function") {
+    try {
+      const handle = await pickerWindow.showSaveFilePicker({
+        suggestedName: fileName,
+        types: [{ description: "CSV file", accept: { "text/csv": [".csv"] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return true;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return false;
+      }
+    }
+  }
+
+  return startAnchorDownload();
 }
 
 function escapeCsvValue(value: string) {
