@@ -2114,25 +2114,25 @@ function DataHealthPage({ store }: { store: AppStore }) {
           label="Unreadable"
           value={String(unreadableCount)}
           detail="Manual fallback or re-upload needed"
-          onClick={() => navigate(firstInboxRouteForIssue(store, (record) => looksUnreadable(record), "Unreadable"))}
+          onClick={() => navigate(attentionRouteForIssue("Unreadable"))}
         />
         <MetricCard
           label="Still processing"
           value={String(processingCount)}
           detail="Uploads not yet settled into review"
-          onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.status === "Processing", "Processing"))}
+          onClick={() => navigate(attentionRouteForIssue("Processing"))}
         />
         <MetricCard
           label="Low confidence"
           value={String(lowConfidenceCount)}
           detail="Extraction needs a closer check"
-          onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))}
+          onClick={() => navigate(attentionRouteForIssue("Low confidence"))}
         />
         <MetricCard
           label="Needs review"
           value={String(reviewCount)}
           detail="Review or publish decisions are still outstanding"
-          onClick={() => navigate(firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"))}
+          onClick={() => navigate(attentionRouteForIssue("Needs review"))}
         />
         <MetricCard
           label="Duplicate groups"
@@ -8421,7 +8421,7 @@ function buildWorkspaceHealthIssues(store: AppStore, limit = 4) {
     issues.push({
       label: `${unreadableCount} unreadable document${unreadableCount === 1 ? "" : "s"}`,
       detail: "These records likely need manual review, re-upload, or a manual entry fallback before publish.",
-      route: firstInboxRouteForIssue(store, (record) => looksUnreadable(record), "Unreadable"),
+      route: attentionRouteForIssue("Unreadable"),
     });
   }
 
@@ -8429,7 +8429,7 @@ function buildWorkspaceHealthIssues(store: AppStore, limit = 4) {
     issues.push({
       label: `${processingCount} document${processingCount === 1 ? "" : "s"} still processing`,
       detail: "Keep an eye on uploads that have not settled into Review, Ready, or Published yet.",
-      route: firstInboxRouteForIssue(store, (record) => record.status === "Processing", "Processing"),
+      route: attentionRouteForIssue("Processing"),
     });
   }
 
@@ -8445,7 +8445,7 @@ function buildWorkspaceHealthIssues(store: AppStore, limit = 4) {
     issues.push({
       label: `${lowConfidenceCount} low-confidence document${lowConfidenceCount === 1 ? "" : "s"}`,
       detail: "These records have weaker extraction confidence and should be checked before they are published onward.",
-      route: firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"),
+      route: attentionRouteForIssue("Low confidence"),
     });
   }
 
@@ -8453,7 +8453,7 @@ function buildWorkspaceHealthIssues(store: AppStore, limit = 4) {
     issues.push({
       label: `${pendingReviewCount} document${pendingReviewCount === 1 ? " needs" : "s need"} review`,
       detail: "Review-required items are still waiting on tax, review, claim, or publish decisions.",
-      route: firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"),
+      route: attentionRouteForIssue("Needs review"),
     });
   }
 
@@ -8587,6 +8587,10 @@ function firstInboxRouteForIssue(
     return `/vault?issue=${encodeURIComponent(issue)}`;
   }
   return `/costs?issue=${encodeURIComponent(issue)}`;
+}
+
+function attentionRouteForIssue(issue: "Unreadable" | "Processing" | "Low confidence" | "Needs review") {
+  return `/overview/attention?issue=${encodeURIComponent(issue)}`;
 }
 
 function parseAttentionIssueFilter(value: string | null): "Unreadable" | "Processing" | "Low confidence" | "Needs review" | null {
