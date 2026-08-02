@@ -860,7 +860,7 @@ input {
 }
 
 .image-zoom-image {
-  width: max(1600px, 150vw);
+  width: max(1200px, 112.5vw);
   max-width: none;
   height: auto;
   object-fit: contain;
