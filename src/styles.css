@@ -805,8 +805,68 @@ input {
   flex-wrap: wrap;
 }
 
+.settings-shell {
+  gap: 22px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
 .settings-panel {
-  max-width: 820px;
+  max-width: none;
+}
+
+.settings-hero-panel {
+  overflow: hidden;
+}
+
+.settings-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settings-overview-item,
+.settings-link-card {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f7fbff;
+}
+
+.settings-overview-item strong,
+.settings-link-card strong {
+  display: block;
+}
+
+.settings-overview-item span,
+.settings-link-card span {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.settings-link-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settings-link-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.settings-link-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(34, 94, 168, 0.3);
+  box-shadow: 0 10px 24px rgba(17, 28, 56, 0.08);
 }
 
 .workspace-detail-section {
@@ -895,7 +955,8 @@ input {
   .rules-layout,
   .reconciliation-layout,
   .card-grid,
-  .workspace-split {
+  .workspace-split,
+  .settings-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -911,6 +972,11 @@ input {
 
   .workspace {
     padding: 20px;
+  }
+
+  .settings-overview-grid,
+  .settings-link-grid {
+    grid-template-columns: 1fr;
   }
 
   .topbar,

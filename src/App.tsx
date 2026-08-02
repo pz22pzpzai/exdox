@@ -99,7 +99,7 @@ const navItems = [
   { to: "/claims", label: "Expense Claims", icon: "claims" },
   { to: "/rules", label: "Supplier Rules", icon: "rules" },
   { to: "/reconciliation", label: "Bank Reconciliation", icon: "bank" },
-  { to: "/settings", label: "Settings", icon: "settings" },
+  { to: "/settings", label: "Profile/Settings", icon: "settings" },
   { to: "/requisitions", label: "Open Banking", icon: "open-banking" },
   { to: "/billing", label: "Billing", icon: "billing" },
 ];
@@ -430,7 +430,7 @@ function workspaceShellKicker(pathname: string, businessAdmin: boolean) {
     return "Supplier automation";
   }
   if (pathname.startsWith("/settings")) {
-    return "Company configuration";
+    return "Profile and workspace controls";
   }
   if (pathname.startsWith("/billing")) {
     return "Subscription and access";
@@ -1369,9 +1369,9 @@ function DashboardShell(props: {
             >
               {actionLabel}
             </button>
-            {isRouteAllowed(props.session, "/settings") ? (
+              {isRouteAllowed(props.session, "/settings") ? (
               <button className="secondary-action" type="button" onClick={() => navigate("/settings")}>
-                Settings
+                Profile/Settings
               </button>
             ) : null}
             <button className="secondary-action" type="button" onClick={props.onSignOut}>
@@ -1594,9 +1594,11 @@ function DashboardShell(props: {
                   path="/settings"
                   element={
                     <SettingsPage
+                      session={props.session}
                       settings={props.store.settings ?? buildFallbackOrganisationSettings(props.session)}
                       onSave={props.onSettingsSave}
                       onInviteEmployee={props.onInviteEmployee}
+                      onSignOut={props.onSignOut}
                     />
                   }
                 />
@@ -4914,10 +4916,13 @@ function BankCallbackPage(props: {
 }
 
 function SettingsPage(props: {
+  session: SessionState;
   settings: OrganisationSettings | null;
   onSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
   onInviteEmployee: (payload: { email: string; fullName?: string }) => Promise<InviteResult>;
+  onSignOut: () => void;
 }) {
+  const navigate = useNavigate();
   const [draft, setDraft] = useState<OrganisationSettings | null>(props.settings);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -4929,20 +4934,189 @@ function SettingsPage(props: {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [lastInvite, setLastInvite] = useState<InviteResult | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [preferences, setPreferences] = useState(() => loadProfileSettingsDraft(props.session));
+  const [preferencesFeedback, setPreferencesFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     setDraft(props.settings);
   }, [props.settings]);
+
+  useEffect(() => {
+    setPreferences(loadProfileSettingsDraft(props.session));
+  }, [props.session]);
 
   if (!draft) {
     return <div className="empty-state">Settings unavailable.</div>;
   }
 
   return (
-    <section className="panel settings-panel">
+    <section className="panel-stack settings-shell">
+      <div className="panel settings-hero-panel">
+        <div className="panel-heading">
+          <h2>Profile/Settings</h2>
+          <span>Personal preferences, workspace controls, security, and team access</span>
+        </div>
+        <div className="settings-overview-grid">
+          <div className="settings-overview-item">
+            <strong>Signed in as</strong>
+            <span>{props.session.user.fullName?.trim() || "Workspace user"}</span>
+          </div>
+          <div className="settings-overview-item">
+            <strong>Email</strong>
+            <span>{props.session.user.email}</span>
+          </div>
+          <div className="settings-overview-item">
+            <strong>Role</strong>
+            <span>{props.session.user.role === "Business_Admin" ? "Business admin" : "Standard employee"}</span>
+          </div>
+          <div className="settings-overview-item">
+            <strong>Organisation</strong>
+            <span>{draft.organisationName}</span>
+          </div>
+          <div className="settings-overview-item">
+            <strong>Plan</strong>
+            <span>{props.session.billing?.planLabel ?? props.session.billing?.planId ?? "Workspace access"}</span>
+          </div>
+          <div className="settings-overview-item">
+            <strong>Current access</strong>
+            <span>{props.session.billing ? props.session.billing.status.replace(/_/g, " ") : "Active in workspace"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-grid">
+        <div className="panel settings-panel">
+          <div className="panel-heading">
+            <h2>Profile</h2>
+            <span>Personal identity and session controls</span>
+          </div>
+          <div className="summary-list">
+            <div>
+              <strong>Full name</strong>
+              <span>{props.session.user.fullName?.trim() || "Workspace user"}</span>
+            </div>
+            <div>
+              <strong>Email address</strong>
+              <span>{props.session.user.email}</span>
+            </div>
+            <div>
+              <strong>Default access route</strong>
+              <span>{routeTitle(getDefaultRoute(props.session))}</span>
+            </div>
+            <div>
+              <strong>Authentication</strong>
+              <span>{props.session.user.status === "active" ? "Active account" : props.session.user.status.replace(/_/g, " ")}</span>
+            </div>
+          </div>
+          <div className="toolbar">
+            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Password%20reset%20support"}>
+              Password help
+            </button>
+            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Change%20account%20email"}>
+              Change email
+            </button>
+            <button className="danger-action" type="button" onClick={props.onSignOut}>
+              Sign out
+            </button>
+          </div>
+        </div>
+
+        <div className="panel settings-panel">
+          <div className="panel-heading">
+            <h2>Browser preferences</h2>
+            <span>How this browser behaves for your day-to-day work</span>
+          </div>
+          {preferencesFeedback ? <div className="success-banner">{preferencesFeedback}</div> : null}
+          <div className="form-grid">
+            <label>
+              Start page after sign-in
+              <select
+                value={preferences.defaultLandingRoute}
+                onChange={(event) => {
+                  setPreferences((current) => ({ ...current, defaultLandingRoute: event.target.value }));
+                }}
+              >
+                {profileLandingOptions(props.session).map((option) => (
+                  <option key={option.route} value={option.route}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Date format
+              <select
+                value={preferences.dateFormat}
+                onChange={(event) => {
+                  setPreferences((current) => ({ ...current, dateFormat: event.target.value as ProfileSettingsDraft["dateFormat"] }));
+                }}
+              >
+                <option value="dd/mm/yyyy">DD/MM/YYYY</option>
+                <option value="yyyy-mm-dd">YYYY-MM-DD</option>
+                <option value="month-day-year">Month Day, Year</option>
+              </select>
+            </label>
+            <label className="toggle-field">
+              Compact table density
+              <button
+                className={`toggle-button${preferences.compactTables ? " on" : ""}`}
+                type="button"
+                onClick={() => setPreferences((current) => ({ ...current, compactTables: !current.compactTables }))}
+              >
+                {preferences.compactTables ? "On" : "Off"}
+              </button>
+            </label>
+            <label className="toggle-field">
+              Upload completion emails
+              <button
+                className={`toggle-button${preferences.vaultUploadEmails ? " on" : ""}`}
+                type="button"
+                onClick={() => setPreferences((current) => ({ ...current, vaultUploadEmails: !current.vaultUploadEmails }))}
+              >
+                {preferences.vaultUploadEmails ? "On" : "Off"}
+              </button>
+            </label>
+            <label className="toggle-field">
+              Review queue email alerts
+              <button
+                className={`toggle-button${preferences.reviewAlerts ? " on" : ""}`}
+                type="button"
+                onClick={() => setPreferences((current) => ({ ...current, reviewAlerts: !current.reviewAlerts }))}
+              >
+                {preferences.reviewAlerts ? "On" : "Off"}
+              </button>
+            </label>
+            <label className="toggle-field">
+              Claim approval email alerts
+              <button
+                className={`toggle-button${preferences.claimAlerts ? " on" : ""}`}
+                type="button"
+                onClick={() => setPreferences((current) => ({ ...current, claimAlerts: !current.claimAlerts }))}
+              >
+                {preferences.claimAlerts ? "On" : "Off"}
+              </button>
+            </label>
+          </div>
+          <div className="toolbar">
+            <button
+              className="primary-action"
+              type="button"
+              onClick={() => {
+                saveProfileSettingsDraft(preferences);
+                setPreferencesFeedback("Browser preferences saved on this device.");
+              }}
+            >
+              Save preferences
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-grid">
+        <div className="panel settings-panel">
       <div className="panel-heading">
-        <h2>Company Settings</h2>
-        <span>Control tax defaults, employee access, and workspace settings</span>
+        <h2>Workspace controls</h2>
+        <span>Organisation tax defaults and shared processing posture</span>
       </div>
       {error ? <div className="error-banner">{error}</div> : null}
       {feedback ? <div className="success-banner">{feedback}</div> : null}
@@ -5030,10 +5204,12 @@ function SettingsPage(props: {
           Export settings CSV
         </button>
       </div>
-      <div className="panel-divider" />
+        </div>
+
+        <div className="panel settings-panel">
       <div className="panel-heading">
-        <h2>Invite an employee</h2>
-        <span>Standard employee access</span>
+        <h2>Team & access</h2>
+        <span>Invite staff and hand off claim or upload work cleanly</span>
       </div>
       {inviteError ? <div className="error-banner">{inviteError}</div> : null}
       {inviteFeedback ? <div className="success-banner">{inviteFeedback}</div> : null}
@@ -5145,6 +5321,144 @@ function SettingsPage(props: {
           </button>
         </div>
       ) : null}
+        </div>
+      </div>
+
+      <div className="settings-grid">
+        <div className="panel settings-panel">
+          <div className="panel-heading">
+            <h2>Security</h2>
+            <span>Account protection and operational safeguards</span>
+          </div>
+          <div className="summary-list">
+            <div>
+              <strong>Session state</strong>
+              <span>Signed in on this browser</span>
+            </div>
+            <div>
+              <strong>Two-factor authentication</strong>
+              <span>Available on request during the next security rollout</span>
+            </div>
+            <div>
+              <strong>Security contact</strong>
+              <span>contact@exdox.co.uk</span>
+            </div>
+            <div>
+              <strong>Audit posture</strong>
+              <span>Document review, billing access, and workspace administration stay inside the signed-in account scope.</span>
+            </div>
+          </div>
+          <div className="toolbar">
+            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Security%20request"}>
+              Contact security
+            </button>
+            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Two-factor%20authentication%20request"}>
+              Request 2FA
+            </button>
+          </div>
+        </div>
+
+        <div className="panel settings-panel">
+          <div className="panel-heading">
+            <h2>Integrations & workflow</h2>
+            <span>Shortcuts into the connected operational parts of Exdox</span>
+          </div>
+          <div className="settings-link-grid">
+            <button className="settings-link-card" type="button" onClick={() => navigate("/rules")}>
+              <strong>Supplier rules</strong>
+              <span>Control automatic category, tax, and payment defaults.</span>
+            </button>
+            <button className="settings-link-card" type="button" onClick={() => navigate("/requisitions")}>
+              <strong>Open Banking</strong>
+              <span>Connect bank-led evidence feeds and requisitions.</span>
+            </button>
+            <button className="settings-link-card" type="button" onClick={() => navigate("/reconciliation")}>
+              <strong>Reconciliation</strong>
+              <span>Move straight into bank matching and audit review.</span>
+            </button>
+            <button className="settings-link-card" type="button" onClick={() => navigate("/billing")}>
+              <strong>Billing</strong>
+              <span>Review plan status, trial dates, and subscription actions.</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-grid">
+        <div className="panel settings-panel">
+          <div className="panel-heading">
+            <h2>Data & privacy</h2>
+            <span>Export, retention, and account-management routes</span>
+          </div>
+          <div className="summary-list">
+            <div>
+              <strong>Settings export</strong>
+              <span>Download a CSV copy of the current organisation settings.</span>
+            </div>
+            <div>
+              <strong>Account deletion</strong>
+              <span>Use the managed deletion route for account-level requests.</span>
+            </div>
+            <div>
+              <strong>Privacy policy</strong>
+              <span>Review the current website privacy and cookie commitments.</span>
+            </div>
+          </div>
+          <div className="toolbar">
+            <button
+              className="secondary-action"
+              type="button"
+              onClick={() => {
+                downloadCsv(
+                  `organisation-settings-${new Date().toISOString().slice(0, 10)}.csv`,
+                  buildOrganisationSettingsExportRows(draft),
+                );
+                setCopyFeedback("Settings CSV downloaded.");
+              }}
+            >
+              Export settings CSV
+            </button>
+            <button className="secondary-action" type="button" onClick={() => window.open("/account-deletion", "_blank", "noreferrer")}>
+              Account deletion
+            </button>
+            <button className="secondary-action" type="button" onClick={() => window.open("/privacy", "_blank", "noreferrer")}>
+              Privacy policy
+            </button>
+          </div>
+        </div>
+
+        <div className="panel settings-panel">
+          <div className="panel-heading">
+            <h2>Support</h2>
+            <span>Commercial product support routes</span>
+          </div>
+          <div className="summary-list">
+            <div>
+              <strong>Access support</strong>
+              <span>Login help, password resets, and invite issues.</span>
+            </div>
+            <div>
+              <strong>Billing support</strong>
+              <span>Plan changes, renewal questions, and workspace unlock requests.</span>
+            </div>
+            <div>
+              <strong>Security contact</strong>
+              <span>Responsible disclosure and document-handling concerns.</span>
+            </div>
+          </div>
+          <div className="toolbar">
+            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Access%20support"}>
+              Access support
+            </button>
+            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Billing%20support"}>
+              Billing support
+            </button>
+            <button className="secondary-action" type="button" onClick={() => window.location.href = "mailto:contact@exdox.co.uk?subject=Security%20request"}>
+              Security contact
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
@@ -7957,6 +8271,77 @@ function buildInviteExportRows(invite: InviteResult) {
   }];
 }
 
+type ProfileSettingsDraft = {
+  defaultLandingRoute: string;
+  dateFormat: "dd/mm/yyyy" | "yyyy-mm-dd" | "month-day-year";
+  compactTables: boolean;
+  vaultUploadEmails: boolean;
+  reviewAlerts: boolean;
+  claimAlerts: boolean;
+};
+
+const profileSettingsStorageKey = "exdox-profile-settings";
+
+function profileLandingOptions(session: SessionState) {
+  const candidates = [
+    { route: "/overview", label: "Overview" },
+    { route: "/costs", label: "Costs Inbox" },
+    { route: "/sales", label: "Sales Inbox" },
+    { route: "/vault", label: "Vault" },
+    { route: "/claims", label: "Expense Claims" },
+    { route: "/reconciliation", label: "Bank Reconciliation" },
+    { route: "/billing", label: "Billing" },
+  ];
+  return candidates.filter((option) => isRouteAllowed(session, option.route));
+}
+
+function loadProfileSettingsDraft(session: SessionState): ProfileSettingsDraft {
+  const fallback: ProfileSettingsDraft = {
+    defaultLandingRoute: getDefaultRoute(session),
+    dateFormat: "dd/mm/yyyy",
+    compactTables: false,
+    vaultUploadEmails: true,
+    reviewAlerts: true,
+    claimAlerts: true,
+  };
+
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+
+  try {
+    const stored = window.localStorage.getItem(profileSettingsStorageKey);
+    if (!stored) {
+      return fallback;
+    }
+    const parsed = JSON.parse(stored) as Partial<ProfileSettingsDraft>;
+    const allowedRoutes = new Set(profileLandingOptions(session).map((option) => option.route));
+    return {
+      defaultLandingRoute:
+        typeof parsed.defaultLandingRoute === "string" && allowedRoutes.has(parsed.defaultLandingRoute)
+          ? parsed.defaultLandingRoute
+          : fallback.defaultLandingRoute,
+      dateFormat:
+        parsed.dateFormat === "yyyy-mm-dd" || parsed.dateFormat === "month-day-year" || parsed.dateFormat === "dd/mm/yyyy"
+          ? parsed.dateFormat
+          : fallback.dateFormat,
+      compactTables: Boolean(parsed.compactTables),
+      vaultUploadEmails: parsed.vaultUploadEmails !== false,
+      reviewAlerts: parsed.reviewAlerts !== false,
+      claimAlerts: parsed.claimAlerts !== false,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveProfileSettingsDraft(draft: ProfileSettingsDraft) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(profileSettingsStorageKey, JSON.stringify(draft));
+}
+
 function buildRequisitionDraftExportRows(provider: string, institutionId: string) {
   return [{
     provider,
@@ -8233,6 +8618,9 @@ function routeTitle(pathname: string) {
   }
   if (pathname.startsWith("/billing")) {
     return "Billing";
+  }
+  if (pathname.startsWith("/settings")) {
+    return "Profile/Settings";
   }
   if (pathname.startsWith("/pricing")) {
     return "Pricing";
