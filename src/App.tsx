@@ -5282,10 +5282,10 @@ function SettingsPage(props: {
           </div>
           <div className="toolbar">
             <button className="secondary-action" type="button" onClick={openForgotPasswordRoute}>
-              Request password reset
+              Open password reset
             </button>
             <button className="secondary-action" type="button" onClick={() => openContactRoute("Change account email")}>
-              Request email change
+              Open email change request
             </button>
             <button className="danger-action" type="button" onClick={props.onSignOut}>
               Sign out
