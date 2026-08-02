@@ -847,17 +847,23 @@ input {
 .image-zoom-stage {
   min-height: 0;
   overflow: auto;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
   border-radius: 18px;
   background: #eff4f9;
   padding: 18px;
+  cursor: grab;
+  touch-action: none;
 }
 
 .image-zoom-image {
-  max-width: 100%;
+  max-width: none;
   height: auto;
+  min-width: min(100%, 1200px);
   object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .compact-table-panel {

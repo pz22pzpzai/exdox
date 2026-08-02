@@ -3052,6 +3052,8 @@ function DocumentWorkspacePage(props: {
   const [error, setError] = useState<string | null>(null);
   const [selectedClaimId, setSelectedClaimId] = useState("");
   const [imageZoomOpen, setImageZoomOpen] = useState(false);
+  const imageZoomStageRef = useRef<HTMLDivElement | null>(null);
+  const imagePanStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -3073,6 +3075,9 @@ function DocumentWorkspacePage(props: {
   if (!receipt) {
     return <div className="empty-state">{error ?? "Receipt workspace unavailable."}</div>;
   }
+
+  const inferredReceiptDate = inferredReceiptTextDate(receipt);
+  const displayReceiptDate = receiptDocumentDate(receipt);
 
   const duplicateInsights = buildDuplicateInsights(
     props.mode === "vault"
@@ -3180,7 +3185,7 @@ function DocumentWorkspacePage(props: {
           </label>
           <label>
             Receipt Date
-            <input type="date" value={receiptDocumentDate(receipt)} onChange={(event) => setReceipt({ ...receipt, invoiceDate: event.target.value })} />
+            <input type="date" value={displayReceiptDate} onChange={(event) => setReceipt({ ...receipt, invoiceDate: event.target.value })} />
           </label>
           <label>
             Invoice Number
@@ -3436,7 +3441,9 @@ function DocumentWorkspacePage(props: {
               setFeedback(null);
               setError(null);
               try {
-                await props.onSave(receipt.id, receipt);
+                const nextReceipt = receipt.invoiceDate || !inferredReceiptDate ? receipt : { ...receipt, invoiceDate: inferredReceiptDate };
+                setReceipt(nextReceipt);
+                await props.onSave(receipt.id, nextReceipt);
                 setFeedback("Receipt changes saved.");
               } catch (saveError) {
                 setError(saveError instanceof Error ? saveError.message : "Could not save this receipt.");
@@ -3542,7 +3549,43 @@ function DocumentWorkspacePage(props: {
               Close
             </button>
           </div>
-          <div className="image-zoom-stage">
+          <div
+            ref={imageZoomStageRef}
+            className="image-zoom-stage"
+            onPointerDown={(event) => {
+              if (!imageZoomStageRef.current) {
+                return;
+              }
+              imagePanStartRef.current = {
+                x: event.clientX,
+                y: event.clientY,
+                left: imageZoomStageRef.current.scrollLeft,
+                top: imageZoomStageRef.current.scrollTop,
+              };
+              imageZoomStageRef.current.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              if (!imageZoomStageRef.current || !imagePanStartRef.current) {
+                return;
+              }
+              const deltaX = event.clientX - imagePanStartRef.current.x;
+              const deltaY = event.clientY - imagePanStartRef.current.y;
+              imageZoomStageRef.current.scrollLeft = imagePanStartRef.current.left - deltaX;
+              imageZoomStageRef.current.scrollTop = imagePanStartRef.current.top - deltaY;
+            }}
+            onPointerUp={(event) => {
+              if (imageZoomStageRef.current?.hasPointerCapture(event.pointerId)) {
+                imageZoomStageRef.current.releasePointerCapture(event.pointerId);
+              }
+              imagePanStartRef.current = null;
+            }}
+            onPointerCancel={(event) => {
+              if (imageZoomStageRef.current?.hasPointerCapture(event.pointerId)) {
+                imageZoomStageRef.current.releasePointerCapture(event.pointerId);
+              }
+              imagePanStartRef.current = null;
+            }}
+          >
             <img className="image-zoom-image" src={assetUrl} alt={receipt.sourceFilename} />
           </div>
         </div>
@@ -7268,8 +7311,32 @@ function receiptGrossAmount(
   return record.totalAmount ?? 0;
 }
 
-function receiptDocumentDate(record: { invoiceDate?: string | null; createdAt?: string | null }) {
-  return record.invoiceDate ?? record.createdAt?.slice(0, 10) ?? "";
+function receiptDocumentDate(record: {
+  invoiceDate?: string | null;
+  createdAt?: string | null;
+  description?: string | null;
+  rawTextSummary?: string | null;
+}) {
+  return record.invoiceDate ?? inferredReceiptTextDate(record) ?? record.createdAt?.slice(0, 10) ?? "";
+}
+
+function inferredReceiptTextDate(record: { description?: string | null; rawTextSummary?: string | null }) {
+  const text = `${record.description ?? ""}\n${record.rawTextSummary ?? ""}`;
+  const isoMatch = text.match(/\b(20\d{2})[-\/.](0?[1-9]|1[0-2])[-\/.](0?[1-9]|[12]\d|3[01])\b/);
+  if (isoMatch) {
+    return normalizeParsedDateParts(isoMatch[1], isoMatch[2], isoMatch[3]);
+  }
+  const ukMatch = text.match(/\b(0?[1-9]|[12]\d|3[01])[-\/.](0?[1-9]|1[0-2])[-\/.](20\d{2})\b/);
+  if (ukMatch) {
+    return normalizeParsedDateParts(ukMatch[3], ukMatch[2], ukMatch[1]);
+  }
+  return null;
+}
+
+function normalizeParsedDateParts(year: string, month: string, day: string) {
+  const normalized = `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  const parsed = new Date(`${normalized}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== normalized ? null : normalized;
 }
 
 type DuplicateInsightGroup = {
