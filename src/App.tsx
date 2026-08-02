@@ -163,7 +163,7 @@ const pricingPlans: Array<{
     tagline: "Receipt capture and review for lean teams",
     monthlyDocuments: "250 documents / month",
     users: "5 users included",
-    cta: "Start Free Capture Trial",
+    cta: "Open Capture Trial Signup",
     trialLabel: "14-day trial",
     monthlyPrice: 15,
     annualMonthlyPrice: 12,
@@ -185,7 +185,7 @@ const pricingPlans: Array<{
     tagline: "Costs, sales, claims, and approval-ready workflows",
     monthlyDocuments: "1,500 documents / month",
     users: "30 users included",
-    cta: "Start Free Control Trial",
+    cta: "Open Control Trial Signup",
     trialLabel: "14-day trial",
     monthlyPrice: 89,
     annualMonthlyPrice: 71.2,
@@ -207,7 +207,7 @@ const pricingPlans: Array<{
     tagline: "Rules, vault storage, open banking, and reconciliation",
     monthlyDocuments: "3,000 documents / month",
     users: "60 users included",
-    cta: "Start Free Operations Trial",
+    cta: "Open Operations Trial Signup",
     trialLabel: "14-day trial",
     monthlyPrice: 173,
     annualMonthlyPrice: 138.4,
@@ -6650,7 +6650,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
               </>
             ) : (
               <>
-                <Link className="public-primary" to="/register?plan=control&billingCycle=monthly">Start Free Trial</Link>
+                <Link className="public-primary" to="/register?plan=control&billingCycle=monthly">Open Free Trial Signup</Link>
                 <Link className="secondary-inline-link" to="/pricing">See pricing structure</Link>
               </>
             )}
@@ -7627,7 +7627,7 @@ function PricingTeaserSection({ session = null }: { session?: SessionState | nul
               includedUsers: 30,
             })}
           >
-            Start Trial
+            Open Trial Signup
           </Link>
         )}
       </div>
@@ -7889,12 +7889,12 @@ function CompanySection({ session = null }: { session?: SessionState | null }) {
         <article className="company-card">
           <strong>Secure operational model</strong>
           <p>Organisation-scoped routes, authenticated sessions and protected receipt asset retrieval.</p>
-          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=control&billingCycle=monthly"}>{session ? "Back to workspace" : "Start Control trial"}</Link>
+          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=control&billingCycle=monthly"}>{session ? "Back to workspace" : "Open Control trial signup"}</Link>
         </article>
         <article className="company-card">
           <strong>Review-ready audit trail</strong>
           <p>Receipts, vault files, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
-          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=operations&billingCycle=monthly"}>{session ? "Back to workspace" : "Start Operations trial"}</Link>
+          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=operations&billingCycle=monthly"}>{session ? "Back to workspace" : "Open Operations trial signup"}</Link>
         </article>
         <article className="company-card">
           <strong>Built for finance teams</strong>
