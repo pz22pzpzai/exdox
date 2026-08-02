@@ -3674,7 +3674,7 @@ function DocumentWorkspacePage(props: {
                   const nextReceipt = { ...receipt, status: "Published" as ReceiptRecord["status"] };
                   setReceipt(nextReceipt);
                   await props.onSave(receipt.id, nextReceipt);
-                  setFeedback("Receipt published to the accounting workflow.");
+                  setFeedback("Receipt marked as published in the accounting workflow.");
                 } catch (publishError) {
                   setError(publishError instanceof Error ? publishError.message : "Could not publish this receipt.");
                 } finally {
@@ -3682,7 +3682,7 @@ function DocumentWorkspacePage(props: {
                 }
               }}
             >
-              {receiptPublished ? "Already Published" : "Publish to Accounting Tool"}
+              {receiptPublished ? "Already Published" : "Mark as Published"}
             </button>
           ) : null}
           {props.mode === "cost" ? (
@@ -5635,10 +5635,10 @@ function SettingsPage(props: {
             >
               Export settings CSV
             </button>
-            <button className="secondary-action" type="button" onClick={() => window.open("/account-deletion", "_blank", "noreferrer")}>
+            <button className="secondary-action" type="button" onClick={() => navigate(accountDeletionPagePath)}>
               Account deletion
             </button>
-            <button className="secondary-action" type="button" onClick={() => window.open("/privacy", "_blank", "noreferrer")}>
+            <button className="secondary-action" type="button" onClick={() => navigate("/privacy")}>
               Privacy policy
             </button>
           </div>
@@ -8989,7 +8989,7 @@ function downloadCsv(fileName: string, rows: Array<Record<string, string>>) {
   link.style.display = "none";
   link.rel = "noopener";
   document.body.appendChild(link);
-  link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+  link.click();
   window.setTimeout(() => {
     link.remove();
     window.URL.revokeObjectURL(url);
