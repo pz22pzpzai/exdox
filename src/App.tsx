@@ -5295,7 +5295,7 @@ function SettingsPage(props: {
               </button>
             </label>
             <label className="toggle-field">
-              Upload completion emails
+              Upload completion alerts on this browser
               <button
                 className={`toggle-button${preferences.vaultUploadEmails ? " on" : ""}`}
                 type="button"
@@ -5305,7 +5305,7 @@ function SettingsPage(props: {
               </button>
             </label>
             <label className="toggle-field">
-              Review queue email alerts
+              Review queue alerts on this browser
               <button
                 className={`toggle-button${preferences.reviewAlerts ? " on" : ""}`}
                 type="button"
@@ -5315,7 +5315,7 @@ function SettingsPage(props: {
               </button>
             </label>
             <label className="toggle-field">
-              Claim approval email alerts
+              Claim approval alerts on this browser
               <button
                 className={`toggle-button${preferences.claimAlerts ? " on" : ""}`}
                 type="button"
