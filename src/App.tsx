@@ -7618,7 +7618,7 @@ function PricingTeaserSection({ session = null }: { session?: SessionState | nul
       <div className="section-actions">
         <Link className="public-button" to="/pricing">View pricing page</Link>
         {session ? (
-          <Link className="secondary-inline-link" to={signedInPublicPrimaryRoute(session)}>Back to workspace</Link>
+          <Link className="secondary-inline-link" to={signedInPublicPrimaryRoute(session)}>{signedInPublicPrimaryHeroLabel(session)}</Link>
         ) : (
           <Link
             className="secondary-inline-link"
@@ -7889,12 +7889,12 @@ function CompanySection({ session = null }: { session?: SessionState | null }) {
         <article className="company-card">
           <strong>Secure operational model</strong>
           <p>Organisation-scoped routes, authenticated sessions and protected receipt asset retrieval.</p>
-          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=control&billingCycle=monthly"}>{session ? "Back to workspace" : "Open Control trial signup"}</Link>
+          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=control&billingCycle=monthly"}>{session ? signedInPublicPrimaryHeroLabel(session) : "Open Control trial signup"}</Link>
         </article>
         <article className="company-card">
           <strong>Review-ready audit trail</strong>
           <p>Receipts, vault files, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
-          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=operations&billingCycle=monthly"}>{session ? "Back to workspace" : "Open Operations trial signup"}</Link>
+          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=operations&billingCycle=monthly"}>{session ? signedInPublicPrimaryHeroLabel(session) : "Open Operations trial signup"}</Link>
         </article>
         <article className="company-card">
           <strong>Built for finance teams</strong>
