@@ -135,7 +135,6 @@ const publicNavItems = [
   { to: "/pricing", label: "Pricing" },
   { to: "/faq", label: "FAQs" },
   { to: "/company", label: "About" },
-  { to: "/contact", label: "Contact" },
 ] as const;
 const supportPagePath = "/contact";
 const contactPagePath = "/contact";
