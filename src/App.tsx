@@ -145,6 +145,9 @@ const resetPasswordPagePath = "/reset-password";
 const termsPagePath = "/terms";
 const accountDeletionPagePath = "/account-deletion";
 const termsVersion = "2026-07-26";
+const cookieConsentStorageKey = "exdox-cookie-consent-v1";
+
+type CookieConsentChoice = "essential_only" | "all_cookies";
 
 const pricingPlans: Array<{
   id: BillingPlanId;
@@ -5991,25 +5994,7 @@ function LoginState(props: {
             </div>
           </div>
         </main>
-        {props.embeddedInPublicShell ? null : (
-          <footer className="login-footer">
-            <span>
-              <Link to="/pricing">Pricing</Link>
-              {" | "}
-              <Link to={termsPagePath}>Terms</Link>
-              {" | "}
-              <Link to="/privacy">Privacy</Link>
-              {" | "}
-              <Link to="/cookies">Cookies</Link>
-              {" | "}
-              <Link to="/company">About</Link>
-              {" | "}
-              <Link to={contactPagePath}>Contact Us</Link>
-            </span>
-            <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
-            <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
-          </footer>
-        )}
+        {props.embeddedInPublicShell ? null : <SiteFooterBlock />}
       </div>
     </div>
   );
@@ -6083,6 +6068,7 @@ function ForgotPasswordState(props: {
             </div>
           </div>
         </main>
+        {props.embeddedInPublicShell ? null : <SiteFooterBlock />}
       </div>
     </div>
   );
@@ -6189,6 +6175,7 @@ function ResetPasswordState(props: {
             </div>
           </div>
         </main>
+        {props.embeddedInPublicShell ? null : <SiteFooterBlock />}
       </div>
     </div>
   );
@@ -6399,23 +6386,7 @@ function RegisterState(props: {
             </div>
           </div>
         </main>
-        {props.embeddedInPublicShell ? null : (
-          <footer className="login-footer">
-            <span>
-              <Link to="/pricing">Pricing</Link>
-              {" | "}
-              <Link to="/privacy">Privacy</Link>
-              {" | "}
-              <Link to="/cookies">Cookies</Link>
-              {" | "}
-              <Link to="/company">About</Link>
-              {" | "}
-              <Link to={contactPagePath}>Contact Us</Link>
-            </span>
-            <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
-            <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
-          </footer>
-        )}
+        {props.embeddedInPublicShell ? null : <SiteFooterBlock />}
       </div>
     </div>
   );
@@ -6498,6 +6469,7 @@ function ConfirmEmailState(props: {
             </div>
           </div>
         </main>
+        {props.embeddedInPublicShell ? null : <SiteFooterBlock />}
       </div>
     </div>
   );
@@ -6770,23 +6742,103 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
       </header>
 
       <main>{props.children}</main>
-      <footer className="public-footer">
-        <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
-        <span>
-          <Link to="/pricing">Pricing</Link>
-          {" | "}
-          <Link to="/faq">FAQs</Link>
-          {" | "}
-          <Link to={termsPagePath}>Terms</Link>
-          {" | "}
-          <Link to="/privacy">Privacy</Link>
-          {" | "}
-          <Link to="/cookies">Cookies</Link>
-          {" | "}
-          <Link to={supportPagePath}>Contact</Link>
-        </span>
-      </footer>
+      <SiteFooterBlock />
     </div>
+  );
+}
+
+function SiteFooterBlock() {
+  const [cookieConsent, setCookieConsent] = useState<CookieConsentChoice | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    const saved = window.localStorage.getItem(cookieConsentStorageKey);
+    return saved === "essential_only" || saved === "all_cookies" ? saved : null;
+  });
+  const [cookieBannerOpen, setCookieBannerOpen] = useState(() => cookieConsent === null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (cookieConsent) {
+      window.localStorage.setItem(cookieConsentStorageKey, cookieConsent);
+    } else {
+      window.localStorage.removeItem(cookieConsentStorageKey);
+    }
+  }, [cookieConsent]);
+
+  const setConsent = (value: CookieConsentChoice) => {
+    setCookieConsent(value);
+    setCookieBannerOpen(false);
+  };
+
+  return (
+    <>
+      <footer className="site-footer-shell">
+        <div className="site-footer">
+          <div className="site-footer-brand">
+            <strong>Exdox</strong>
+            <p>Receipt capture, review, claims, archive, and finance controls in one connected workflow.</p>
+            <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
+          </div>
+          <div className="site-footer-links">
+            <div>
+              <strong>Product</strong>
+              <Link to="/">Home</Link>
+              <Link to="/platform">Platform</Link>
+              <Link to="/integrations">Integrations</Link>
+              <Link to="/pricing">Pricing</Link>
+            </div>
+            <div>
+              <strong>Support</strong>
+              <Link to="/faq">FAQs</Link>
+              <Link to="/company">About</Link>
+              <Link to={contactPagePath}>Contact</Link>
+              <button className="link-button site-footer-button" type="button" onClick={() => setCookieBannerOpen(true)}>
+                Cookie preferences
+              </button>
+            </div>
+            <div>
+              <strong>Legal</strong>
+              <Link to={termsPagePath}>Terms</Link>
+              <Link to="/privacy">Privacy</Link>
+              <Link to="/cookies">Cookies</Link>
+              <Link to={accountDeletionPagePath}>Account deletion</Link>
+            </div>
+          </div>
+        </div>
+        <div className="site-footer-bottom">
+          <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
+          <span>
+            {cookieConsent === "all_cookies"
+              ? "Cookie preference: all cookies accepted"
+              : cookieConsent === "essential_only"
+                ? "Cookie preference: essential cookies only"
+                : "Cookie preference: not set"}
+          </span>
+        </div>
+      </footer>
+      {cookieBannerOpen ? (
+        <div className="cookie-banner" role="dialog" aria-live="polite" aria-label="Cookie preferences">
+          <div className="cookie-banner-copy">
+            <strong>Cookie preferences</strong>
+            <p>
+              Exdox uses essential cookies to keep the site secure and working. We may also use analytics and advertising cookies
+              on public pages. Choose your preference, or read the full <Link to="/cookies">Cookie Policy</Link>.
+            </p>
+          </div>
+          <div className="cookie-banner-actions">
+            <button className="secondary-action" type="button" onClick={() => setConsent("essential_only")}>
+              Essential only
+            </button>
+            <button className="primary-action" type="button" onClick={() => setConsent("all_cookies")}>
+              Accept all cookies
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
