@@ -2788,6 +2788,11 @@ input {
   gap: 12px;
 }
 
+.contact-section-embedded {
+  display: grid;
+  gap: 18px;
+}
+
 .pricing-feature-list {
   margin: 16px 0 0;
   padding-left: 18px;

@@ -102,6 +102,7 @@ const navItems = [
   { to: "/claims", label: "Expense Claims", icon: "claims" },
   { to: "/rules", label: "Supplier Rules", icon: "rules" },
   { to: "/reconciliation", label: "Bank Reconciliation", icon: "bank" },
+  { to: "/contact", label: "Contact", icon: "contact" },
   { to: "/settings", label: "Profile/Settings", icon: "settings" },
   { to: "/requisitions", label: "Open Banking", icon: "open-banking" },
   { to: "/billing", label: "Billing", icon: "billing" },
@@ -115,6 +116,7 @@ const privateAppRoutePrefixes = [
   "/claims",
   "/rules",
   "/reconciliation",
+  "/contact",
   "/settings",
   "/requisitions",
   "/billing",
@@ -133,6 +135,7 @@ const publicNavItems = [
   { to: "/pricing", label: "Pricing" },
   { to: "/faq", label: "FAQs" },
   { to: "/company", label: "About" },
+  { to: "/contact", label: "Contact" },
 ] as const;
 const supportPagePath = "/contact";
 const contactPagePath = "/contact";
@@ -1426,6 +1429,7 @@ function DashboardShell(props: {
     : [
         { to: "/dropbox", label: "My Drop Box", icon: "costs" },
         { to: "/claims", label: "My Claims", icon: "claims" },
+        { to: "/contact", label: "Contact", icon: "contact" },
       ];
   const defaultRoute = getDefaultRoute(props.session);
 
@@ -1586,6 +1590,7 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/overview") || isRouteAllowed(props.session, "/billing") ? (
                 <Route path="/pricing" element={<PricingSection session={props.session} />} />
               ) : null}
+              <Route path="/contact" element={<WorkspaceContactPage />} />
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
                   path="/costs"
@@ -1760,6 +1765,7 @@ function DashboardShell(props: {
                 path="/claims/:id"
                 element={<ClaimDetailPage loadClaim={props.loadClaim} onStatusChange={props.onClaimStatusChange} settings={props.store.settings} employeeMode />}
               />
+              <Route path="/contact" element={<WorkspaceContactPage />} />
               <Route
                 path="/dropbox/:id"
                 element={
@@ -7943,7 +7949,7 @@ function CompanySection({ session = null }: { session?: SessionState | null }) {
   );
 }
 
-function ContactSection() {
+function ContactSection({ embedded = false }: { embedded?: boolean }) {
   const location = useLocation();
   const requestedSubject = new URLSearchParams(location.search).get("subject")?.trim();
   const subjectOptions = [
@@ -7976,7 +7982,7 @@ function ContactSection() {
   const canSubmit = Boolean(name.trim() && email.trim() && subject.trim() && message.trim() && !submitting);
 
   return (
-    <section className="company-band contact-band">
+    <section className={embedded ? "contact-section-embedded" : "company-band contact-band"}>
       <div className="section-heading">
         <div>
           <p className="section-kicker">Contact Us</p>
@@ -8080,6 +8086,23 @@ function ContactSection() {
         </div>
       </div>
     </section>
+  );
+}
+
+function WorkspaceContactPage() {
+  return (
+    <div className="stack-page">
+      <section className="panel">
+        <div className="panel-heading">
+          <h2>Contact Exdox</h2>
+          <span>Use the website form for access, billing, onboarding, policy, and product questions.</span>
+        </div>
+        <p>
+          Messages sent here go through the main Exdox contact route so you do not need to leave the dashboard to ask for help.
+        </p>
+      </section>
+      <ContactSection embedded />
+    </div>
   );
 }
 
@@ -8296,6 +8319,7 @@ function NavIcon({ name }: { name: string }) {
     claims: <><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 13h6M10 17h6" /></>,
     rules: <><circle cx="8" cy="8" r="3" /><circle cx="16" cy="16" r="3" /><path d="M10.5 10.5 13.5 13.5M16 3v4M3 16h4" /></>,
     bank: <><path d="m3 9 9-6 9 6M5 10h14M6 10v8M10 10v8M14 10v8M18 10v8M4 21h16" /></>,
+    contact: <><path d="M4 6h16v12H4z" /><path d="m4 8 8 6 8-6" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" /></>,
     billing: <><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M4 10h16M8 15h4" /></>,
     "open-banking": <><path d="M4 7h16v13H4zM8 4h8l2 3H6l2-3Z" /><path d="M8 11h8M8 15h5" /></>,
