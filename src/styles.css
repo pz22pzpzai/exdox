@@ -2740,6 +2740,14 @@ input {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  align-items: start;
+}
+
+.contact-form-grid label {
+  display: grid;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .contact-form-message {
@@ -2749,6 +2757,30 @@ input {
 .contact-form-grid textarea {
   min-height: 180px;
   resize: vertical;
+}
+
+.contact-form-grid .toolbar,
+.contact-form-grid .form-status {
+  grid-column: 1 / -1;
+}
+
+.form-status {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-weight: 600;
+}
+
+.form-status.success {
+  background: rgba(51, 171, 96, 0.12);
+  border: 1px solid rgba(51, 171, 96, 0.22);
+  color: #216f41;
+}
+
+.form-status.error {
+  background: rgba(214, 76, 63, 0.12);
+  border: 1px solid rgba(214, 76, 63, 0.22);
+  color: #9b2d22;
 }
 
 .contact-side-grid {

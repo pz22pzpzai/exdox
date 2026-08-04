@@ -42,6 +42,7 @@ import {
   saveRule,
   saveSettings,
   sendInvite,
+  submitContactForm,
   updateClaimStatus,
   uploadDocuments,
 } from "./api";
@@ -7954,6 +7955,9 @@ function ContactSection() {
   const [company, setCompany] = useState("");
   const [subject, setSubject] = useState(requestedSubject || "General enquiry");
   const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (requestedSubject) {
@@ -7961,7 +7965,7 @@ function ContactSection() {
     }
   }, [requestedSubject]);
 
-  const canSubmit = name.trim() && email.trim() && subject.trim() && message.trim();
+  const canSubmit = Boolean(name.trim() && email.trim() && subject.trim() && message.trim() && !submitting);
 
   return (
     <section className="company-band contact-band">
@@ -7971,8 +7975,8 @@ function ContactSection() {
           <h2>Send your message to the Exdox team</h2>
         </div>
         <p>
-          This form prepares an email to <a href={`mailto:${contactEmailAddress}`}>{contactEmailAddress}</a> so access,
-          billing, onboarding, and product questions all go to the main Exdox contact route.
+          Send your message here and we will route it through the main Exdox inbox at{" "}
+          <a href={`mailto:${contactEmailAddress}`}>{contactEmailAddress}</a>.
         </p>
       </div>
 
@@ -7980,24 +7984,33 @@ function ContactSection() {
         <div className="contact-form-card">
           <div className="panel-heading">
             <h2>Contact form</h2>
-            <span>Tell us what you need and your email app will open with everything filled in.</span>
+            <span>Use this form for support, billing, onboarding, demos, or general questions.</span>
           </div>
           <form
             className="contact-form-grid"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
               if (!canSubmit) {
                 return;
               }
-              const composedBody = [
-                `Name: ${name.trim()}`,
-                `Email: ${email.trim()}`,
-                `Organisation: ${company.trim() || "Not provided"}`,
-                "",
-                "Message:",
-                message.trim(),
-              ].join("\n");
-              window.location.href = `mailto:${contactEmailAddress}?subject=${encodeURIComponent(subject.trim())}&body=${encodeURIComponent(composedBody)}`;
+              setSubmitting(true);
+              setSubmitMessage(null);
+              setSubmitError(null);
+              try {
+                const response = await submitContactForm({
+                  fullName: name.trim(),
+                  email: email.trim(),
+                  organisationName: company.trim(),
+                  subject: subject.trim(),
+                  message: message.trim(),
+                });
+                setSubmitMessage(response.message || "Your message has been sent to the Exdox team.");
+                setMessage("");
+              } catch (error) {
+                setSubmitError(error instanceof Error ? error.message : "Could not send your message right now.");
+              } finally {
+                setSubmitting(false);
+              }
             }}
           >
             <label>
@@ -8033,9 +8046,11 @@ function ContactSection() {
             </label>
             <div className="toolbar">
               <button className="primary-action" type="submit" disabled={!canSubmit}>
-                Open email draft
+                {submitting ? "Sending..." : "Send message"}
               </button>
             </div>
+            {submitMessage ? <p className="form-status success">{submitMessage}</p> : null}
+            {submitError ? <p className="form-status error">{submitError}</p> : null}
           </form>
         </div>
 

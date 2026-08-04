@@ -209,6 +209,19 @@ export async function resetPasswordWithToken(input: { email: string; token: stri
   });
 }
 
+export async function submitContactForm(input: {
+  fullName: string;
+  email: string;
+  organisationName?: string;
+  subject: string;
+  message: string;
+}): Promise<{ message: string; delivered?: boolean }> {
+  return apiFetch("/contact", "", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function fetchSession(token: string): Promise<SessionState> {
   const response = await apiFetch<{
     user: SessionState["user"];
