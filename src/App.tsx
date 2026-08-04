@@ -6389,7 +6389,7 @@ function RegisterState(props: {
             </form>
             <div className="login-links">
               <Link to="/login">Already have an account? Log in</Link>
-              <Link to={supportPagePath}>Need help activating?</Link>
+              <Link to={`${supportPagePath}?subject=${encodeURIComponent("Onboarding help")}`}>Need help activating?</Link>
             </div>
           </div>
         </main>
@@ -7138,7 +7138,7 @@ function TermsSection() {
           body: (
             <>
               <p>To the extent permitted by law, Exdox is not liable for indirect, incidental, special, or consequential loss. Nothing in these terms limits liability where it cannot legally be excluded.</p>
-              <p>For billing, cancellation, legal, or account questions, contact <a href="mailto:contact@exdox.co.uk?subject=Exdox%20terms%20request">contact@exdox.co.uk</a>.</p>
+              <p>For billing, cancellation, legal, or account questions, use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Terms request")}`}>contact form</Link>.</p>
             </>
           ),
         },
@@ -7241,7 +7241,7 @@ function PrivacyPolicySection() {
           body: (
             <>
               <p>You may be able to control cookies through our consent tools, your browser settings, and Google&apos;s advertising controls. You may also contact us to ask about access, correction, or deletion requests relating to information you have provided directly.</p>
-              <p>For privacy enquiries, contact <a href="mailto:contact@exdox.co.uk?subject=Privacy%20request">contact@exdox.co.uk</a>.</p>
+              <p>For privacy enquiries, use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Privacy request")}`}>contact form</Link>.</p>
             </>
           ),
         },
@@ -7317,7 +7317,7 @@ function CookiePolicySection() {
           heading: "Contact",
           body: (
             <>
-              <p>If you have questions about cookies or tracking technologies on Exdox, contact <a href="mailto:contact@exdox.co.uk?subject=Cookie%20policy%20request">contact@exdox.co.uk</a>.</p>
+              <p>If you have questions about cookies or tracking technologies on Exdox, use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Cookie policy request")}`}>contact form</Link>.</p>
             </>
           ),
         },
@@ -7345,7 +7345,7 @@ function AccountDeletionSection() {
           heading: "How to request deletion",
           body: (
             <>
-              <p>Email <a href="mailto:contact@exdox.co.uk?subject=Account%20deletion%20request">contact@exdox.co.uk</a> with the subject line <strong>Account deletion request</strong>.</p>
+              <p>Use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Account deletion request")}`}>contact form</Link> and select <strong>Account deletion request</strong>.</p>
               <p>Include the email address used for your Exdox login, your organisation name, and whether you are requesting deletion of only your user account or of the wider organisation workspace.</p>
               <p>If we need to verify identity or admin authority before deleting data, we may ask for confirmation from the registered account or workspace owner.</p>
             </>
@@ -7927,12 +7927,16 @@ function CompanySection({ session = null }: { session?: SessionState | null }) {
         <article className="company-card">
           <strong>Access support</strong>
           <p>Use this for login help, password resets, invite issues, and activation support.</p>
-          <a className="secondary-inline-link company-card-link-row" href={`mailto:${contactEmailAddress}?subject=Access%20support`}>Email access support</a>
+          <Link className="secondary-inline-link company-card-link-row" to={`${contactPagePath}?subject=${encodeURIComponent("Access support")}`}>
+            Open access support form
+          </Link>
         </article>
         <article className="company-card">
           <strong>Billing support</strong>
           <p>Use this for plan questions, workspace unlock requests, and commercial billing changes.</p>
-          <a className="secondary-inline-link company-card-link-row" href={`mailto:${contactEmailAddress}?subject=Billing%20support`}>Email billing support</a>
+          <Link className="secondary-inline-link company-card-link-row" to={`${contactPagePath}?subject=${encodeURIComponent("Billing support")}`}>
+            Open billing support form
+          </Link>
         </article>
       </div>
     </section>
@@ -7949,6 +7953,10 @@ function ContactSection() {
     "Product demo",
     "Onboarding help",
     "Security request",
+    "Terms request",
+    "Privacy request",
+    "Cookie policy request",
+    "Account deletion request",
   ];
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
