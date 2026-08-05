@@ -6641,7 +6641,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
               rel="noreferrer"
               aria-label="Download Exdox on Google Play"
             >
-              <img src="/branding/google-play-badge.jpg" alt="Get it on Google Play" />
+              <img src="/branding/google-play-store-badge.jpg" alt="Get it on Google Play" />
             </a>
             <span className="store-badge store-badge-disabled" aria-disabled="true">
               <span className="store-badge-caption">iPhone app</span>
