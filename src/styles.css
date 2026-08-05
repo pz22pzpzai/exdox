@@ -2150,8 +2150,8 @@ input {
 
 .cookie-banner {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
+  top: 50%;
+  left: 50%;
   z-index: 1200;
   width: min(460px, calc(100% - 24px));
   display: grid;
@@ -2162,6 +2162,7 @@ input {
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 20px 60px rgba(14, 28, 61, 0.18);
   backdrop-filter: blur(10px);
+  transform: translate(-50%, -50%);
 }
 
 .cookie-banner-copy {
@@ -3421,10 +3422,7 @@ input {
   }
 
   .cookie-banner {
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
-    width: auto;
+    width: calc(100% - 24px);
   }
 
   .cookie-banner-actions {
