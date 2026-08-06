@@ -1611,7 +1611,7 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/overview") || isRouteAllowed(props.session, "/billing") ? (
                 <Route path="/pricing" element={<PricingSection session={props.session} />} />
               ) : null}
-              <Route path="/contact" element={<WorkspaceContactPage />} />
+              <Route path="/contact" element={<WorkspaceContactPage session={props.session} />} />
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
                   path="/costs"
@@ -1786,7 +1786,7 @@ function DashboardShell(props: {
                 path="/claims/:id"
                 element={<ClaimDetailPage loadClaim={props.loadClaim} onStatusChange={props.onClaimStatusChange} settings={props.store.settings} employeeMode />}
               />
-              <Route path="/contact" element={<WorkspaceContactPage />} />
+              <Route path="/contact" element={<WorkspaceContactPage session={props.session} />} />
               <Route
                 path="/dropbox/:id"
                 element={
@@ -6647,7 +6647,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
           title="Talk to Exdox about access, billing, or product questions."
           body="Send a message to the Exdox team and we will route it to the right place through contact@exdox.co.uk."
         />
-        <ContactSection />
+        <ContactSection session={session} />
       </PublicLayout>
     );
   }
@@ -8097,7 +8097,7 @@ function CompanySection({ session = null }: { session?: SessionState | null }) {
   );
 }
 
-function ContactSection({ embedded = false }: { embedded?: boolean }) {
+function ContactSection({ embedded = false, session = null }: { embedded?: boolean; session?: SessionState | null }) {
   const location = useLocation();
   const requestedSubject = new URLSearchParams(location.search).get("subject")?.trim();
   const subjectOptions = [
@@ -8112,9 +8112,11 @@ function ContactSection({ embedded = false }: { embedded?: boolean }) {
     "Cookie policy request",
     "Account deletion request",
   ];
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [company, setCompany] = useState("");
+  const [name, setName] = useState(session?.user.fullName?.trim() || "");
+  const [email, setEmail] = useState(session?.user.email || "");
+  const [company, setCompany] = useState(
+    session?.organisations.find((organisation) => organisation.id === session.activeOrganisationId)?.name?.trim() || "",
+  );
   const [subject, setSubject] = useState(requestedSubject || "General enquiry");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -8126,6 +8128,16 @@ function ContactSection({ embedded = false }: { embedded?: boolean }) {
       setSubject(requestedSubject);
     }
   }, [requestedSubject]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+    const activeOrganisation = session.organisations.find((organisation) => organisation.id === session.activeOrganisationId);
+    setName((current) => current || session.user.fullName?.trim() || "");
+    setEmail((current) => current || session.user.email || "");
+    setCompany((current) => current || activeOrganisation?.name?.trim() || "");
+  }, [session]);
 
   const canSubmit = Boolean(name.trim() && email.trim() && subject.trim() && message.trim() && !submitting);
 
@@ -8237,7 +8249,7 @@ function ContactSection({ embedded = false }: { embedded?: boolean }) {
   );
 }
 
-function WorkspaceContactPage() {
+function WorkspaceContactPage({ session }: { session: SessionState }) {
   return (
     <div className="stack-page">
       <section className="panel">
@@ -8249,7 +8261,7 @@ function WorkspaceContactPage() {
           Messages sent here go through the main Exdox contact route so you do not need to leave the dashboard to ask for help.
         </p>
       </section>
-      <ContactSection embedded />
+      <ContactSection embedded session={session} />
     </div>
   );
 }
@@ -9565,6 +9577,10 @@ function isBusinessAdmin(session: SessionState) {
 }
 
 function isRouteAllowed(session: SessionState, pathname: string) {
+  if (pathname === "/contact" || pathname.startsWith("/contact/")) {
+    return true;
+  }
+
   if (isBusinessAdmin(session) && pathname.startsWith("/billing")) {
     return true;
   }
