@@ -5248,6 +5248,31 @@ function SettingsPage(props: {
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [preferences, setPreferences] = useState(() => loadProfileSettingsDraft(props.session));
   const [preferencesFeedback, setPreferencesFeedback] = useState<string | null>(null);
+  const [billingPortalBusy, setBillingPortalBusy] = useState(false);
+  const [billingPortalError, setBillingPortalError] = useState<string | null>(null);
+
+  const openBillingPortal = async () => {
+    const billing = props.session.billing;
+    if (!billing?.stripeConfigured || !billing.stripeCustomerId) {
+      openContactRoute("Billing support");
+      return;
+    }
+
+    setBillingPortalBusy(true);
+    setBillingPortalError(null);
+    try {
+      const response = await createBillingPortalSession(props.session.token);
+      if (!response.portalUrl) {
+        setBillingPortalError("The billing portal is not available for this workspace yet.");
+        return;
+      }
+      window.location.href = response.portalUrl;
+    } catch (portalError) {
+      setBillingPortalError(portalError instanceof Error ? portalError.message : "Could not open the billing portal.");
+    } finally {
+      setBillingPortalBusy(false);
+    }
+  };
 
   useEffect(() => {
     setDraft(props.settings);
@@ -5672,6 +5697,46 @@ function SettingsPage(props: {
             </button>
             <button className="secondary-action" type="button" onClick={() => openContactRoute("Two-factor authentication request")}>
               Open 2FA request
+            </button>
+          </div>
+        </div>
+
+        <div className="panel settings-panel">
+          <div className="panel-heading">
+            <h2>Billing & subscription</h2>
+            <span>Manage your trial, payment details, plan, or cancellation</span>
+          </div>
+          {billingPortalError ? <div className="error-banner">{billingPortalError}</div> : null}
+          <div className="summary-list">
+            <div>
+              <strong>Current plan</strong>
+              <span>{props.session.billing?.planLabel ?? props.session.billing?.planId ?? "Workspace access"}</span>
+            </div>
+            <div>
+              <strong>Subscription status</strong>
+              <span>{props.session.billing ? props.session.billing.status.replace(/_/g, " ") : "Not available"}</span>
+            </div>
+            <div>
+              <strong>Cancellation</strong>
+              <span>
+                {props.session.billing?.cancellationScheduledFor
+                  ? `Scheduled for ${formatLongDate(props.session.billing.cancellationScheduledFor)}`
+                  : "Not scheduled"}
+              </span>
+            </div>
+          </div>
+          <p>
+            {props.session.billing?.stripeConfigured && props.session.billing.stripeCustomerId
+              ? "Open the secure billing portal to update payment details, change your plan, or cancel before renewal."
+              : "Online billing is not available for this workspace yet. Billing support can help with plan and cancellation requests."}
+          </p>
+          <div className="toolbar">
+            <button className="secondary-action" type="button" disabled={billingPortalBusy} onClick={() => void openBillingPortal()}>
+              {billingPortalBusy
+                ? "Opening billing portal..."
+                : props.session.billing?.stripeConfigured && props.session.billing.stripeCustomerId
+                  ? "Manage or cancel subscription"
+                  : "Open billing support"}
             </button>
           </div>
         </div>
