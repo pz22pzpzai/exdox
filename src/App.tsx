@@ -1122,6 +1122,10 @@ export function App() {
                   setAuthBusy(false);
                 }
               }}
+              onResendConfirmation={async (email) => {
+                const response = await resendConfirmationEmail({ email });
+                return response.message;
+              }}
             />
           </PublicLayout>
         </>
@@ -6203,12 +6207,15 @@ function RegisterState(props: {
     termsAccepted?: boolean;
     termsVersion?: string;
   }) => Promise<string | null>;
+  onResendConfirmation: (email: string) => Promise<string>;
 }) {
   const [fullName, setFullName] = useState("");
   const [organisationName, setOrganisationName] = useState("");
   const [email, setEmail] = useState(props.initialEmail);
   const [password, setPassword] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [billingPlan, setBillingPlan] = useState<BillingPlanId>(normalizeRegisterPlan(props.initialPlan));
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const billingCycle: BillingCycle = "monthly";
@@ -6294,6 +6301,7 @@ function RegisterState(props: {
                 });
                 if (nextSuccessMessage) {
                   setSuccessMessage(nextSuccessMessage);
+                  setResendMessage(null);
                   setPassword("");
                 }
               }}
@@ -6375,9 +6383,30 @@ function RegisterState(props: {
               ) : null}
               {successMessage ? <div className="success-banner">{successMessage}</div> : null}
               {props.error ? <div className="error-banner">{props.error}</div> : null}
-              <button className="primary-action login-submit" type="submit" disabled={props.busy || (!invitedFlow && !acceptedTerms)}>
-                {props.busy ? "Creating access..." : invitedFlow ? "Activate access" : "Create workspace"}
-              </button>
+              {successMessage && !invitedFlow ? (
+                <button
+                  className="primary-action login-submit"
+                  type="button"
+                  disabled={resendBusy}
+                  onClick={async () => {
+                    setResendBusy(true);
+                    setResendMessage(null);
+                    try {
+                      const message = await props.onResendConfirmation(email);
+                      setResendMessage(message);
+                    } finally {
+                      setResendBusy(false);
+                    }
+                  }}
+                >
+                  {resendBusy ? "Sending confirmation..." : "Resend confirmation email"}
+                </button>
+              ) : (
+                <button className="primary-action login-submit" type="submit" disabled={props.busy || (!invitedFlow && !acceptedTerms)}>
+                  {props.busy ? "Creating access..." : invitedFlow ? "Activate access" : "Create workspace"}
+                </button>
+              )}
+              {resendMessage ? <div className="success-banner">{resendMessage}</div> : null}
             </form>
             <div className="login-links">
               <Link to="/login">Already have an account? Log in</Link>
