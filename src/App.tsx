@@ -386,6 +386,21 @@ const pricingSliderSteps: Array<{
   },
 ];
 
+function resolvePricingSliderStep(
+  planId: BillingPlanId,
+  monthlyDocumentLimit?: number,
+  includedUsers?: number,
+) {
+  return (
+    pricingSliderSteps.find(
+      (step) =>
+        step.planId === planId &&
+        step.documents === monthlyDocumentLimit &&
+        step.users === includedUsers,
+    ) ?? pricingSliderSteps.find((step) => step.planId === planId) ?? pricingSliderSteps[0]!
+  );
+}
+
 const brandLogoSrc = "/branding/exdox-logo.webp";
 const brandMarkSrc = "/branding/exdox-mark.webp";
 const publicBrandMarkSrc = "/branding/exdox-mark-header-v2.webp";
@@ -6216,11 +6231,16 @@ function RegisterState(props: {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
-  const [billingPlan, setBillingPlan] = useState<BillingPlanId>(normalizeRegisterPlan(props.initialPlan));
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const billingCycle: BillingCycle = "monthly";
   const invitedFlow = Boolean(props.inviteToken);
-  const enterpriseSignupRequested = !invitedFlow && props.initialPlan === "enterprise";
+  const selectedSignupStep = resolvePricingSliderStep(
+    normalizeRegisterPlan(props.initialPlan),
+    props.initialMonthlyDocumentLimit,
+    props.initialIncludedUsers,
+  );
+  const selectedSignupPrice = priceWithVat(selectedSignupStep.monthlyPrice);
+  const enterpriseSignupRequested = !invitedFlow && selectedSignupStep.planId === "enterprise";
   const selfServeSignupBlocked = false;
 
   useEffect(() => {
@@ -6232,10 +6252,6 @@ function RegisterState(props: {
       setSuccessMessage(null);
     }
   }, [props.error]);
-
-  useEffect(() => {
-    setBillingPlan(normalizeRegisterPlan(props.initialPlan));
-  }, [props.initialPlan]);
 
   const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
   const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
@@ -6280,22 +6296,10 @@ function RegisterState(props: {
                   fullName: fullName || undefined,
                   organisationName: invitedFlow ? undefined : organisationName || undefined,
                   inviteToken: props.inviteToken || undefined,
-                  billingPlan: invitedFlow ? undefined : normalizeRegisterPlan(billingPlan),
+                  billingPlan: invitedFlow ? undefined : selectedSignupStep.planId,
                   billingCycle: invitedFlow ? undefined : billingCycle,
-                  monthlyDocumentLimit:
-                    invitedFlow ||
-                    !isSelfServePlanId(props.initialPlan) ||
-                    normalizeRegisterPlan(billingPlan) !== normalizeRegisterPlan(props.initialPlan) ||
-                    !isSelfServePlanId(normalizeRegisterPlan(billingPlan))
-                      ? undefined
-                      : props.initialMonthlyDocumentLimit,
-                  includedUsers:
-                    invitedFlow ||
-                    !isSelfServePlanId(props.initialPlan) ||
-                    normalizeRegisterPlan(billingPlan) !== normalizeRegisterPlan(props.initialPlan) ||
-                    !isSelfServePlanId(normalizeRegisterPlan(billingPlan))
-                      ? undefined
-                      : props.initialIncludedUsers,
+                  monthlyDocumentLimit: invitedFlow ? undefined : selectedSignupStep.documents,
+                  includedUsers: invitedFlow ? undefined : selectedSignupStep.users,
                   termsAccepted: invitedFlow ? undefined : acceptedTerms,
                   termsVersion: invitedFlow ? undefined : termsVersion,
                 });
@@ -6328,16 +6332,15 @@ function RegisterState(props: {
                       placeholder="Your business or organisation"
                     />
                   </label>
-                  <label>
-                    Plan
-                    <select value={billingPlan} onChange={(event) => setBillingPlan(event.target.value as BillingPlanId)}>
-                      {pricingPlans.filter((plan) => isSelfServePlanId(plan.id)).map((plan) => (
-                        <option key={plan.id} value={plan.id}>
-                          {plan.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <section className="registration-plan-summary" aria-label="Selected plan summary">
+                    <div>
+                      <span>Selected package</span>
+                      <strong>{selectedSignupStep.accessBand} · {selectedSignupStep.users} users</strong>
+                    </div>
+                    <strong>{currency(selectedSignupPrice)} / month</strong>
+                    <p>{selectedSignupStep.documents.toLocaleString()} documents per month · VAT included</p>
+                    <Link to="/pricing">Change selection</Link>
+                  </section>
                 </>
               ) : null}
               <label>
@@ -6378,7 +6381,7 @@ function RegisterState(props: {
               ) : null}
               {!invitedFlow ? (
                 <div className="muted-copy">
-                  The free trial starts after email confirmation and card setup. You can cancel from Billing before the trial converts to a paid subscription.
+                  The free trial starts after email confirmation and card setup. Your selected {currency(selectedSignupPrice)} monthly package is held for checkout. You can cancel from Billing before the trial converts to a paid subscription.
                 </div>
               ) : null}
               {successMessage ? <div className="success-banner">{successMessage}</div> : null}
@@ -8193,6 +8196,9 @@ function BillingPage(props: { session: SessionState }) {
   const lockedRoute = new URLSearchParams(useLocation().search).get("locked");
   const lockedRouteLabel = lockedRoute ? routeTitle(lockedRoute) : null;
   const billing = props.session.billing;
+  const selectedBillingStep = billing
+    ? resolvePricingSliderStep(billing.planId, billing.monthlyDocumentLimit ?? undefined, billing.includedUsers ?? undefined)
+    : null;
   const trialSetupRequired = billing?.status === "inactive" && !billing?.stripeSubscriptionId;
   const trialDateLabel = billing?.trialEndsAt ? formatLongDate(billing.trialEndsAt) : null;
   const cancellationDateLabel = billing?.cancellationScheduledFor ? formatLongDate(billing.cancellationScheduledFor) : null;
@@ -8301,9 +8307,17 @@ function BillingPage(props: { session: SessionState }) {
             <article key={plan.id} className={`pricing-card${active ? " current-plan" : ""}`}>
               <span>{plan.name}</span>
               <strong>{plan.tagline}</strong>
-              <p>{plan.id === "enterprise" ? "Private rollout pricing" : plan.monthlyPrice != null ? `${currency(priceWithVat(plan.monthlyPrice))} per month` : "Custom pricing"}</p>
-              <p>{plan.monthlyDocuments}</p>
-              <p>{plan.users}</p>
+              <p>
+                {plan.id === "enterprise"
+                  ? "Private rollout pricing"
+                  : active && selectedBillingStep
+                    ? `${currency(priceWithVat(selectedBillingStep.monthlyPrice))} per month`
+                    : plan.monthlyPrice != null
+                      ? `${currency(priceWithVat(plan.monthlyPrice))} per month`
+                      : "Custom pricing"}
+              </p>
+              <p>{active && selectedBillingStep ? `${selectedBillingStep.documents.toLocaleString()} documents / month` : plan.monthlyDocuments}</p>
+              <p>{active && selectedBillingStep ? `${selectedBillingStep.users} users included` : plan.users}</p>
               <ul className="pricing-feature-list">
                 {plan.features.map((feature) => (
                   <li key={feature}>{feature}</li>
