@@ -1086,6 +1086,22 @@ export function App() {
                 setError(null);
                 try {
                   const nextSession = await confirmEmailWithToken({ email, token });
+                  const billing = nextSession.billing;
+                  const selfServePlan = billing && ["capture", "control", "operations"].includes(billing.planId);
+
+                  // A new self-serve account must set up its selected trial package before entering the workspace.
+                  if (billing?.status === "inactive" && selfServePlan) {
+                    const checkout = await createBillingCheckoutSession(nextSession.token, {
+                      planId: billing.planId,
+                      billingCycle: billing.billingCycle,
+                    });
+                    if (!checkout.checkoutUrl) {
+                      throw new Error("Your email was confirmed, but payment setup could not be started. Please try again from Profile/Settings.");
+                    }
+                    window.location.assign(checkout.checkoutUrl);
+                    return;
+                  }
+
                   await loadWorkspace(nextSession.token, nextSession);
                 } catch (confirmError) {
                   setSession(null);
