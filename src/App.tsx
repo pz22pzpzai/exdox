@@ -920,6 +920,7 @@ function updateStructuredData(structuredData?: Record<string, unknown> | Array<R
 
 export function App() {
   const location = useLocation();
+  const navigate = useNavigate();
   const initialStoredSession = useMemo(() => loadStoredSession(), []);
   const [session, setSession] = useState<SessionState | null>(initialStoredSession);
   const [store, setStore] = useState<AppStore>({
@@ -967,6 +968,25 @@ export function App() {
     });
     setError(null);
     setAuthError(null);
+  };
+
+  const startPendingTrialCheckout = async (nextSession: SessionState) => {
+    const billing = nextSession.billing;
+    const selfServePlan = billing && ["capture", "control", "operations"].includes(billing.planId);
+    if (billing?.status !== "inactive" || !selfServePlan) {
+      return false;
+    }
+
+    const checkout = await createBillingCheckoutSession(nextSession.token, {
+      planId: billing.planId,
+      billingCycle: billing.billingCycle,
+    });
+    if (!checkout.checkoutUrl) {
+      throw new Error("Payment setup is not available yet. Please try again shortly or contact contact@exdox.co.uk.");
+    }
+
+    window.location.assign(checkout.checkoutUrl);
+    return true;
   };
 
   useEffect(() => {
@@ -1085,24 +1105,10 @@ export function App() {
                 setAuthError(null);
                 setError(null);
                 try {
-                  const nextSession = await confirmEmailWithToken({ email, token });
-                  const billing = nextSession.billing;
-                  const selfServePlan = billing && ["capture", "control", "operations"].includes(billing.planId);
-
-                  // A new self-serve account must set up its selected trial package before entering the workspace.
-                  if (billing?.status === "inactive" && selfServePlan) {
-                    const checkout = await createBillingCheckoutSession(nextSession.token, {
-                      planId: billing.planId,
-                      billingCycle: billing.billingCycle,
-                    });
-                    if (!checkout.checkoutUrl) {
-                      throw new Error("Your email was confirmed, but payment setup could not be started. Please try again from Profile/Settings.");
-                    }
-                    window.location.assign(checkout.checkoutUrl);
-                    return;
-                  }
-
-                  await loadWorkspace(nextSession.token, nextSession);
+                  await confirmEmailWithToken({ email, token });
+                  clearStoredSession();
+                  setSession(null);
+                  navigate(`/login?email=${encodeURIComponent(email)}&confirmed=1`, { replace: true });
                 } catch (confirmError) {
                   setSession(null);
                   setAuthError(confirmError instanceof Error ? confirmError.message : "Email confirmation failed.");
@@ -1181,6 +1187,8 @@ export function App() {
           <LoginState
             busy={authBusy}
             error={authError ?? error}
+            initialEmail={new URLSearchParams(location.search).get("email") ?? ""}
+            confirmationComplete={new URLSearchParams(location.search).get("confirmed") === "1"}
             embeddedInPublicShell
             onLogin={async (email, password) => {
               setAuthBusy(true);
@@ -1188,6 +1196,9 @@ export function App() {
               setError(null);
               try {
                 const nextSession = await loginWithEmail({ email, password });
+                if (await startPendingTrialCheckout(nextSession)) {
+                  return;
+                }
                 await loadWorkspace(nextSession.token, nextSession);
               } catch (loginError) {
                 setSession(null);
@@ -6022,14 +6033,20 @@ function SignalPill({ tone, children }: { tone: "warning" | "info"; children: st
 function LoginState(props: {
   busy: boolean;
   error: string | null;
+  initialEmail: string;
+  confirmationComplete?: boolean;
   embeddedInPublicShell?: boolean;
   onLogin: (email: string, password: string) => Promise<void>;
 }) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(props.initialEmail);
   const [password, setPassword] = useState("");
   const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
   const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
   const needsEmailConfirmation = (props.error ?? "").toLowerCase().includes("confirm your email");
+
+  useEffect(() => {
+    setEmail(props.initialEmail);
+  }, [props.initialEmail]);
 
   return (
     <div className={loginStateClassName}>
@@ -6052,6 +6069,11 @@ function LoginState(props: {
           <div className="login-panel">
             <h1>Log in to Exdox</h1>
             <p>Secure access for finance teams, approvers, and employee expense users.</p>
+            {props.confirmationComplete ? (
+              <div className="success-banner">
+                Email confirmed. Log in to continue to secure payment setup for your selected trial.
+              </div>
+            ) : null}
             <form
               className="login-form"
               onSubmit={async (event) => {

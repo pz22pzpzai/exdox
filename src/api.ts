@@ -105,7 +105,6 @@ export async function loginWithEmail(input: { email: string; password: string })
     hydrated = buildFallbackSession(payload.token, payload.user);
   }
 
-  saveStoredSession(hydrated);
   return hydrated;
 }
 
