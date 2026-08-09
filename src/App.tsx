@@ -945,14 +945,21 @@ export function App() {
       throw error;
     });
     const businessAdmin = isBusinessAdmin(nextSession);
+    const canOpenCosts = isRouteAllowed(nextSession, "/costs");
+    const canOpenSales = isRouteAllowed(nextSession, "/sales");
+    const canOpenVault = isRouteAllowed(nextSession, "/vault");
+    const canOpenClaims = isRouteAllowed(nextSession, "/claims");
+    const canOpenRules = isRouteAllowed(nextSession, "/rules");
+    const canOpenReconciliation = isRouteAllowed(nextSession, "/reconciliation");
+    const canOpenSettings = isRouteAllowed(nextSession, "/settings");
     const [costs, sales, vault, claims, rules, reconciliation, settings] = await Promise.all([
-      listReceipts(token, "cost"),
-      businessAdmin ? listReceipts(token, "sales") : Promise.resolve([]),
-      businessAdmin ? listReceipts(token, "vault").catch(() => []) : Promise.resolve([]),
-      listClaims(token).catch(() => []),
-      businessAdmin ? listRules(token).catch(() => []) : Promise.resolve([]),
-      businessAdmin ? listReconciliation(token).catch(() => []) : Promise.resolve([]),
-      businessAdmin ? getSettings(token).catch(() => null) : Promise.resolve(null),
+      canOpenCosts ? listReceipts(token, "cost") : Promise.resolve([]),
+      businessAdmin && canOpenSales ? listReceipts(token, "sales") : Promise.resolve([]),
+      businessAdmin && canOpenVault ? listReceipts(token, "vault") : Promise.resolve([]),
+      canOpenClaims ? listClaims(token).catch(() => []) : Promise.resolve([]),
+      businessAdmin && canOpenRules ? listRules(token).catch(() => []) : Promise.resolve([]),
+      businessAdmin && canOpenReconciliation ? listReconciliation(token).catch(() => []) : Promise.resolve([]),
+      businessAdmin && canOpenSettings ? getSettings(token).catch(() => null) : Promise.resolve(null),
     ]);
 
     saveStoredSession(nextSession);
