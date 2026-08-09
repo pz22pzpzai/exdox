@@ -1638,7 +1638,7 @@ function DashboardShell(props: {
         {new URLSearchParams(location.search).get("confirmed") === "1"
           && props.session.user.status === "active" ? (
             <div className="success-banner" role="status">
-              Email confirmed. Your workspace now has ongoing access with no email-confirmation deadline.
+              Email confirmed
             </div>
           ) : null}
 
