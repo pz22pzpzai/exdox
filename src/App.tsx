@@ -1096,43 +1096,42 @@ export function App() {
     );
   }
 
+  if (location.pathname === "/confirm-email") {
+    return (
+      <>
+        <SeoManager pathname={location.pathname} session={session} />
+        <PublicLayout activePath="">
+          <ConfirmEmailState
+            busy={authBusy}
+            error={authError ?? error}
+            email={new URLSearchParams(location.search).get("email") ?? ""}
+            token={new URLSearchParams(location.search).get("token") ?? ""}
+            embeddedInPublicShell
+            onConfirm={async (email, token) => {
+              setAuthBusy(true);
+              setAuthError(null);
+              setError(null);
+              try {
+                const confirmedSession = await confirmEmailWithToken({ email, token });
+                await loadWorkspace(confirmedSession.token, confirmedSession);
+                navigate("/overview?confirmed=1", { replace: true });
+              } catch (confirmError) {
+                setAuthError(confirmError instanceof Error ? confirmError.message : "Email confirmation failed.");
+              } finally {
+                setAuthBusy(false);
+              }
+            }}
+            onResend={async (email) => {
+              const response = await resendConfirmationEmail({ email });
+              return response.message;
+            }}
+          />
+        </PublicLayout>
+      </>
+    );
+  }
+
   if (!session && location.pathname !== "/login") {
-    if (location.pathname === "/confirm-email") {
-      return (
-        <>
-          <SeoManager pathname={location.pathname} session={session} />
-          <PublicLayout activePath="">
-            <ConfirmEmailState
-              busy={authBusy}
-              error={authError ?? error}
-              email={new URLSearchParams(location.search).get("email") ?? ""}
-              token={new URLSearchParams(location.search).get("token") ?? ""}
-              embeddedInPublicShell
-              onConfirm={async (email, token) => {
-                setAuthBusy(true);
-                setAuthError(null);
-                setError(null);
-                try {
-                  await confirmEmailWithToken({ email, token });
-                  clearStoredSession();
-                  setSession(null);
-                  navigate(`/login?email=${encodeURIComponent(email)}&confirmed=1`, { replace: true });
-                } catch (confirmError) {
-                  setSession(null);
-                  setAuthError(confirmError instanceof Error ? confirmError.message : "Email confirmation failed.");
-                } finally {
-                  setAuthBusy(false);
-                }
-              }}
-              onResend={async (email) => {
-                const response = await resendConfirmationEmail({ email });
-                return response.message;
-              }}
-            />
-          </PublicLayout>
-        </>
-      );
-    }
     if (location.pathname === "/register") {
       return (
         <>
