@@ -252,6 +252,7 @@ export async function submitContactForm(input: {
 
 export async function fetchSession(token: string): Promise<SessionState> {
   const response = await apiFetch<{
+    token?: string | null;
     user: SessionState["user"];
     organisations: SessionState["organisations"];
     activeOrganisationId: number;
@@ -261,7 +262,7 @@ export async function fetchSession(token: string): Promise<SessionState> {
   }>("/session", token);
 
   return {
-    token,
+    token: response.token ?? token,
     user: response.user,
     organisations: response.organisations,
     activeOrganisationId: response.activeOrganisationId,

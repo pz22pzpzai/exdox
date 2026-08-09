@@ -952,14 +952,15 @@ export function App() {
     const canOpenRules = isRouteAllowed(nextSession, "/rules");
     const canOpenReconciliation = isRouteAllowed(nextSession, "/reconciliation");
     const canOpenSettings = isRouteAllowed(nextSession, "/settings");
+    const sessionToken = nextSession.token;
     const [costs, sales, vault, claims, rules, reconciliation, settings] = await Promise.all([
-      canOpenCosts ? listReceipts(token, "cost") : Promise.resolve([]),
-      businessAdmin && canOpenSales ? listReceipts(token, "sales") : Promise.resolve([]),
-      businessAdmin && canOpenVault ? listReceipts(token, "vault") : Promise.resolve([]),
-      canOpenClaims ? listClaims(token).catch(() => []) : Promise.resolve([]),
-      businessAdmin && canOpenRules ? listRules(token).catch(() => []) : Promise.resolve([]),
-      businessAdmin && canOpenReconciliation ? listReconciliation(token).catch(() => []) : Promise.resolve([]),
-      businessAdmin && canOpenSettings ? getSettings(token).catch(() => null) : Promise.resolve(null),
+      canOpenCosts ? listReceipts(sessionToken, "cost") : Promise.resolve([]),
+      businessAdmin && canOpenSales ? listReceipts(sessionToken, "sales") : Promise.resolve([]),
+      businessAdmin && canOpenVault ? listReceipts(sessionToken, "vault") : Promise.resolve([]),
+      canOpenClaims ? listClaims(sessionToken).catch(() => []) : Promise.resolve([]),
+      businessAdmin && canOpenRules ? listRules(sessionToken).catch(() => []) : Promise.resolve([]),
+      businessAdmin && canOpenReconciliation ? listReconciliation(sessionToken).catch(() => []) : Promise.resolve([]),
+      businessAdmin && canOpenSettings ? getSettings(sessionToken).catch(() => null) : Promise.resolve(null),
     ]);
 
     saveStoredSession(nextSession);
@@ -1632,6 +1633,13 @@ function DashboardShell(props: {
         </header>
 
         {props.error ? <div className="error-banner">{props.error}</div> : null}
+
+        {new URLSearchParams(location.search).get("confirmed") === "1"
+          && props.session.user.status === "active" ? (
+            <div className="success-banner" role="status">
+              Email confirmed. Your workspace now has ongoing access with no email-confirmation deadline.
+            </div>
+          ) : null}
 
         {props.session.user.status === "pending_confirmation" ? (
           <div className="email-confirmation-notice" role="status">
