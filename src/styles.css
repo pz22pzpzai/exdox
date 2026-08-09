@@ -1367,10 +1367,15 @@ input {
   gap: 3px;
 }
 
-.email-confirmation-notice a {
+.email-confirmation-notice > button {
   flex: 0 0 auto;
-  color: #0b6f9f;
-  font-weight: 800;
+  min-height: 42px;
+}
+
+.confirmation-resend-feedback {
+  margin-top: 4px;
+  color: #315c37;
+  font-weight: 700;
 }
 
 .stack-page {

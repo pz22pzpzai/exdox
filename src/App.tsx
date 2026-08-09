@@ -1474,6 +1474,8 @@ function DashboardShell(props: {
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
 }) {
   const [uploadBusy, setUploadBusy] = useState(false);
+  const [confirmationResendBusy, setConfirmationResendBusy] = useState(false);
+  const [confirmationResendFeedback, setConfirmationResendFeedback] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
@@ -1654,10 +1656,35 @@ function DashboardShell(props: {
                     })}`
                   : " within three days"} to keep access.
               </span>
+              {confirmationResendFeedback ? (
+                <span className="confirmation-resend-feedback" aria-live="polite">
+                  {confirmationResendFeedback}
+                </span>
+              ) : null}
             </div>
-            <Link to={`/confirm-email?email=${encodeURIComponent(props.session.user.email)}`}>
-              Resend confirmation email
-            </Link>
+            <button
+              className="secondary-action"
+              type="button"
+              disabled={confirmationResendBusy}
+              onClick={async () => {
+                setConfirmationResendBusy(true);
+                setConfirmationResendFeedback(null);
+                try {
+                  const response = await resendConfirmationEmail({ email: props.session.user.email });
+                  setConfirmationResendFeedback(response.message);
+                } catch (resendError) {
+                  setConfirmationResendFeedback(
+                    resendError instanceof Error
+                      ? resendError.message
+                      : "The confirmation email could not be sent. Please try again.",
+                  );
+                } finally {
+                  setConfirmationResendBusy(false);
+                }
+              }}
+            >
+              {confirmationResendBusy ? "Sending..." : "Resend confirmation email"}
+            </button>
           </div>
         ) : null}
 
