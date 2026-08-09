@@ -1189,6 +1189,7 @@ export function App() {
             error={authError ?? error}
             initialEmail={new URLSearchParams(location.search).get("email") ?? ""}
             confirmationComplete={new URLSearchParams(location.search).get("confirmed") === "1"}
+            confirmationStatus={new URLSearchParams(location.search).get("confirmation")}
             embeddedInPublicShell
             onLogin={async (email, password) => {
               setAuthBusy(true);
@@ -6035,6 +6036,7 @@ function LoginState(props: {
   error: string | null;
   initialEmail: string;
   confirmationComplete?: boolean;
+  confirmationStatus?: string | null;
   embeddedInPublicShell?: boolean;
   onLogin: (email: string, password: string) => Promise<void>;
 }) {
@@ -6072,6 +6074,16 @@ function LoginState(props: {
             {props.confirmationComplete ? (
               <div className="success-banner">
                 Email confirmed. Log in to continue to secure payment setup for your selected trial.
+              </div>
+            ) : null}
+            {props.confirmationStatus === "used" ? (
+              <div className="success-banner">
+                This confirmation link has already been used. Log in to continue with your account.
+              </div>
+            ) : null}
+            {props.confirmationStatus === "failed" ? (
+              <div className="error-banner">
+                We could not confirm this email link. Request a new confirmation email and try again.
               </div>
             ) : null}
             <form
