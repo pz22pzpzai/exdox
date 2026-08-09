@@ -1150,6 +1150,10 @@ export function App() {
                     await loadWorkspace(result.session.token, result.session);
                     return null;
                   }
+                  if (result.checkoutUrl) {
+                    window.location.assign(result.checkoutUrl);
+                    return null;
+                  }
                   return result.message;
                 } catch (registerError) {
                   setSession(null);
@@ -1190,13 +1194,23 @@ export function App() {
             initialEmail={new URLSearchParams(location.search).get("email") ?? ""}
             confirmationComplete={new URLSearchParams(location.search).get("confirmed") === "1"}
             confirmationStatus={new URLSearchParams(location.search).get("confirmation")}
+            checkoutStatus={new URLSearchParams(location.search).get("checkout")}
             embeddedInPublicShell
             onLogin={async (email, password) => {
               setAuthBusy(true);
               setAuthError(null);
               setError(null);
               try {
-                const nextSession = await loginWithEmail({ email, password });
+                const loginResult = await loginWithEmail({ email, password });
+                if (loginResult.kind === "pending_confirmation") {
+                  if (loginResult.checkoutUrl) {
+                    window.location.assign(loginResult.checkoutUrl);
+                    return;
+                  }
+                  setAuthError(loginResult.message);
+                  return;
+                }
+                const nextSession = loginResult.session;
                 if (await startPendingTrialCheckout(nextSession)) {
                   return;
                 }
@@ -6037,6 +6051,7 @@ function LoginState(props: {
   initialEmail: string;
   confirmationComplete?: boolean;
   confirmationStatus?: string | null;
+  checkoutStatus?: string | null;
   embeddedInPublicShell?: boolean;
   onLogin: (email: string, password: string) => Promise<void>;
 }) {
@@ -6044,7 +6059,9 @@ function LoginState(props: {
   const [password, setPassword] = useState("");
   const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
   const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
-  const needsEmailConfirmation = (props.error ?? "").toLowerCase().includes("confirm your email");
+  const needsEmailConfirmation =
+    (props.error ?? "").toLowerCase().includes("confirm your email")
+    || ["required", "invalid", "used"].includes(props.confirmationStatus ?? "");
 
   useEffect(() => {
     setEmail(props.initialEmail);
@@ -6073,17 +6090,27 @@ function LoginState(props: {
             <p>Secure access for finance teams, approvers, and employee expense users.</p>
             {props.confirmationComplete ? (
               <div className="success-banner">
-                Email confirmed. Log in to continue to secure payment setup for your selected trial.
+                Email confirmed. Log in to continue with your selected trial.
               </div>
             ) : null}
-            {props.confirmationStatus === "used" ? (
-              <div className="success-banner">
-                This confirmation link has already been used. Log in to continue with your account.
+            {props.confirmationStatus === "invalid" || props.confirmationStatus === "used" ? (
+              <div className="error-banner">
+                This confirmation link is old or invalid. Open the latest Exdox email, or request a new confirmation message below.
               </div>
             ) : null}
             {props.confirmationStatus === "failed" ? (
               <div className="error-banner">
                 We could not confirm this email link. Request a new confirmation email and try again.
+              </div>
+            ) : null}
+            {props.checkoutStatus === "success" ? (
+              <div className="success-banner">
+                Card setup complete. Confirm your email address, then log in to open your workspace.
+              </div>
+            ) : null}
+            {props.checkoutStatus === "cancelled" ? (
+              <div className="error-banner">
+                Card setup was cancelled. Confirm your email and log in when you are ready to restart it.
               </div>
             ) : null}
             <form
@@ -6394,7 +6421,7 @@ function RegisterState(props: {
             <p>
               {invitedFlow
                 ? "Set a password to activate access to the invited workspace."
-                : "Create your workspace, confirm your email, then add your card to begin the free trial."}
+                : "Create your workspace, add your card securely, then confirm your email before entering Exdox."}
             </p>
             {enterpriseSignupRequested ? (
               <div className="success-banner">
@@ -6496,7 +6523,7 @@ function RegisterState(props: {
               ) : null}
               {!invitedFlow ? (
                 <div className="muted-copy">
-                  The free trial starts after email confirmation and card setup. Your selected {currency(selectedSignupPrice)} monthly package is held for checkout. You can cancel from Billing before the trial converts to a paid subscription.
+                  Secure card setup is the next step. We will send your confirmation email at the same time, and workspace access stays locked until you confirm it. Your selected {currency(selectedSignupPrice)} monthly package starts as a free trial and can be cancelled from Billing before renewal.
                 </div>
               ) : null}
               {successMessage ? <div className="success-banner">{successMessage}</div> : null}

@@ -31,6 +31,7 @@ type AuthResponse =
       requiresEmailConfirmation: true;
       message: string;
       user: SessionState["user"];
+      checkoutUrl?: string | null;
     }
   | {
       success: false;
@@ -46,6 +47,19 @@ export type RegisterResult =
       kind: "pending_confirmation";
       message: string;
       email: string;
+      checkoutUrl: string | null;
+    };
+
+export type LoginResult =
+  | {
+      kind: "confirmed";
+      session: SessionState;
+    }
+  | {
+      kind: "pending_confirmation";
+      message: string;
+      email: string;
+      checkoutUrl: string | null;
     };
 
 export function loadStoredSession(): SessionState | null {
@@ -79,7 +93,7 @@ export function clearStoredSession() {
   window.localStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
-export async function loginWithEmail(input: { email: string; password: string }): Promise<SessionState> {
+export async function loginWithEmail(input: { email: string; password: string }): Promise<LoginResult> {
   const response = await fetch(`${API_BASE_URL}/login`, {
     method: "POST",
     headers: {
@@ -93,8 +107,17 @@ export async function loginWithEmail(input: { email: string; password: string })
     throw new Error(("message" in payload && payload.message) || "Authentication failed.");
   }
 
+  if ("requiresEmailConfirmation" in payload && payload.requiresEmailConfirmation) {
+    return {
+      kind: "pending_confirmation",
+      message: payload.message,
+      email: payload.user.email,
+      checkoutUrl: payload.checkoutUrl ?? null,
+    };
+  }
+
   if (!("token" in payload)) {
-    throw new Error(("message" in payload && payload.message) || "Authentication failed.");
+    throw new Error("Authentication failed.");
   }
 
   let hydrated: SessionState;
@@ -105,7 +128,10 @@ export async function loginWithEmail(input: { email: string; password: string })
     hydrated = buildFallbackSession(payload.token, payload.user);
   }
 
-  return hydrated;
+  return {
+    kind: "confirmed",
+    session: hydrated,
+  };
 }
 
 export async function registerWithEmail(input: {
@@ -139,6 +165,7 @@ export async function registerWithEmail(input: {
       kind: "pending_confirmation",
       message: payload.message,
       email: payload.user.email,
+      checkoutUrl: payload.checkoutUrl ?? null,
     };
   }
 
