@@ -1691,7 +1691,7 @@ function DashboardShell(props: {
           {businessAdmin ? (
             <>
               {isRouteAllowed(props.session, "/overview") ? (
-                <Route path="/overview" element={<OverviewPage store={props.store} />} />
+                <Route path="/overview" element={<OverviewPage session={props.session} store={props.store} />} />
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/data-health" element={<DataHealthPage store={props.store} />} />
@@ -1914,7 +1914,7 @@ function DashboardShell(props: {
   );
 }
 
-function OverviewPage({ store }: { store: AppStore }) {
+function OverviewPage({ session, store }: { session: SessionState; store: AppStore }) {
   const navigate = useNavigate();
   const totalCosts = sumGross(store.costs);
   const totalSales = sumGross(store.sales);
@@ -1924,9 +1924,53 @@ function OverviewPage({ store }: { store: AppStore }) {
   const recentVaultDocuments = store.vault.slice(0, 4);
   const duplicateInsights = buildDuplicateInsights([...store.costs, ...store.sales]);
   const healthIssues = buildWorkspaceHealthIssues(store);
+  const isNewWorkspace = store.costs.length === 0
+    && store.sales.length === 0
+    && store.vault.length === 0
+    && store.claims.length === 0;
 
   return (
     <div className="stack-page">
+      {isNewWorkspace ? (
+        <section className="onboarding-panel" aria-labelledby="onboarding-title">
+          <div className="onboarding-intro">
+            <span>Getting started</span>
+            <h2 id="onboarding-title">Set up your first Exdox workflow</h2>
+            <p>Start with one real document, check the result, then invite the people who will use the workspace.</p>
+          </div>
+          <div className="onboarding-steps">
+            <div className="onboarding-step complete">
+              <span>1</span>
+              <div>
+                <strong>{session.user.status === "active" ? "Email confirmed" : "Confirm your email"}</strong>
+                <small>{session.user.status === "active" ? "Your account is ready." : "Use the link in your confirmation email."}</small>
+              </div>
+            </div>
+            <Link className="onboarding-step" to="/costs">
+              <span>2</span>
+              <div>
+                <strong>Upload your first expense</strong>
+                <small>Add a receipt or supplier invoice for review.</small>
+              </div>
+            </Link>
+            <Link className="onboarding-step" to="/settings">
+              <span>3</span>
+              <div>
+                <strong>Invite your team</strong>
+                <small>Add employees or another workspace administrator.</small>
+              </div>
+            </Link>
+            <Link className="onboarding-step" to="/contact">
+              <span>4</span>
+              <div>
+                <strong>Contact support</strong>
+                <small>Get help with onboarding, billing, or access.</small>
+              </div>
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       <section className="metrics-grid">
         <MetricCard label="Costs ledger" value={currency(totalCosts)} detail={`${store.costs.length} documents`} to="/costs" />
         <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${store.sales.length} invoices`} to="/sales" />

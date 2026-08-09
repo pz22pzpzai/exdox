@@ -1362,6 +1362,79 @@ input {
   color: #59450e;
 }
 
+.onboarding-panel {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1.5fr);
+  gap: 24px;
+  padding: 24px;
+  border: 1px solid #b9dce9;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(46, 188, 226, 0.15), transparent 38%),
+    linear-gradient(135deg, #f7fcfe 0%, #eef7fb 100%);
+}
+
+.onboarding-intro span {
+  color: #087fae;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.onboarding-intro h2 {
+  margin: 7px 0 8px;
+}
+
+.onboarding-intro p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.onboarding-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid #d5e5eb;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.onboarding-step > span {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #10203f;
+  color: white;
+  font-weight: 900;
+}
+
+.onboarding-step.complete > span {
+  background: #168a58;
+}
+
+.onboarding-step div {
+  display: grid;
+  gap: 2px;
+}
+
+.onboarding-step small {
+  color: var(--muted);
+}
+
 .email-confirmation-notice div {
   display: grid;
   gap: 3px;
@@ -1938,6 +2011,11 @@ input {
 }
 
 @media (max-width: 720px) {
+  .onboarding-panel,
+  .onboarding-steps {
+    grid-template-columns: 1fr;
+  }
+
   .email-confirmation-notice {
     align-items: flex-start;
     flex-direction: column;
