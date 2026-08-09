@@ -25,6 +25,8 @@ type AuthResponse =
       token: string;
       user: SessionState["user"];
       requiresEmailConfirmation?: false;
+      emailConfirmationRequired?: boolean;
+      emailConfirmationDueAt?: string | null;
     }
   | {
       success: true;

@@ -1626,6 +1626,26 @@ function DashboardShell(props: {
 
         {props.error ? <div className="error-banner">{props.error}</div> : null}
 
+        {props.session.user.status === "pending_confirmation" ? (
+          <div className="email-confirmation-notice" role="status">
+            <div>
+              <strong>Confirm your email within three days</strong>
+              <span>
+                Your card setup is complete and your workspace is available now. Confirm {props.session.user.email}
+                {props.session.user.emailConfirmationDueAt
+                  ? ` by ${new Date(props.session.user.emailConfirmationDueAt).toLocaleString("en-GB", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}`
+                  : " within three days"} to keep access.
+              </span>
+            </div>
+            <Link to={`/confirm-email?email=${encodeURIComponent(props.session.user.email)}`}>
+              Resend confirmation email
+            </Link>
+          </div>
+        ) : null}
+
         <Routes>
           {businessAdmin ? (
             <>
@@ -6105,7 +6125,7 @@ function LoginState(props: {
             ) : null}
             {props.checkoutStatus === "success" ? (
               <div className="success-banner">
-                Card setup complete. Confirm your email address, then log in to open your workspace.
+                Card setup complete. Log in now to open your workspace, then confirm your email within three days to keep access.
               </div>
             ) : null}
             {props.checkoutStatus === "cancelled" ? (
@@ -6523,7 +6543,7 @@ function RegisterState(props: {
               ) : null}
               {!invitedFlow ? (
                 <div className="muted-copy">
-                  Secure card setup is the next step. We will send your confirmation email at the same time, and workspace access stays locked until you confirm it. Your selected {currency(selectedSignupPrice)} monthly package starts as a free trial and can be cancelled from Billing before renewal.
+                  Secure card setup is the next step. We will send your confirmation email at the same time. Once card setup is complete, you can use the workspace immediately and have three days to confirm your email. Your selected {currency(selectedSignupPrice)} monthly package starts as a free trial and can be cancelled from Billing before renewal.
                 </div>
               ) : null}
               {successMessage ? <div className="success-banner">{successMessage}</div> : null}

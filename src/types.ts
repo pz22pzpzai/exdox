@@ -148,6 +148,7 @@ export type SessionUser = {
   fullName: string | null;
   role: "Business_Admin" | "Standard_Employee";
   status: "pending_invite" | "pending_confirmation" | "active";
+  emailConfirmationDueAt?: string | null;
 };
 
 export type SessionState = {

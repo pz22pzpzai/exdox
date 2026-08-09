@@ -1349,6 +1349,30 @@ input {
   color: #1d7043;
 }
 
+.email-confirmation-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+  padding: 14px 18px;
+  border: 1px solid #e5c66f;
+  border-radius: 8px;
+  background: #fff9e8;
+  color: #59450e;
+}
+
+.email-confirmation-notice div {
+  display: grid;
+  gap: 3px;
+}
+
+.email-confirmation-notice a {
+  flex: 0 0 auto;
+  color: #0b6f9f;
+  font-weight: 800;
+}
+
 .stack-page {
   gap: 14px;
 }
@@ -1909,6 +1933,11 @@ input {
 }
 
 @media (max-width: 720px) {
+  .email-confirmation-notice {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .topbar {
     align-items: stretch;
   }
