@@ -1142,6 +1142,13 @@ export function App() {
               error={authError ?? error}
               initialEmail={new URLSearchParams(location.search).get("email") ?? ""}
               inviteToken={new URLSearchParams(location.search).get("inviteToken") ?? ""}
+              initialAudience={
+                new URLSearchParams(location.search).get("inviteToken")
+                  ? "employee"
+                  : new URLSearchParams(location.search).has("plan")
+                    ? "business"
+                    : null
+              }
               initialPlan={normalizePublicPlan(new URLSearchParams(location.search).get("plan"))}
               initialBillingCycle={normalizePublicBillingCycle(new URLSearchParams(location.search).get("billingCycle"))}
               initialMonthlyDocumentLimit={Number(new URLSearchParams(location.search).get("monthlyDocumentLimit")) || undefined}
@@ -6365,13 +6372,14 @@ function RegisterState(props: {
   error: string | null;
   initialEmail: string;
   inviteToken: string;
+  initialAudience: "business" | "sole_trader" | "employee" | null;
   initialPlan: BillingPlanId;
   initialBillingCycle: BillingCycle;
   initialMonthlyDocumentLimit?: number;
   initialIncludedUsers?: number;
   embeddedInPublicShell?: boolean;
   onRegister: (input: {
-    accountType?: "owner" | "employee";
+    accountType?: "owner" | "sole_trader" | "employee";
     email: string;
     password: string;
     fullName?: string;
@@ -6394,10 +6402,11 @@ function RegisterState(props: {
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [accountType, setAccountType] = useState<"owner" | "employee">("owner");
+  const [audience, setAudience] = useState<"business" | "sole_trader" | "employee" | null>(props.initialAudience);
   const billingCycle: BillingCycle = "monthly";
   const invitedFlow = Boolean(props.inviteToken);
-  const employeeFlow = !invitedFlow && accountType === "employee";
+  const employeeFlow = audience === "employee";
+  const soleTraderFlow = audience === "sole_trader";
   const selectedSignupStep = resolvePricingSliderStep(
     normalizeRegisterPlan(props.initialPlan),
     props.initialMonthlyDocumentLimit,
@@ -6439,29 +6448,41 @@ function RegisterState(props: {
             <span className="login-callout callout-total">Receipt Review Ready</span>
           </section>
           <div className="login-panel">
-            <h1>{invitedFlow ? "Activate Exdox Access" : employeeFlow ? "Join Your Company" : "Create an Exdox Workspace"}</h1>
+            <h1>
+              {invitedFlow
+                ? "Activate Exdox Access"
+                : audience === null
+                  ? "How Will You Use Exdox?"
+                  : employeeFlow
+                    ? "Join Your Company"
+                    : soleTraderFlow
+                      ? "Create Your Sole Trader Workspace"
+                      : "Create a Business Workspace"}
+            </h1>
             <p>
               {invitedFlow
                 ? "Set a password to activate access to the invited workspace."
+                : audience === null
+                  ? "Choose the account type that matches how you will submit or manage expenses."
                 : employeeFlow
                   ? "Use your company email address to join its existing Exdox workspace. No card setup is required."
-                  : "Create your workspace, add your card securely, then confirm your email before entering Exdox."}
+                  : soleTraderFlow
+                    ? "Set up your own workspace and subscription using either a personal or business email address."
+                    : "Create your company workspace, choose its plan, and complete secure card setup as the business owner."}
             </p>
-            {!invitedFlow ? (
-              <div className="registration-account-type" role="group" aria-label="Choose account type">
-                <button
-                  className={accountType === "owner" ? "active" : ""}
-                  type="button"
-                  onClick={() => setAccountType("owner")}
-                >
-                  Create a business workspace
+            {!invitedFlow && audience === null ? (
+              <div className="registration-audience-grid" role="group" aria-label="Choose account type">
+                <button type="button" onClick={() => setAudience("business")}>
+                  <strong>A business</strong>
+                  <span>I own or manage a company and need a workspace for my team.</span>
                 </button>
-                <button
-                  className={accountType === "employee" ? "active" : ""}
-                  type="button"
-                  onClick={() => setAccountType("employee")}
-                >
-                  Join your company
+                <button type="button" onClick={() => setAudience("sole_trader")}>
+                  <strong>A sole trader</strong>
+                  <span>I work for myself and need to manage my own business expenses.</span>
+                </button>
+                <button type="button" onClick={() => setAudience("employee")}>
+                  <strong>An employee of a business</strong>
+                  <span>I submit expenses for a company that already uses Exdox.</span>
                 </button>
               </div>
             ) : null}
@@ -6470,12 +6491,12 @@ function RegisterState(props: {
                 Enterprise rollout is coming soon. Capture, Control, and Operations can be started online today.
               </div>
             ) : null}
-            <form
+            {audience !== null ? <form
               className="login-form"
               onSubmit={async (event) => {
                 event.preventDefault();
                 const nextSuccessMessage = await props.onRegister({
-                  accountType: invitedFlow ? undefined : accountType,
+                  accountType: invitedFlow ? undefined : employeeFlow ? "employee" : soleTraderFlow ? "sole_trader" : "owner",
                   email,
                   password,
                   fullName: fullName || undefined,
@@ -6508,13 +6529,14 @@ function RegisterState(props: {
               {!invitedFlow && !employeeFlow ? (
                 <>
                   <label>
-                    Organisation name
+                    {soleTraderFlow ? "Trading name (optional)" : "Organisation name"}
                     <input
                       type="text"
                       autoComplete="organization"
                       value={organisationName}
                       onChange={(event) => setOrganisationName(event.target.value)}
-                      placeholder="Your business or organisation"
+                      placeholder={soleTraderFlow ? "Your trading name" : "Your business or organisation"}
+                      required={!soleTraderFlow}
                     />
                   </label>
                   <section className="registration-plan-summary" aria-label="Selected plan summary">
@@ -6595,7 +6617,12 @@ function RegisterState(props: {
                 </button>
               )}
               {resendMessage ? <div className="success-banner">{resendMessage}</div> : null}
-            </form>
+              {!invitedFlow && props.initialAudience === null ? (
+                <button className="registration-back-button" type="button" onClick={() => setAudience(null)}>
+                  Choose a different account type
+                </button>
+              ) : null}
+            </form> : null}
             <div className="login-links">
               <Link to="/login">Already have an account? Log in</Link>
               <Link to={`${supportPagePath}?subject=${encodeURIComponent("Onboarding help")}`}>Need help activating?</Link>
