@@ -198,7 +198,8 @@ a {
   margin: 1rem 0;
 }
 
-.registration-audience-grid button {
+.registration-audience-grid button,
+.registration-audience-option {
   display: grid;
   gap: 0.3rem;
   min-height: 5rem;
@@ -211,20 +212,25 @@ a {
   text-align: left;
   cursor: pointer;
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  text-decoration: none;
 }
 
 .registration-audience-grid button:hover,
-.registration-audience-grid button:focus-visible {
+.registration-audience-grid button:focus-visible,
+.registration-audience-option:hover,
+.registration-audience-option:focus-visible {
   border-color: #168cc9;
   box-shadow: 0 0.5rem 1.25rem rgb(25 54 86 / 12%);
   transform: translateY(-1px);
 }
 
-.registration-audience-grid strong {
+.registration-audience-grid strong,
+.registration-audience-option strong {
   font-size: 1rem;
 }
 
-.registration-audience-grid span {
+.registration-audience-grid span,
+.registration-audience-option span {
   color: #58708f;
   line-height: 1.45;
 }

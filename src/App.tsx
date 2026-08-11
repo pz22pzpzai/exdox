@@ -6472,10 +6472,10 @@ function RegisterState(props: {
             </p>
             {!invitedFlow && audience === null ? (
               <div className="registration-audience-grid" role="group" aria-label="Choose account type">
-                <button type="button" onClick={() => setAudience("business")}>
+                <Link className="registration-audience-option" to="/pricing">
                   <strong>A business</strong>
-                  <span>I own or manage a company and need a workspace for my team.</span>
-                </button>
+                  <span>Choose a package, then create the company workspace as its owner.</span>
+                </Link>
                 <button type="button" onClick={() => setAudience("sole_trader")}>
                   <strong>A sole trader</strong>
                   <span>I work for myself and need to manage my own business expenses.</span>
