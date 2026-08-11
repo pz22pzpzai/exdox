@@ -6384,6 +6384,7 @@ function RegisterState(props: {
     accountType?: "owner" | "sole_trader" | "employee";
     email: string;
     password: string;
+    confirmPassword: string;
     fullName?: string;
     organisationName?: string;
     inviteToken?: string;
@@ -6400,6 +6401,8 @@ function RegisterState(props: {
   const [organisationName, setOrganisationName] = useState("");
   const [email, setEmail] = useState(props.initialEmail);
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
@@ -6497,10 +6500,16 @@ function RegisterState(props: {
               className="login-form"
               onSubmit={async (event) => {
                 event.preventDefault();
+                setPasswordError(null);
+                if (password !== confirmPassword) {
+                  setPasswordError("The passwords do not match. Enter the same password in both fields.");
+                  return;
+                }
                 const nextSuccessMessage = await props.onRegister({
                   accountType: invitedFlow ? undefined : employeeFlow ? "employee" : soleTraderFlow ? "sole_trader" : "owner",
                   email,
                   password,
+                  confirmPassword,
                   fullName: fullName || undefined,
                   organisationName: invitedFlow || employeeFlow ? undefined : organisationName || undefined,
                   inviteToken: props.inviteToken || undefined,
@@ -6515,6 +6524,7 @@ function RegisterState(props: {
                   setSuccessMessage(nextSuccessMessage);
                   setResendMessage(null);
                   setPassword("");
+                  setConfirmPassword("");
                 }
               }}
             >
@@ -6575,6 +6585,18 @@ function RegisterState(props: {
                   required
                 />
               </label>
+              <label>
+                Confirm password
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Enter the same password again"
+                  minLength={8}
+                  required
+                />
+              </label>
               {!invitedFlow && !employeeFlow ? (
                 <label className="checkbox-field">
                   <input
@@ -6594,6 +6616,7 @@ function RegisterState(props: {
                 </div>
               ) : null}
               {successMessage ? <div className="success-banner">{successMessage}</div> : null}
+              {passwordError ? <div className="error-banner">{passwordError}</div> : null}
               {props.error ? <div className="error-banner">{props.error}</div> : null}
               {successMessage && !invitedFlow ? (
                 <button

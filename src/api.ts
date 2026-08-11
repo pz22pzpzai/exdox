@@ -140,6 +140,7 @@ export async function registerWithEmail(input: {
   accountType?: "owner" | "sole_trader" | "employee";
   email: string;
   password: string;
+  confirmPassword: string;
   fullName?: string;
   organisationName?: string;
   inviteToken?: string;
