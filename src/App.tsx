@@ -6226,13 +6226,13 @@ function LoginState(props: {
               }}
             >
               <label>
-                Registered Email
+                Email address
                 <input
                   type="email"
                   autoComplete="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="your.name@company.co.uk"
+                  placeholder="Enter email address"
                   required
                 />
               </label>
@@ -6311,13 +6311,13 @@ function ForgotPasswordState(props: {
               }}
             >
               <label>
-                Registered Email
+                Email address
                 <input
                   type="email"
                   autoComplete="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="your.name@company.co.uk"
+                  placeholder="Enter email address"
                   required
                 />
               </label>
@@ -6591,13 +6591,13 @@ function RegisterState(props: {
                 </>
               ) : null}
               <label>
-                Registered Email
+                Email address
                 <input
                   type="email"
                   autoComplete="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="your.name@company.co.uk"
+                  placeholder="Enter email address"
                   required
                 />
               </label>
