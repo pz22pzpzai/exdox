@@ -1499,8 +1499,7 @@ function DashboardShell(props: {
         locked: !isRouteAllowed(props.session, item.to),
       }))
     : [
-        { to: "/dropbox", label: "My Drop Box", icon: "costs" },
-        { to: "/claims", label: "My Claims", icon: "claims" },
+        { to: "/dropbox", label: "My Expenses", icon: "costs" },
         { to: "/contact", label: "Contact", icon: "contact" },
       ];
   const defaultRoute = getDefaultRoute(props.session);
@@ -1540,7 +1539,7 @@ function DashboardShell(props: {
         <header className="topbar">
           <div>
             <p className="topbar-kicker">{workspaceShellKicker(location.pathname, businessAdmin)}</p>
-            <h1>{businessAdmin ? routeTitle(location.pathname) : "Employee Drop Box"}</h1>
+            <h1>{businessAdmin ? routeTitle(location.pathname) : "My Expenses"}</h1>
           </div>
           <div className="topbar-actions">
             <select
@@ -1616,20 +1615,7 @@ function DashboardShell(props: {
                   }}
                 />
               </>
-            ) : (
-              <UploadButton
-                busy={uploadBusy}
-                label="Upload Receipts"
-                onFiles={async (files) => {
-                  setUploadBusy(true);
-                  try {
-                    await props.onUpload("cost", files);
-                  } finally {
-                    setUploadBusy(false);
-                  }
-                }}
-              />
-            )}
+            ) : <span className="employee-read-only-badge">Web view only</span>}
           </div>
         </header>
 
@@ -1876,35 +1862,11 @@ function DashboardShell(props: {
                   <EmployeeDropboxPage
                     receipts={props.store.costs}
                     settings={props.store.settings}
-                    onUpload={props.onUpload}
-                    uploadBusy={uploadBusy}
                   />
                 }
-              />
-              <Route
-                path="/claims"
-                element={<ClaimsPage claims={props.store.claims} onCreateClaim={props.onClaimCreate} employeeMode />}
-              />
-              <Route
-                path="/claims/:id"
-                element={<ClaimDetailPage loadClaim={props.loadClaim} onStatusChange={props.onClaimStatusChange} settings={props.store.settings} employeeMode />}
               />
               <Route path="/contact" element={<WorkspaceContactPage session={props.session} />} />
-              <Route
-                path="/dropbox/:id"
-                element={
-                  <DocumentWorkspacePage
-                    mode="cost"
-                    fallbackRecords={props.store.costs}
-                    claims={props.store.claims}
-                    settings={props.store.settings}
-                    onSave={props.onReceiptSave}
-                    onDelete={props.onReceiptDelete}
-                    onAttachToClaim={props.onAttachReceiptToClaim}
-                    loadReceipt={props.loadReceipt}
-                  />
-                }
-              />
+              <Route path="/dropbox/:id" element={<Navigate to="/dropbox" replace />} />
               <Route path="*" element={<Navigate to={defaultRoute} replace />} />
             </>
           )}
@@ -4248,15 +4210,12 @@ function ClaimsPage({
 function EmployeeDropboxPage(props: {
   receipts: ReceiptRecord[];
   settings: OrganisationSettings | null;
-  onUpload: (workspaceContext: "cost" | "sales" | "vault", files: File[]) => Promise<void>;
-  uploadBusy: boolean;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
-  const [feedback, setFeedback] = useState<string | null>(null);
   const [filtersReady, setFiltersReady] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const vatTrackingEnabled = isVatTrackingEnabled(props.settings);
@@ -4306,8 +4265,8 @@ function EmployeeDropboxPage(props: {
         <div>
           <h2>My drop box</h2>
           <p>
-            Employees can upload receipts and view only their own history.
-            Company-wide metrics, bank transactions, settings, and peer uploads remain admin-only.
+            View the receipts you submitted through the Exdox app and follow their review status.
+            Uploads, editing, approval, company settings, billing, and other employees' records are unavailable on the employee website.
           </p>
         </div>
         <div className="filter-row">
@@ -4336,30 +4295,8 @@ function EmployeeDropboxPage(props: {
             <option value="highest_total">Highest total</option>
             <option value="lowest_total">Lowest total</option>
           </select>
-          <button
-            className="secondary-action"
-            type="button"
-            disabled={!filteredReceipts.length}
-            onClick={async () => {
-              if (await downloadCsv(
-                `employee-dropbox-${new Date().toISOString().slice(0, 10)}.csv`,
-                buildInboxExportRows(filteredReceipts, props.settings),
-              )) {
-                setFeedback("Employee drop box CSV downloaded.");
-              }
-            }}
-          >
-            Export CSV
-          </button>
         </div>
       </section>
-      {feedback ? <div className="success-banner">{feedback}</div> : null}
-      <UploadDropZone
-        title="Drop receipts into your employee queue"
-        subtitle="Send multiple files into processing while keeping company-wide dashboards, settings, and peer uploads hidden from employee sessions."
-        busy={props.uploadBusy}
-        onFiles={(files) => props.onUpload("cost", files)}
-      />
       <section className="panel table-panel">
         {filteredReceipts.length ? (
           <table className="data-table">
@@ -4371,40 +4308,17 @@ function EmployeeDropboxPage(props: {
                 {vatTrackingEnabled ? <th>Net</th> : null}
                 {vatTrackingEnabled ? <th>VAT</th> : null}
                 <th>{vatTrackingEnabled ? "Gross" : "Total"}</th>
-                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {filteredReceipts.map((receipt) => (
-                <tr
-                  key={receipt.id}
-                  onClick={() => navigate(`/dropbox/${receipt.id}`)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      navigate(`/dropbox/${receipt.id}`);
-                    }
-                  }}
-                  tabIndex={0}
-                >
+                <tr key={receipt.id}>
                   <td><StatusPill status={receipt.status} /></td>
                   <td>{receipt.createdAt.slice(0, 10)}</td>
                   <td>{receipt.vendorName ?? receipt.sourceFilename}</td>
                   {vatTrackingEnabled ? <td>{currency(receipt.netAmount)}</td> : null}
                   {vatTrackingEnabled ? <td>{currency(receipt.vatAmount)}</td> : null}
                   <td>{currency(receiptGrossAmount(receipt))}</td>
-                  <td>
-                    <button
-                      className="secondary-action table-open-button"
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        navigate(`/dropbox/${receipt.id}`);
-                      }}
-                    >
-                      Open
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -4412,7 +4326,7 @@ function EmployeeDropboxPage(props: {
         ) : (
           <div className="empty-inline-state">
             <strong>{query.trim() || statusFilter !== "All" ? "No employee receipts match the current filters." : "No employee receipts uploaded yet."}</strong>
-            <p>{query.trim() || statusFilter !== "All" ? "Change the search or status filter to see more uploaded receipts." : "Use the upload area above to submit the first employee receipt into the synced drop box."}</p>
+            <p>{query.trim() || statusFilter !== "All" ? "Change the search or status filter to see more receipts." : "Receipts submitted through the Exdox app will appear here."}</p>
           </div>
         )}
       </section>
@@ -6457,6 +6371,7 @@ function RegisterState(props: {
   initialIncludedUsers?: number;
   embeddedInPublicShell?: boolean;
   onRegister: (input: {
+    accountType?: "owner" | "employee";
     email: string;
     password: string;
     fullName?: string;
@@ -6479,8 +6394,10 @@ function RegisterState(props: {
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [accountType, setAccountType] = useState<"owner" | "employee">("owner");
   const billingCycle: BillingCycle = "monthly";
   const invitedFlow = Boolean(props.inviteToken);
+  const employeeFlow = !invitedFlow && accountType === "employee";
   const selectedSignupStep = resolvePricingSliderStep(
     normalizeRegisterPlan(props.initialPlan),
     props.initialMonthlyDocumentLimit,
@@ -6522,12 +6439,32 @@ function RegisterState(props: {
             <span className="login-callout callout-total">Receipt Review Ready</span>
           </section>
           <div className="login-panel">
-            <h1>{invitedFlow ? "Activate Exdox Access" : "Create an Exdox Workspace"}</h1>
+            <h1>{invitedFlow ? "Activate Exdox Access" : employeeFlow ? "Join Your Company" : "Create an Exdox Workspace"}</h1>
             <p>
               {invitedFlow
                 ? "Set a password to activate access to the invited workspace."
-                : "Create your workspace, add your card securely, then confirm your email before entering Exdox."}
+                : employeeFlow
+                  ? "Use your company email address to join its existing Exdox workspace. No card setup is required."
+                  : "Create your workspace, add your card securely, then confirm your email before entering Exdox."}
             </p>
+            {!invitedFlow ? (
+              <div className="registration-account-type" role="group" aria-label="Choose account type">
+                <button
+                  className={accountType === "owner" ? "active" : ""}
+                  type="button"
+                  onClick={() => setAccountType("owner")}
+                >
+                  Create a business workspace
+                </button>
+                <button
+                  className={accountType === "employee" ? "active" : ""}
+                  type="button"
+                  onClick={() => setAccountType("employee")}
+                >
+                  Join your company
+                </button>
+              </div>
+            ) : null}
             {enterpriseSignupRequested ? (
               <div className="success-banner">
                 Enterprise rollout is coming soon. Capture, Control, and Operations can be started online today.
@@ -6538,17 +6475,18 @@ function RegisterState(props: {
               onSubmit={async (event) => {
                 event.preventDefault();
                 const nextSuccessMessage = await props.onRegister({
+                  accountType: invitedFlow ? undefined : accountType,
                   email,
                   password,
                   fullName: fullName || undefined,
-                  organisationName: invitedFlow ? undefined : organisationName || undefined,
+                  organisationName: invitedFlow || employeeFlow ? undefined : organisationName || undefined,
                   inviteToken: props.inviteToken || undefined,
-                  billingPlan: invitedFlow ? undefined : selectedSignupStep.planId,
-                  billingCycle: invitedFlow ? undefined : billingCycle,
-                  monthlyDocumentLimit: invitedFlow ? undefined : selectedSignupStep.documents,
-                  includedUsers: invitedFlow ? undefined : selectedSignupStep.users,
-                  termsAccepted: invitedFlow ? undefined : acceptedTerms,
-                  termsVersion: invitedFlow ? undefined : termsVersion,
+                  billingPlan: invitedFlow || employeeFlow ? undefined : selectedSignupStep.planId,
+                  billingCycle: invitedFlow || employeeFlow ? undefined : billingCycle,
+                  monthlyDocumentLimit: invitedFlow || employeeFlow ? undefined : selectedSignupStep.documents,
+                  includedUsers: invitedFlow || employeeFlow ? undefined : selectedSignupStep.users,
+                  termsAccepted: invitedFlow || employeeFlow ? undefined : acceptedTerms,
+                  termsVersion: invitedFlow || employeeFlow ? undefined : termsVersion,
                 });
                 if (nextSuccessMessage) {
                   setSuccessMessage(nextSuccessMessage);
@@ -6567,7 +6505,7 @@ function RegisterState(props: {
                   placeholder="Your full name"
                 />
               </label>
-              {!invitedFlow ? (
+              {!invitedFlow && !employeeFlow ? (
                 <>
                   <label>
                     Organisation name
@@ -6613,7 +6551,7 @@ function RegisterState(props: {
                   required
                 />
               </label>
-              {!invitedFlow ? (
+              {!invitedFlow && !employeeFlow ? (
                 <label className="checkbox-field">
                   <input
                     type="checkbox"
@@ -6626,7 +6564,7 @@ function RegisterState(props: {
                   </span>
                 </label>
               ) : null}
-              {!invitedFlow ? (
+              {!invitedFlow && !employeeFlow ? (
                 <div className="muted-copy">
                   Secure card setup is the next step. We will send your confirmation email at the same time. Once card setup is complete, you can use the workspace immediately and have three days to confirm your email. Your selected {currency(selectedSignupPrice)} monthly package starts as a free trial and can be cancelled from Billing before renewal.
                 </div>
@@ -6652,8 +6590,8 @@ function RegisterState(props: {
                   {resendBusy ? "Sending confirmation..." : "Resend confirmation email"}
                 </button>
               ) : (
-                <button className="primary-action login-submit" type="submit" disabled={props.busy || (!invitedFlow && !acceptedTerms)}>
-                  {props.busy ? "Creating access..." : invitedFlow ? "Activate access" : "Create workspace"}
+                <button className="primary-action login-submit" type="submit" disabled={props.busy || (!invitedFlow && !employeeFlow && !acceptedTerms)}>
+                  {props.busy ? "Creating access..." : invitedFlow ? "Activate access" : employeeFlow ? "Join company" : "Create workspace"}
                 </button>
               )}
               {resendMessage ? <div className="success-banner">{resendMessage}</div> : null}
