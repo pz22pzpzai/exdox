@@ -1145,6 +1145,8 @@ export function App() {
               initialAudience={
                 new URLSearchParams(location.search).get("inviteToken")
                   ? "employee"
+                  : new URLSearchParams(location.search).get("audience") === "sole_trader"
+                    ? "sole_trader"
                   : new URLSearchParams(location.search).has("plan")
                     ? "business"
                     : null
@@ -6476,10 +6478,10 @@ function RegisterState(props: {
                   <strong>A business</strong>
                   <span>Choose a package, then create the company workspace as its owner.</span>
                 </Link>
-                <button type="button" onClick={() => setAudience("sole_trader")}>
+                <Link className="registration-audience-option" to="/pricing?audience=sole_trader">
                   <strong>A sole trader</strong>
-                  <span>I work for myself and need to manage my own business expenses.</span>
-                </button>
+                  <span>Choose a package, then create your sole trader workspace.</span>
+                </Link>
                 <button type="button" onClick={() => setAudience("employee")}>
                   <strong>An employee of a business</strong>
                   <span>I submit expenses for a company that already uses Exdox.</span>
@@ -7938,6 +7940,9 @@ function PricingTeaserSection({ session = null }: { session?: SessionState | nul
 }
 
 function PricingSection({ session = null }: { session?: SessionState | null }) {
+  const pricingAudience = new URLSearchParams(useLocation().search).get("audience") === "sole_trader"
+    ? "sole_trader"
+    : "business";
   const [sliderIndex, setSliderIndex] = useState(0);
   const signedIn = Boolean(session);
   const signedInBillingRoute = session && isRouteAllowed(session, "/billing") ? "/billing" : session ? signedInPublicPrimaryRoute(session) : null;
@@ -8031,6 +8036,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
                     selectedStep.planId === "operations"
                       ? selectedStep.users
                       : undefined,
+                  audience: pricingAudience,
                 })}
               >
                 {selectedPlan.cta}
@@ -8072,6 +8078,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
                     to={buildRegisterLink(plan.id, "monthly", {
                       monthlyDocumentLimit: plan.monthlyDocumentLimit,
                       includedUsers: plan.includedUsers,
+                      audience: pricingAudience,
                     })}
                   >
                     {plan.cta}
@@ -9842,6 +9849,7 @@ function buildRegisterLink(
   options?: {
     monthlyDocumentLimit?: number;
     includedUsers?: number;
+    audience?: "business" | "sole_trader";
   },
 ) {
   const params = new URLSearchParams({
@@ -9853,6 +9861,9 @@ function buildRegisterLink(
   }
   if (typeof options?.includedUsers === "number") {
     params.set("includedUsers", String(options.includedUsers));
+  }
+  if (options?.audience === "sole_trader") {
+    params.set("audience", "sole_trader");
   }
   return `/register?${params.toString()}`;
 }
