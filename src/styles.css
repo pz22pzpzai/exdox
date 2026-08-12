@@ -915,6 +915,55 @@ input {
   max-width: none;
 }
 
+.account-deletion-workspace-page {
+  max-width: 900px;
+}
+
+.account-deletion-panel {
+  display: grid;
+  gap: 20px;
+}
+
+.account-deletion-warning {
+  padding: 18px;
+  border: 1px solid #e8b6ad;
+  border-radius: 14px;
+  background: #fff1ee;
+  color: #7f2d24;
+}
+
+.account-deletion-warning strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 1.08rem;
+}
+
+.account-deletion-warning p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.account-deletion-summary {
+  margin: 0;
+}
+
+.account-deletion-form {
+  display: grid;
+  gap: 16px;
+  max-width: 620px;
+}
+
+.account-deletion-form label {
+  display: grid;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.account-delete-submit {
+  background: #b64242;
+  color: #fff;
+}
+
 .settings-hero-panel {
   overflow: hidden;
 }

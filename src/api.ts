@@ -299,6 +299,16 @@ export async function createBillingPortalSession(token: string): Promise<{ porta
   });
 }
 
+export async function deleteAccount(
+  token: string,
+  input: { password: string; confirmation: string },
+): Promise<{ message: string }> {
+  return apiFetch('/account', token, {
+    method: 'DELETE',
+    body: JSON.stringify(input),
+  });
+}
+
 export async function listReceipts(
   token: string,
   workspaceContext: "cost" | "sales" | "vault",

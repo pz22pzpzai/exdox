@@ -19,6 +19,7 @@ import {
   createBillingPortalSession,
   createClaim,
   createRequisition,
+  deleteAccount,
   deleteReceipt,
   fetchSession,
   getClaim,
@@ -1203,6 +1204,7 @@ export function App() {
             confirmationComplete={new URLSearchParams(location.search).get("confirmed") === "1"}
             confirmationStatus={new URLSearchParams(location.search).get("confirmation")}
             checkoutStatus={new URLSearchParams(location.search).get("checkout")}
+            accountDeleted={new URLSearchParams(location.search).get("accountDeleted") === "1"}
             embeddedInPublicShell
             onLogin={async (email, password) => {
               setAuthBusy(true);
@@ -1831,6 +1833,9 @@ function DashboardShell(props: {
                     />
                   }
                 />
+              ) : null}
+              {isRouteAllowed(props.session, "/settings") ? (
+                <Route path="/settings/delete-account" element={<DeleteAccountPage session={props.session} />} />
               ) : null}
               <Route path="/billing" element={<BillingPage session={props.session} />} />
               <Route path="*" element={<Navigate to={defaultRoute} replace />} />
@@ -5785,7 +5790,7 @@ function SettingsPage(props: {
             >
               Export settings CSV
             </button>
-            <button className="secondary-action" type="button" onClick={() => window.location.assign(accountDeletionPagePath)}>
+            <button className="danger-action" type="button" onClick={() => navigate('/settings/delete-account')}>
               Account deletion
             </button>
             <button className="secondary-action" type="button" onClick={() => window.location.assign("/privacy")}>
@@ -5825,6 +5830,98 @@ function SettingsPage(props: {
             </button>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function DeleteAccountPage({ session }: { session: SessionState }) {
+  const navigate = useNavigate();
+  const organisation = session.organisations.find((item) => item.id === session.activeOrganisationId);
+  const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canDelete = password.length > 0 && confirmation === 'DELETE' && !busy;
+
+  return (
+    <section className="stack-page account-deletion-workspace-page">
+      <div className="panel account-deletion-panel">
+        <div className="panel-heading">
+          <div>
+            <span className="section-kicker">Permanent account closure</span>
+            <h2>Delete this Exdox workspace</h2>
+          </div>
+          <span>Business administrator only</span>
+        </div>
+
+        <div className="account-deletion-warning" role="alert">
+          <strong>This cannot be undone</strong>
+          <p>
+            Deleting {organisation?.name ?? 'this workspace'} immediately cancels its Stripe trial or subscription,
+            removes its saved Stripe customer and payment details, and permanently deletes every user, receipt,
+            invoice, claim, vault file, supplier rule, and workspace setting.
+          </p>
+        </div>
+
+        <div className="summary-list account-deletion-summary">
+          <div><strong>Subscription</strong><span>Cancelled immediately with no future renewal</span></div>
+          <div><strong>Payment profile</strong><span>Removed from Stripe</span></div>
+          <div><strong>Workspace data</strong><span>Permanently deleted for all users</span></div>
+          <div><strong>Access</strong><span>All users are signed out and cannot recover this workspace</span></div>
+        </div>
+
+        {error ? <div className="error-banner">{error}</div> : null}
+
+        <form
+          className="account-deletion-form"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (!canDelete) return;
+            setBusy(true);
+            setError(null);
+            try {
+              await deleteAccount(session.token, { password, confirmation });
+              clearStoredSession();
+              window.location.assign('/login?accountDeleted=1');
+            } catch (deleteError) {
+              setError(deleteError instanceof Error ? deleteError.message : 'Account deletion could not be completed.');
+              setBusy(false);
+            }
+          }}
+        >
+          <label>
+            Account password
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Enter your password"
+              required
+            />
+          </label>
+          <label>
+            Type DELETE to confirm
+            <input
+              type="text"
+              autoComplete="off"
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              placeholder="DELETE"
+              required
+            />
+          </label>
+          <div className="toolbar">
+            <button className="secondary-action" type="button" disabled={busy} onClick={() => navigate('/settings')}>
+              Keep my account
+            </button>
+            <button className="danger-action account-delete-submit" type="submit" disabled={!canDelete}>
+              {busy ? 'Cancelling and deleting...' : 'Permanently delete account'}
+            </button>
+          </div>
+        </form>
       </div>
     </section>
   );
@@ -6029,6 +6126,7 @@ function LoginState(props: {
   confirmationComplete?: boolean;
   confirmationStatus?: string | null;
   checkoutStatus?: string | null;
+  accountDeleted?: boolean;
   embeddedInPublicShell?: boolean;
   onLogin: (email: string, password: string) => Promise<void>;
 }) {
@@ -6069,6 +6167,9 @@ function LoginState(props: {
               <div className="success-banner">
                 Email confirmed. Log in to continue with your selected trial.
               </div>
+            ) : null}
+            {props.accountDeleted ? (
+              <div className="success-banner">Your Exdox account and subscription have been deleted.</div>
             ) : null}
             {props.confirmationStatus === "invalid" || props.confirmationStatus === "used" ? (
               <div className="error-banner">
@@ -6804,8 +6905,8 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
       <PublicLayout activePath="" session={session}>
         <PublicPageIntro
           kicker="Account deletion"
-          title="How to request deletion of an Exdox account."
-          body="This page explains how Exdox users can request account deletion, what information is removed, what records may be retained for legal or bookkeeping reasons, and the usual deletion timelines."
+          title="Delete an Exdox account and workspace."
+          body="Business administrators can permanently close their workspace from Profile/Settings. This cancels the linked Stripe subscription and removes the workspace data."
         />
         <AccountDeletionSection />
       </PublicLayout>
@@ -7620,9 +7721,9 @@ function AccountDeletionSection() {
           heading: "How to request deletion",
           body: (
             <>
-              <p>Use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Account deletion request")}`}>contact form</Link> and select <strong>Account deletion request</strong>.</p>
-              <p>Include the email address used for your Exdox login, your organisation name, and whether you are requesting deletion of only your user account or of the wider organisation workspace.</p>
-              <p>If we need to verify identity or admin authority before deleting data, we may ask for confirmation from the registered account or workspace owner.</p>
+              <p>Business administrators can sign in and use <Link to="/settings/delete-account">Profile/Settings &gt; Account deletion</Link> to close the whole workspace immediately.</p>
+              <p>The secure deletion screen requires the administrator&apos;s current password and an explicit deletion confirmation.</p>
+              <p>If you cannot sign in, use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Account deletion request")}`}>contact form</Link> for account recovery or deletion support.</p>
             </>
           ),
         },
