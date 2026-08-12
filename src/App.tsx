@@ -92,7 +92,7 @@ const salesCategoryOptions = [
 const navItems = [
   { to: "/overview", label: "Overview", icon: "overview" },
   { to: "/overview/data-health", label: "Data Health", icon: "health" },
-  { to: "/overview/integrations", label: "Integrations", icon: "integrations" },
+  { to: "/overview/integrations", label: "Submission Channels", icon: "integrations" },
   { to: "/overview/workflows", label: "Workflows", icon: "workflow" },
   { to: "/overview/productivity", label: "Productivity", icon: "productivity" },
   { to: "/overview/automation", label: "Automation", icon: "automation" },
@@ -101,10 +101,8 @@ const navItems = [
   { to: "/vault", label: "Vault", icon: "claims" },
   { to: "/claims", label: "Expense Claims", icon: "claims" },
   { to: "/rules", label: "Supplier Rules", icon: "rules" },
-  { to: "/reconciliation", label: "Bank Reconciliation", icon: "bank" },
   { to: "/contact", label: "Contact", icon: "contact" },
   { to: "/settings", label: "Profile/Settings", icon: "settings" },
-  { to: "/requisitions", label: "Open Banking", icon: "open-banking" },
   { to: "/billing", label: "Billing", icon: "billing" },
 ];
 
@@ -131,7 +129,7 @@ function isPrivateAppPath(pathname: string) {
 const publicNavItems = [
   { to: "/", label: "Home" },
   { to: "/platform", label: "Platform" },
-  { to: "/integrations", label: "Integrations" },
+  { to: "/integrations", label: "Workflows" },
   { to: "/pricing", label: "Pricing" },
   { to: "/faq", label: "FAQs" },
   { to: "/company", label: "About" },
@@ -210,7 +208,7 @@ const pricingPlans: Array<{
   {
     id: "operations",
     name: "Operations",
-    tagline: "Rules, vault storage, open banking, and reconciliation",
+    tagline: "Rules, vault storage, and expanded workflow controls",
     monthlyDocuments: "3,000 documents / month",
     users: "60 users included",
     cta: "Open Operations Trial Signup",
@@ -224,8 +222,8 @@ const pricingPlans: Array<{
       "Everything in Control",
       "Supplier rules",
       "Vault archive workspace",
-      "Bank reconciliation",
-      "Open banking requisitions",
+      "Expanded review workflows",
+      "Advanced queue controls",
       "Archive-safe evidence retrieval",
     ],
   },
@@ -352,7 +350,7 @@ const pricingSliderSteps: Array<{
       accessBand: users >= 60 ? "Operations" : "Control",
       tagline:
         users >= 60
-          ? "Rules, vault storage, open banking, and reconciliation"
+          ? "Rules, vault storage, and expanded workflow controls"
           : "Costs, sales, claims, and approval-ready workflows",
       unlockedWorkspaces: users >= 60 ? ["Costs", "Sales", "Vault", "Claims"] : ["Costs", "Sales", "Claims"],
       lockedWorkspaces: users >= 60 ? ["Multi-entity"] : ["Vault", "Multi-entity"],
@@ -367,7 +365,7 @@ const pricingSliderSteps: Array<{
     annualMonthlyPrice: 230.59,
     planId: "operations",
     accessBand: "Operations",
-    tagline: "Rules, vault storage, open banking, and reconciliation",
+    tagline: "Rules, vault storage, and expanded workflow controls",
     unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims"],
     lockedWorkspaces: ["Multi-entity"],
   },
@@ -473,12 +471,6 @@ function workspaceShellKicker(pathname: string, businessAdmin: boolean) {
   }
   if (pathname.startsWith("/vault")) {
     return "Archive and storage";
-  }
-  if (pathname.startsWith("/reconciliation")) {
-    return "Finance controls";
-  }
-  if (pathname.startsWith("/requisitions")) {
-    return "Open banking setup";
   }
   if (pathname.startsWith("/overview")) {
     return "Commercial finance workspace";
@@ -603,31 +595,31 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
   if (!session || isPublicSeoPath(normalizedPath)) {
     if (normalizedPath === "/platform") {
       return {
-        title: "Expense Management Platform | Receipt Capture, Claims and Reconciliation | Exdox",
+        title: "Expense Management Platform | Receipt Capture, Claims and Review | Exdox",
         description:
-          "Explore the Exdox expense management platform for receipt capture, invoice review, VAT handling, document storage, claims, and reconciliation.",
+          "Explore the Exdox expense management platform for receipt capture, invoice review, VAT handling, document storage, claims, and approvals.",
         canonicalPath: normalizedPath,
         robots: "index,follow",
         structuredData: buildPublicStructuredData({
           path: normalizedPath,
           pageName: "Platform",
           pageDescription:
-            "Explore the Exdox expense management platform for receipt capture, invoice review, VAT handling, document storage, claims, and reconciliation.",
+            "Explore the Exdox expense management platform for receipt capture, invoice review, VAT handling, document storage, claims, and approvals.",
         }),
       };
     }
     if (normalizedPath === "/integrations") {
       return {
-        title: "Accounting Integrations and Finance Workflows | Exdox",
+        title: "Connected Receipt and Expense Workflows | Exdox",
         description:
-          "See how Exdox supports accounting workflows with review queues, protected source evidence, bank reconciliation, and publish-ready handoff.",
+          "See how Exdox connects mobile capture, web review, protected source evidence, approvals, and export-ready queues.",
         canonicalPath: normalizedPath,
         robots: "index,follow",
         structuredData: buildPublicStructuredData({
           path: normalizedPath,
           pageName: "Integrations",
           pageDescription:
-            "See how Exdox supports accounting workflows with review queues, protected source evidence, bank reconciliation, and publish-ready handoff.",
+            "See how Exdox connects mobile capture, web review, protected source evidence, approvals, and export-ready queues.",
         }),
       };
     }
@@ -635,14 +627,14 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
       return {
         title: "Pricing for Receipt Capture and Expense Workflows | Exdox",
         description:
-          "Compare Exdox pricing for receipt capture, expense claims, supplier rules, document vault storage, and reconciliation workflows.",
+          "Compare Exdox pricing for receipt capture, expense claims, supplier rules, document vault storage, and review workflows.",
         canonicalPath: normalizedPath,
         robots: "index,follow",
         structuredData: buildPublicStructuredData({
           path: normalizedPath,
           pageName: "Pricing",
           pageDescription:
-            "Compare Exdox pricing for receipt capture, expense claims, supplier rules, document vault storage, and reconciliation workflows.",
+            "Compare Exdox pricing for receipt capture, expense claims, supplier rules, document vault storage, and review workflows.",
         }),
       };
     }
@@ -1825,18 +1817,6 @@ function DashboardShell(props: {
                   }
                 />
               ) : null}
-              {isRouteAllowed(props.session, "/reconciliation") ? (
-                <Route
-                  path="/reconciliation"
-                  element={
-                    <ReconciliationPage
-                      lines={props.store.reconciliation}
-                      onMatch={props.onMatch}
-                      onCreateRequisition={props.onCreateRequisition}
-                    />
-                  }
-                />
-              ) : null}
               {isRouteAllowed(props.session, "/settings") ? (
                 <Route
                   path="/settings"
@@ -1849,15 +1829,6 @@ function DashboardShell(props: {
                       onSignOut={props.onSignOut}
                     />
                   }
-                />
-              ) : null}
-              {isRouteAllowed(props.session, "/requisitions") ? (
-                <Route path="/requisitions" element={<RequisitionPage onCreateRequisition={props.onCreateRequisition} />} />
-              ) : null}
-              {isRouteAllowed(props.session, "/bank-callback") ? (
-                <Route
-                  path="/bank-callback"
-                  element={<BankCallbackPage onComplete={props.onCompleteBankCallback} />}
                 />
               ) : null}
               <Route path="/billing" element={<BillingPage session={props.session} />} />
@@ -2177,16 +2148,6 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
         countLabel: `${pendingClaims} pending claim${pendingClaims === 1 ? "" : "s"}`,
       });
     }
-    const openMatches = store.reconciliation.filter((line) => line.status === "Open").length;
-    if (openMatches > 0) {
-      items.push({
-        title: "Bank matches are open",
-        detail: `${openMatches} bank lines are still waiting for reconciliation review.`,
-        route: "/reconciliation?status=Open",
-        count: openMatches,
-        countLabel: `${openMatches} bank match${openMatches === 1 ? "" : "es"}`,
-      });
-    }
   } else if (pendingClaimsNeedingAction(store.claims).length > 0) {
     const pendingClaims = pendingClaimsNeedingAction(store.claims).length;
     items.push({
@@ -2412,14 +2373,11 @@ function IntegrationsPage({ store }: { store: AppStore }) {
     mobile: allRecords.filter((record) => record.receiptSource === "mobile").length,
     web_upload: allRecords.filter((record) => record.receiptSource === "web_upload").length,
     email: allRecords.filter((record) => record.receiptSource === "email").length,
-    bank_import: allRecords.filter((record) => record.receiptSource === "bank_import").length,
   };
   const readyCosts = store.costs.filter((record) => record.status === "Ready").length;
   const readySales = store.sales.filter((record) => record.status === "Ready").length;
   const publishedRecords = allRecords.filter((record) => record.status === "Published").length;
   const reviewedClaims = store.claims.filter((claim) => claim.status === "pending").length;
-  const openBankMatches = store.reconciliation.filter((line) => line.status === "Open").length;
-  const auditedBankMatches = store.reconciliation.filter((line) => line.status === "Audited").length;
   const recentUploads = allRecords
     .slice()
     .sort((left, right) => compareIsoDate(right.createdAt, left.createdAt))
@@ -2431,9 +2389,7 @@ function IntegrationsPage({ store }: { store: AppStore }) {
         <MetricCard label="Mobile capture" value={String(sourceCounts.mobile)} detail="Receipts from the app" onClick={() => navigate(firstInboxRouteForSource(store, "mobile"))} />
         <MetricCard label="Web uploads" value={String(sourceCounts.web_upload)} detail="Drag-and-drop from the browser" onClick={() => navigate(firstInboxRouteForSource(store, "web_upload"))} />
         <MetricCard label="Email intake" value={String(sourceCounts.email)} detail="Documents submitted by email" onClick={() => navigate(firstInboxRouteForSource(store, "email"))} />
-        <MetricCard label="Bank imports" value={String(sourceCounts.bank_import)} detail="Receipts linked from bank-led flows" onClick={() => navigate(firstInboxRouteForSource(store, "bank_import"))} />
-        <MetricCard label="Ready to publish" value={String(readyCosts + readySales)} detail="Documents ready for accounting handoff" onClick={() => navigate(firstInboxRouteForStatus(store, "Ready"))} />
-        <MetricCard label="Open bank matches" value={String(openBankMatches)} detail="Statement lines still awaiting audit pairing" onClick={() => navigate("/reconciliation?status=Open")} />
+        <MetricCard label="Ready to export" value={String(readyCosts + readySales)} detail="Reviewed documents ready for CSV export" onClick={() => navigate(firstInboxRouteForStatus(store, "Ready"))} />
       </section>
 
       <section className="overview-panels">
@@ -2447,7 +2403,6 @@ function IntegrationsPage({ store }: { store: AppStore }) {
               { source: "mobile", label: "Mobile receipt capture", detail: "Sent from the synced app workflow." },
               { source: "web_upload", label: "Web drag-and-drop", detail: "Uploaded directly into the website inboxes." },
               { source: "email", label: "Email submission", detail: "Documents arriving through the email intake route." },
-              { source: "bank_import", label: "Bank-led import", detail: "Receipts brought into review alongside bank activity." },
             ] as const).map((item) => (
               <li key={item.source}>
                 <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForSource(store, item.source))}>
@@ -2461,20 +2416,20 @@ function IntegrationsPage({ store }: { store: AppStore }) {
 
         <article className="panel">
           <div className="panel-heading">
-            <h2>Accounting handoff</h2>
-            <span>Current downstream publishing posture</span>
+            <h2>Review and export</h2>
+            <span>Current document workflow</span>
           </div>
           <ul className="summary-list">
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Ready")}>
-                <strong>Costs ready for export or publish</strong>
+                <strong>Costs ready for export</strong>
                 <span>{readyCosts} cost document{readyCosts === 1 ? " is" : "s are"} sitting in Ready.</span>
               </button>
             </li>
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/sales?status=Ready")}>
-                <strong>Sales invoices ready for handoff</strong>
-                <span>{readySales} sales document{readySales === 1 ? " is" : "s are"} ready for the accounting workflow.</span>
+                <strong>Sales invoices ready for export</strong>
+                <span>{readySales} sales document{readySales === 1 ? " is" : "s are"} ready for CSV export.</span>
               </button>
             </li>
             <li>
@@ -2494,52 +2449,8 @@ function IntegrationsPage({ store }: { store: AppStore }) {
 
         <article className="panel">
           <div className="panel-heading">
-            <h2>Open banking</h2>
-            <span>Live reconciliation coverage</span>
-          </div>
-          <ul className="summary-list">
-            <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Open")}>
-                <strong>Open reconciliation lines</strong>
-                <span>{openBankMatches} imported bank line{openBankMatches === 1 ? " still needs" : " still need"} a matched document or audit action.</span>
-              </button>
-            </li>
-            <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Audited")}>
-                <strong>Audited bank matches</strong>
-                <span>{auditedBankMatches} line{auditedBankMatches === 1 ? " has" : "s have"} already been cleared through reconciliation.</span>
-              </button>
-            </li>
-            <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate("/requisitions")}>
-                <strong>Bank connection setup</strong>
-                <span>Open the requisitions flow to start or retry the read-only bank connection handshake.</span>
-              </button>
-            </li>
-          </ul>
-        </article>
-
-        <article className="panel">
-          <div className="panel-heading">
-            <h2>Supported accounting stack</h2>
-            <span>Current downstream compatibility surface</span>
-          </div>
-          <ul className="summary-list">
-            {["Sage", "Xero", "QuickBooks", "FreeAgent"].map((platform) => (
-              <li key={platform}>
-                <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForStatus(store, "Ready"))}>
-                  <strong>{platform}</strong>
-                  <span>Use the existing Ready and Published receipt workflow as the accounting handoff path for this platform.</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </article>
-
-        <article className="panel">
-          <div className="panel-heading">
-            <h2>Recent connected activity</h2>
-            <span>Latest synced records across channels</span>
+            <h2>Recent activity</h2>
+            <span>Latest records across active submission channels</span>
           </div>
           <ul className="summary-list">
             {recentUploads.length ? (
@@ -2553,8 +2464,8 @@ function IntegrationsPage({ store }: { store: AppStore }) {
               ))
             ) : (
               <li>
-                <strong>No connected activity yet</strong>
-                <span>Uploads, imports, and archived files will appear here once the first records sync into the workspace.</span>
+                <strong>No activity yet</strong>
+                <span>Uploads and archived files will appear here once the first records enter the workspace.</span>
               </li>
             )}
           </ul>
@@ -2622,19 +2533,13 @@ function WorkflowPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/costs?status=Ready")}>
                 <strong>Costs publish lane</strong>
-                <span>{costReady.length} cost document{costReady.length === 1 ? " is" : "s are"} ready for accounting handoff.</span>
+                <span>{costReady.length} cost document{costReady.length === 1 ? " is" : "s are"} ready for CSV export.</span>
               </button>
             </li>
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/sales?status=Ready")}>
                 <strong>Sales publish lane</strong>
                 <span>{salesReady.length} sales document{salesReady.length === 1 ? " is" : "s are"} ready for the next step.</span>
-              </button>
-            </li>
-            <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Open")}>
-                <strong>Reconciliation audit lane</strong>
-                <span>{store.reconciliation.filter((line) => line.status === "Open").length} imported bank line{store.reconciliation.filter((line) => line.status === "Open").length === 1 ? " still needs" : " still need"} clearing.</span>
               </button>
             </li>
           </ul>
@@ -2727,17 +2632,12 @@ function ProductivityPage({ store }: { store: AppStore }) {
   const reviewCompletion = allDocuments.length
     ? Math.round(((allDocuments.length - reviewDocuments.length) / allDocuments.length) * 100)
     : 0;
-  const bankAudited = store.reconciliation.filter((line) => line.status === "Audited").length;
-  const bankCoverage = store.reconciliation.length
-    ? Math.round((bankAudited / store.reconciliation.length) * 100)
-    : 0;
   const claimsCompleted = store.claims.filter((claim) => claim.status === "approved" || claim.status === "paid").length;
   const claimCompletion = store.claims.length ? Math.round((claimsCompleted / store.claims.length) * 100) : 0;
   const sourceMix = [
     { label: "Mobile", count: allDocuments.filter((record) => record.receiptSource === "mobile").length, route: firstInboxRouteForSource(store, "mobile") },
     { label: "Web", count: allDocuments.filter((record) => record.receiptSource === "web_upload").length, route: firstInboxRouteForSource(store, "web_upload") },
     { label: "Email", count: allDocuments.filter((record) => record.receiptSource === "email").length, route: firstInboxRouteForSource(store, "email") },
-    { label: "Bank", count: allDocuments.filter((record) => record.receiptSource === "bank_import").length, route: firstInboxRouteForSource(store, "bank_import") },
   ];
 
   return (
@@ -2745,7 +2645,6 @@ function ProductivityPage({ store }: { store: AppStore }) {
       <section className="metrics-grid">
         <MetricCard label="Automation coverage" value={`${automatedCoverage}%`} detail="Ready or published records across all queues" onClick={() => navigate(readyDocuments.length ? firstInboxRouteForStatus(store, "Ready") : firstPublishedOrArchiveRoute(store))} />
         <MetricCard label="Review completion" value={`${reviewCompletion}%`} detail="Records that no longer need manual review" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"))} />
-        <MetricCard label="Bank audit coverage" value={`${bankCoverage}%`} detail="Imported bank lines already audited" onClick={() => navigate("/reconciliation?status=Audited")} />
         <MetricCard label="Claim completion" value={`${claimCompletion}%`} detail="Claims approved or fully paid" onClick={() => navigate(firstClaimCompletionRoute(store))} />
         <MetricCard label="Low-confidence drag" value={String(lowConfidenceDocuments.length)} detail="Records still slowing down review quality" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))} />
         <MetricCard label="Duplicate drag" value={String(duplicateGroups)} detail="Repeat-upload groups still consuming time" onClick={() => navigate(firstInboxRouteForDuplicateReview(store))} />
@@ -2774,12 +2673,6 @@ function ProductivityPage({ store }: { store: AppStore }) {
               <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=pending")}>
                 <strong>Approval queue</strong>
                 <span>{store.claims.filter((claim) => claim.status === "pending").length} claim{store.claims.filter((claim) => claim.status === "pending").length === 1 ? " is" : "s are"} waiting on approval.</span>
-              </button>
-            </li>
-            <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate("/reconciliation?status=Open")}>
-                <strong>Open bank audit queue</strong>
-                <span>{store.reconciliation.filter((line) => line.status === "Open").length} bank line{store.reconciliation.filter((line) => line.status === "Open").length === 1 ? " still needs" : "s still need"} matching or audit closure.</span>
               </button>
             </li>
           </ul>
@@ -2838,13 +2731,13 @@ function ProductivityPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate(firstExportRoute(store))}>
                 <strong>Open an export-ready queue</strong>
-                <span>Open the first live queue that already supports filtered CSV export for costs, sales, vault, claims, or reconciliation.</span>
+                <span>Open the first live queue that supports CSV export for costs, sales, vault, or claims.</span>
               </button>
             </li>
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/overview/integrations")}>
-                <strong>Accounting handoff posture</strong>
-                <span>{readyDocuments.length} record{readyDocuments.length === 1 ? " is" : "s are"} sitting in Ready and {publishedDocuments.length} {publishedDocuments.length === 1 ? "has" : "have"} already been published onward.</span>
+                <strong>Review completion</strong>
+                <span>{readyDocuments.length} record{readyDocuments.length === 1 ? " is" : "s are"} sitting in Ready and {publishedDocuments.length} {publishedDocuments.length === 1 ? "has" : "have"} been marked as published.</span>
               </button>
             </li>
             <li>
@@ -3880,7 +3773,7 @@ function DocumentWorkspacePage(props: {
                   const nextReceipt = { ...receipt, status: "Published" as ReceiptRecord["status"] };
                   setReceipt(nextReceipt);
                   await props.onSave(receipt.id, nextReceipt);
-                  setFeedback("Receipt marked as published in the accounting workflow.");
+                  setFeedback("Receipt marked as published in Exdox.");
                 } catch (publishError) {
                   setError(publishError instanceof Error ? publishError.message : "Could not publish this receipt.");
                 } finally {
@@ -5813,21 +5706,13 @@ function SettingsPage(props: {
 
         <div className="panel settings-panel">
           <div className="panel-heading">
-            <h2>Integrations & workflow</h2>
-            <span>Shortcuts into the connected operational parts of Exdox</span>
+            <h2>Workflow shortcuts</h2>
+            <span>Shortcuts to available Exdox features</span>
           </div>
           <div className="settings-link-grid">
             <button className="settings-link-card" type="button" onClick={() => navigate("/rules")}>
               <strong>Supplier rules</strong>
               <span>Control automatic category, tax, and payment defaults.</span>
-            </button>
-            <button className="settings-link-card" type="button" onClick={() => navigate("/requisitions")}>
-              <strong>Open Banking</strong>
-              <span>Connect bank-led evidence feeds and requisitions.</span>
-            </button>
-            <button className="settings-link-card" type="button" onClick={() => navigate("/reconciliation")}>
-              <strong>Reconciliation</strong>
-              <span>Move straight into bank matching and audit review.</span>
             </button>
             <button className="settings-link-card" type="button" onClick={() => navigate("/billing")}>
               <strong>Billing</strong>
@@ -6752,7 +6637,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
         <PublicPageIntro
           kicker="Platform"
           title="A finance workspace built for operational review."
-          body="Receipt capture, invoice review, claims, vault storage, supplier rules, reconciliation, and data health sit inside one connected Exdox platform."
+          body="Receipt capture, invoice review, claims, vault storage, supplier rules, approvals, and data health sit inside one connected Exdox platform."
         />
         <PlatformCapabilitiesSection session={session} linkTarget={null} />
         <CoverageSection session={session} linkTarget={null} />
@@ -6766,9 +6651,9 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
     return (
       <PublicLayout activePath="/integrations" session={session}>
         <PublicPageIntro
-          kicker="Integrations"
-          title="Keep evidence, review queues, and accounting handoff in one operational flow."
-          body="Exdox supports connected accounting workflows with ready and published queues, protected source evidence, and bank-led reconciliation."
+          kicker="Workflows"
+          title="Keep evidence, review queues, and exports in one operational flow."
+          body="Exdox connects mobile capture, web review, approvals, protected source evidence, and export-ready queues."
         />
         <IntegrationSection session={session} linkTarget={null} />
         <FlowSection session={session} />
@@ -6883,7 +6768,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
           <h1>Capture, review and publish business spend without chasing paper.</h1>
           <p>
             Exdox gives businesses one synced workspace across mobile and web for receipt capture,
-            invoice review, document vault storage, expense claims, supplier rules and bank-led reconciliation.
+            invoice review, document vault storage, expense claims, supplier rules and approval workflows.
           </p>
           <div className="hero-actions">
             {session ? (
@@ -7048,7 +6933,7 @@ function SiteFooterBlock() {
           <div className="site-footer-brand">
             <strong>Exdox</strong>
             <p>Receipt capture, review, claims, archive, and finance controls in one connected workflow.</p>
-            <span>Compatible with Xero, QuickBooks, Sage and FreeAgent</span>
+            <span>Mobile capture, web review, approvals, and CSV exports</span>
           </div>
           <div className="site-footer-links">
             <div>
@@ -7736,9 +7621,8 @@ function PlatformCapabilitiesSection({ session = null, linkTarget = "/platform" 
         <CapabilityCard icon="claims" title="Mileage & Expense Claims" detail="Staff submission, mileage entry and approval" />
         <CapabilityCard icon="health" title="Client Data Health" detail="Unreadable, duplicate and low-confidence follow-up" />
         <CapabilityCard icon="claims" title="Document Vault" detail="Archive and retrieve source evidence fast" />
-        <CapabilityCard icon="bank" title="Bank Reconciliation" detail="Match bank-line evidence back to spend" />
-        <CapabilityCard icon="integrations" title="Bank & Statement Review" detail="Imported bank activity and evidence-led review" />
-        <CapabilityCard icon="open-banking" title="Queue Exports" detail="CSV handoff across inboxes, claims, and reconciliation" />
+        <CapabilityCard icon="integrations" title="Mobile & Web Sync" detail="Keep submission and review status aligned" />
+        <CapabilityCard icon="open-banking" title="Queue Exports" detail="CSV exports across inboxes and claims" />
         <Link className="capability-card" to="/pricing"><NavIcon name="overview" /><strong>Pricing & Plans</strong><span>Compare plan tiers, document volumes, and included users</span></Link>
       </div>
     </section>
@@ -7762,7 +7646,7 @@ function CoverageSection({ session = null, linkTarget = "/platform" }: { session
         </div>
         <p>
           Exdox keeps the submission mix visible in one place across mobile and web, from
-          receipt capture and invoice handling to mileage claims, bank-led evidence, and archived support files.
+          receipt capture and invoice handling to mileage claims and archived support files.
         </p>
       </div>
       <div className="document-grid">
@@ -7770,7 +7654,7 @@ function CoverageSection({ session = null, linkTarget = "/platform" }: { session
         <DocumentCard title="Purchase invoices" detail="Structured totals, tax fields, and review-ready categorisation" />
         <DocumentCard title="Sales documents" detail="Separate sales workspace with the same synced review flow" />
         <DocumentCard title="Mileage claims" detail="Staff mileage entry and approval-ready claim handling" />
-        <DocumentCard title="Bank-led evidence" detail="Imported bank activity matched back to supporting records" />
+        <DocumentCard title="Supporting documents" detail="Reference evidence stored alongside review workflows" />
         <DocumentCard title="Vault files" detail="Stored reference documents with protected retrieval" />
       </div>
     </section>
@@ -7799,7 +7683,7 @@ function FlowSection({ session = null, linkTarget = "/platform" }: { session?: S
         </p>
       </div>
       <div className="process-grid">
-        <ProcessCard step="1. Capture" title="Collect receipts, invoices, and supporting files" detail="Use mobile capture, web upload, employee drop box flows, and bank-led intake." />
+        <ProcessCard step="1. Capture" title="Collect receipts, invoices, and supporting files" detail="Use mobile capture, web upload, and employee submission flows." />
         <ProcessCard step="2. Extract" title="Pull out totals, tax, supplier, and line detail" detail="Structured extraction, VAT-aware fields, and document detail all stay visible for review." />
         <ProcessCard step="3. Review" title="Work the exceptions instead of retyping everything" detail="Needs-review, duplicate, unreadable, and low-confidence signals surface the items that need attention." />
         <ProcessCard step="4. Store" title="Keep the original evidence easy to retrieve" detail="Vault storage, protected document access, and searchable archive views keep source files close at hand." />
@@ -7839,7 +7723,7 @@ function WorkflowCoverageSection({ session = null, linkTarget = "/platform" }: {
           <h2>Built around the same workflow finance teams expect from Dext</h2>
         </div>
         <p>
-          Capture, review, rules, approvals, open banking and reconciliation are all available inside the
+          Capture, review, rules, approvals, vault storage, and exports are all available inside the
           same Exdox web workspace that syncs with the mobile app.
         </p>
       </div>
@@ -7851,7 +7735,7 @@ function WorkflowCoverageSection({ session = null, linkTarget = "/platform" }: {
             "Drag-and-drop uploads in costs and sales inboxes",
             "Dedicated employee drop box for non-admin users",
             "Mileage entry and expense-claim capture for staff",
-            "Bank-line review against imported statement activity",
+            "Clear status tracking for every submitted document",
             "Separate workspaces for purchase and sales documents",
           ]}
         />
@@ -7870,9 +7754,7 @@ function WorkflowCoverageSection({ session = null, linkTarget = "/platform" }: {
           title="Close the loop with finance controls"
           items={[
             "Dedicated vault workspace for searchable archived evidence",
-            "Open banking requisitions and callback handling",
             "Approval-ready claims and document review handoff",
-            "Reconciliation matching against imported bank lines",
             "Filtered CSV exports across queues and document views",
             "Organisation-level VAT settings and tax defaults",
             "Live sync with the same receipt records used in mobile",
@@ -7887,29 +7769,17 @@ function IntegrationSection({ session = null, linkTarget = "/integrations" }: { 
   return (
     <section className="integration-band">
       <div>
-        <h2>Accounting Integrations &amp; Connected Workflows</h2>
+        <h2>Connected Capture &amp; Review Workflows</h2>
         <p>
-          Keep capture, review and accounting data moving together across your finance stack with
-          synced web and mobile workflows, organisation switching, bank-linked reconciliation,
-          ready-and-published handoff queues, and archive-safe evidence retrieval from the same workspace.
+          Keep capture and review moving together with synced web and mobile workflows,
+          organisation switching, approval queues, CSV exports, and archive-safe evidence retrieval.
         </p>
       </div>
-      <div className="integration-names" aria-label="Compatible accounting platforms">
-        {linkTarget ? (
-          <>
-            <Link to={linkTarget}>Sage</Link>
-            <Link to={linkTarget}>Xero</Link>
-            <Link to={linkTarget}>QuickBooks</Link>
-            <Link to={linkTarget}>FreeAgent</Link>
-          </>
-        ) : (
-          <>
-            <span>Sage</span>
-            <span>Xero</span>
-            <span>QuickBooks</span>
-            <span>FreeAgent</span>
-          </>
-        )}
+      <div className="integration-names" aria-label="Connected Exdox workflows">
+        <span>Mobile capture</span>
+        <span>Web review</span>
+        <span>Expense approvals</span>
+        <span>CSV exports</span>
       </div>
     </section>
   );
@@ -8139,7 +8009,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               <ul>
                 <li>Capture focuses on receipt and invoice intake</li>
                 <li>Control adds sales and broader approval workflow coverage</li>
-                <li>Operations adds rules, vault, open banking, and reconciliation</li>
+                <li>Operations adds rules, vault, and expanded workflow controls</li>
               </ul>
             </article>
             <article className="workflow-card">
@@ -9125,7 +8995,7 @@ function firstExportRoute(store: AppStore) {
   if (store.claims.length) {
     return "/claims";
   }
-  return "/reconciliation";
+  return "/costs";
 }
 
 function firstPublishedOrArchiveRoute(store: AppStore) {
@@ -9435,7 +9305,6 @@ function profileLandingOptions(session: SessionState) {
     { route: "/sales", label: "Sales Inbox" },
     { route: "/vault", label: "Vault" },
     { route: "/claims", label: "Expense Claims" },
-    { route: "/reconciliation", label: "Bank Reconciliation" },
     { route: "/billing", label: "Billing" },
   ];
   return candidates.filter((option) => isRouteAllowed(session, option.route));
@@ -9804,9 +9673,6 @@ function getAttentionRoute(session: SessionState, store: AppStore) {
   }
   if (store.claims.some((claim) => claim.status === "pending")) {
     return "/claims";
-  }
-  if (store.reconciliation.some((line) => line.status === "Open")) {
-    return "/reconciliation";
   }
   return getDefaultRoute(session);
 }
