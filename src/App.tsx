@@ -1862,7 +1862,14 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
   const totalSales = sumGross(store.sales);
   const vaultDocuments = store.vault.length;
   const pendingClaims = store.claims.filter((claim) => claim.status === "pending").length;
-  const openMatches = store.reconciliation.filter((line) => line.status === "Open").length;
+  const monthlyDocumentUsage = Math.max(0, session.billing?.monthlyDocumentUsage ?? 0);
+  const monthlyDocumentLimit = session.billing?.monthlyDocumentLimit ?? null;
+  const remainingDocumentAllowance = monthlyDocumentLimit === null
+    ? null
+    : Math.max(0, monthlyDocumentLimit - monthlyDocumentUsage);
+  const usagePercentage = monthlyDocumentLimit && monthlyDocumentLimit > 0
+    ? Math.min(100, Math.round((monthlyDocumentUsage / monthlyDocumentLimit) * 100))
+    : 0;
   const recentVaultDocuments = store.vault.slice(0, 4);
   const duplicateInsights = buildDuplicateInsights([...store.costs, ...store.sales]);
   const healthIssues = buildWorkspaceHealthIssues(store);
@@ -1918,7 +1925,12 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
         <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${store.sales.length} invoices`} to="/sales" />
         <MetricCard label="Vault archive" value={String(vaultDocuments)} detail="Stored reference files" to="/vault" />
         <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Approval workload" to={firstPendingClaimsRoute(store)} />
-        <MetricCard label="Open bank matches" value={String(openMatches)} detail="Awaiting audit pairing" to={firstOpenReconciliationRoute(store)} />
+        <UsageAllowanceCard
+          usage={monthlyDocumentUsage}
+          limit={monthlyDocumentLimit}
+          remaining={remainingDocumentAllowance}
+          percentage={usagePercentage}
+        />
         <MetricCard
           label="Duplicate review"
           value={String(duplicateInsights.groups.length)}
@@ -5920,6 +5932,42 @@ function MetricCard(props: { label: string; value: string; detail: string; onCli
     <article className="metric-card">
       {content}
     </article>
+  );
+}
+
+function UsageAllowanceCard(props: {
+  usage: number;
+  limit: number | null;
+  remaining: number | null;
+  percentage: number;
+}) {
+  const lowAllowance = props.remaining !== null && props.limit !== null
+    && props.remaining <= Math.max(10, Math.ceil(props.limit * 0.1));
+  const allowanceUsed = props.remaining === 0;
+  const detail = props.limit === null
+    ? `${props.usage.toLocaleString()} documents used this month`
+    : allowanceUsed
+      ? `Monthly allowance used: ${props.usage.toLocaleString()} of ${props.limit.toLocaleString()}`
+      : `${props.usage.toLocaleString()} of ${props.limit.toLocaleString()} documents used this month`;
+
+  return (
+    <Link
+      className={`metric-card metric-card-button usage-allowance-card${lowAllowance ? " usage-allowance-low" : ""}`}
+      to="/billing"
+      aria-label={`Monthly document allowance: ${props.remaining === null ? "unlimited" : `${props.remaining} remaining`}`}
+    >
+      <span>Usage allowance left</span>
+      <strong>{props.remaining === null ? "Unlimited" : props.remaining.toLocaleString()}</strong>
+      <p>{detail}</p>
+      {props.limit !== null ? (
+        <div className="usage-allowance-track" aria-hidden="true">
+          <span style={{ width: `${props.percentage}%` }} />
+        </div>
+      ) : null}
+      {lowAllowance ? (
+        <small>{allowanceUsed ? "No document allowance remaining" : "Allowance is running low"}</small>
+      ) : null}
+    </Link>
   );
 }
 

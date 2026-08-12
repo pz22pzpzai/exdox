@@ -1567,6 +1567,49 @@ input {
   letter-spacing: -0.04em;
 }
 
+.usage-allowance-card::after {
+  display: none;
+}
+
+.usage-allowance-track {
+  position: relative;
+  z-index: 1;
+  height: 7px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dce4ed;
+}
+
+.usage-allowance-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #168dcc;
+}
+
+.usage-allowance-card small {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 8px;
+  color: #52627a;
+  font-weight: 700;
+}
+
+.usage-allowance-low {
+  border-color: #e4a52f;
+  background: #fff9e9;
+}
+
+.usage-allowance-low .usage-allowance-track span {
+  background: #d9830d;
+}
+
+.usage-allowance-low small {
+  color: #955500;
+}
+
 .overview-panels {
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
   gap: 12px;
