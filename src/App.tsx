@@ -5853,7 +5853,7 @@ function DeleteAccountPage({ session }: { session: SessionState }) {
             <span className="section-kicker">Permanent account closure</span>
             <h2>Delete this Exdox workspace</h2>
           </div>
-          <span>Business administrator only</span>
+          <span>Business owner or sole trader only</span>
         </div>
 
         <div className="account-deletion-warning" role="alert">
@@ -7721,8 +7721,8 @@ function AccountDeletionSection() {
           heading: "How to request deletion",
           body: (
             <>
-              <p>Business administrators can sign in and use <Link to="/settings/delete-account">Profile/Settings &gt; Account deletion</Link> to close the whole workspace immediately.</p>
-              <p>The secure deletion screen requires the administrator&apos;s current password and an explicit deletion confirmation.</p>
+              <p>The business owner or sole trader can sign in and use <Link to="/settings/delete-account">Profile/Settings &gt; Account deletion</Link> to close the whole workspace immediately.</p>
+              <p>The secure deletion screen requires the owner&apos;s current password and an explicit deletion confirmation.</p>
               <p>If you cannot sign in, use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Account deletion request")}`}>contact form</Link> for account recovery or deletion support.</p>
             </>
           ),
