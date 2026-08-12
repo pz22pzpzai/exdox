@@ -615,8 +615,8 @@ export function buildFallbackSession(token: string, user: SessionUser): SessionS
     activeOrganisationId: user.organisationId,
     allowedWebRoutes:
       user.role === "Business_Admin"
-        ? ["/overview", "/costs", "/sales", "/vault", "/claims", "/rules", "/reconciliation", "/settings", "/requisitions", "/bank-callback", "/billing"]
-        : ["/dropbox"],
+        ? ["/overview", "/costs", "/sales", "/vault", "/claims", "/rules", "/settings", "/billing"]
+        : ["/dropbox", "/claims"],
     billing:
       user.role === "Business_Admin"
         ? {

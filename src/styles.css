@@ -2047,51 +2047,55 @@ input {
 
 @media (max-width: 980px) {
   .dashboard-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: 164px minmax(0, 1fr);
   }
 
   .sidebar {
-    position: static;
-    height: auto;
-    overflow: visible;
-    padding: 12px 12px 12px;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow: hidden;
+    padding: 8px 8px 12px;
   }
 
   .sidebar-main,
   .sidebar-nav {
-    min-height: auto;
+    min-height: 0;
   }
 
   .sidebar-main {
-    flex-direction: row;
-    align-items: flex-end;
-    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
   }
 
   .brand-lockup {
-    min-height: 72px;
-    margin: 0;
-    flex: 0 0 auto;
+    min-height: 64px;
+    margin: 6px 4px 8px;
+    padding: 10px 12px;
   }
 
   .brand-lockup strong {
-    font-size: 1.55rem;
+    font-size: 1.2rem;
   }
 
   .sidebar-nav {
-    display: flex;
+    display: grid;
     flex: 1 1 auto;
-    min-width: 0;
-    align-self: flex-end;
-    gap: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 0 0 6px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 6px 2px 0;
   }
 
   .sidebar-link {
-    flex: 0 0 auto;
-    padding: 0 12px;
+    min-height: 42px;
+    padding: 0 9px;
+    gap: 8px;
+    font-size: 0.78rem;
+  }
+
+  .sidebar-card {
+    display: none;
   }
 
   .workspace {
@@ -2118,6 +2122,40 @@ input {
 }
 
 @media (max-width: 720px) {
+  .dashboard-shell {
+    grid-template-columns: 108px minmax(0, 1fr);
+  }
+
+  .brand-lockup {
+    width: calc(100% - 8px);
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .brand-lockup .brand-mark {
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand-lockup strong {
+    display: none;
+  }
+
+  .sidebar-link {
+    min-height: 48px;
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 8px;
+    font-size: 0.68rem;
+    line-height: 1.12;
+  }
+
+  .sidebar-lock-tag {
+    display: none;
+  }
+
   .onboarding-panel,
   .onboarding-steps {
     grid-template-columns: 1fr;

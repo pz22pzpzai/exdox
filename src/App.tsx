@@ -360,7 +360,7 @@ const pricingSliderSteps: Array<{
     label: "100 users",
     markerLabel: "Operations",
     users: 100,
-    documents: 10000,
+    documents: 5000,
     monthlyPrice: 288.24,
     annualMonthlyPrice: 230.59,
     planId: "operations",
@@ -1501,6 +1501,7 @@ function DashboardShell(props: {
       }))
     : [
         { to: "/dropbox", label: "My Expenses", icon: "costs" },
+        { to: "/claims", label: "My Claims", icon: "claims" },
         { to: "/contact", label: "Contact", icon: "contact" },
       ];
   const defaultRoute = getDefaultRoute(props.session);
@@ -1842,6 +1843,21 @@ function DashboardShell(props: {
                   <EmployeeDropboxPage
                     receipts={props.store.costs}
                     settings={props.store.settings}
+                  />
+                }
+              />
+              <Route
+                path="/claims"
+                element={<ClaimsPage claims={props.store.claims} onCreateClaim={props.onClaimCreate} employeeMode />}
+              />
+              <Route
+                path="/claims/:id"
+                element={
+                  <ClaimDetailPage
+                    onStatusChange={props.onClaimStatusChange}
+                    loadClaim={props.loadClaim}
+                    settings={props.store.settings}
+                    employeeMode
                   />
                 }
               />
@@ -3311,10 +3327,10 @@ function DocumentWorkspacePage(props: {
   const vatTrackingEnabled = isVatTrackingEnabled(props.settings ?? null);
   const receiptPublished = receipt.status === "Published";
   const receiptApproved = receipt.status === "Ready" && !receipt.needsReview;
-  const nextReviewReceipt =
-    props.mode === "cost"
-      ? props.fallbackRecords.find((record) => record.id !== receipt.id && countsAsManualReview(record))
-      : null;
+  const nextReviewReceipt = isVaultRecord
+    ? null
+    : props.fallbackRecords.find((record) => record.id !== receipt.id && countsAsManualReview(record));
+  const reviewItemLabel = props.mode === "sales" ? "sales document" : "expense";
   const claimAttachmentAllowed = receipt.paymentMethod === "cash_personal";
   const previewAsImage = canPreviewReceiptAsImage(receipt);
 
@@ -3706,9 +3722,9 @@ function DocumentWorkspacePage(props: {
                       ? "Approval removed. The expense is back in review."
                       : props.mode === "cost"
                         ? "Expense approved and moved out of review."
-                        : "Document approved and moved out of review.",
+                        : "Sales document approved and moved out of review.",
                   );
-                  if (!receiptApproved && props.mode === "cost") {
+                  if (!receiptApproved && !isVaultRecord) {
                     setPostApprovePrompt({ nextReceiptId: nextReviewReceipt?.id ?? null });
                   }
                 } catch (approveError) {
@@ -3724,7 +3740,7 @@ function DocumentWorkspacePage(props: {
                 }
               }}
             >
-              {receiptPublished ? "Already Published" : receiptApproved ? "Undo Approval" : props.mode === "cost" ? "Approve Expense" : "Approve"}
+              {receiptPublished ? "Already Published" : receiptApproved ? "Undo Approval" : props.mode === "cost" ? "Approve Expense" : "Approve Sales Document"}
             </button>
           ) : null}
           <button
@@ -3835,15 +3851,15 @@ function DocumentWorkspacePage(props: {
       </section>
     </div>
     {postApprovePrompt ? (
-      <div className="review-next-overlay" role="dialog" aria-modal="true" aria-label="Expense review prompt">
-        <button className="review-next-backdrop" type="button" aria-label="Close expense review prompt" onClick={() => setPostApprovePrompt(null)} />
+      <div className="review-next-overlay" role="dialog" aria-modal="true" aria-label={`${reviewItemLabel} review prompt`}>
+        <button className="review-next-backdrop" type="button" aria-label={`Close ${reviewItemLabel} review prompt`} onClick={() => setPostApprovePrompt(null)} />
         <div className="review-next-panel">
           <div className="panel-heading">
-            <h2>{postApprovePrompt.nextReceiptId ? "Review the next expense" : "All caught up"}</h2>
+            <h2>{postApprovePrompt.nextReceiptId ? `Review the next ${reviewItemLabel}` : "All caught up"}</h2>
             <span>
               {postApprovePrompt.nextReceiptId
-                ? "This expense is approved. Move straight into the next one."
-                : "There are no more expenses waiting for review right now."}
+                ? `This ${reviewItemLabel} is approved. Move straight into the next one.`
+                : `There are no more ${props.mode === "sales" ? "sales documents" : "expenses"} waiting for review right now.`}
             </span>
           </div>
           <div className="toolbar">
@@ -3854,10 +3870,10 @@ function DocumentWorkspacePage(props: {
                 onClick={() => {
                   const nextId = postApprovePrompt.nextReceiptId;
                   setPostApprovePrompt(null);
-                  navigate(`/costs/${nextId}`);
+                  navigate(`${props.mode === "sales" ? "/sales" : "/costs"}/${nextId}`);
                 }}
               >
-                Review the next expense
+                Review the next {reviewItemLabel}
               </button>
             ) : (
               <button
@@ -3865,15 +3881,15 @@ function DocumentWorkspacePage(props: {
                 type="button"
                 onClick={async () => {
                   if (await downloadCsv(
-                    `expenses-${new Date().toISOString().slice(0, 10)}.csv`,
+                    `${props.mode === "sales" ? "sales-documents" : "expenses"}-${new Date().toISOString().slice(0, 10)}.csv`,
                     buildInboxExportRows(props.fallbackRecords, props.settings ?? null),
                   )) {
-                    setFeedback("Expenses CSV downloaded.");
+                    setFeedback(`${props.mode === "sales" ? "Sales documents" : "Expenses"} CSV downloaded.`);
                   }
                   setPostApprovePrompt(null);
                 }}
               >
-                Export CSV for expenses
+                Export CSV for {props.mode === "sales" ? "sales" : "expenses"}
               </button>
             )}
             <button className="secondary-action" type="button" onClick={() => setPostApprovePrompt(null)}>
@@ -7068,7 +7084,7 @@ function FaqSection() {
           question: "How do I log in to Exdox?",
           answer: (
             <p>
-              Use the same registered email address and password on both the website and the mobile app. If you cannot sign in,
+              Use the same account email address and password on both the website and the mobile app. If you cannot sign in,
               first confirm you are using the correct workspace email, then use the access support route on the About or Contact Us page if you
               still need help.
             </p>
@@ -7080,10 +7096,10 @@ function FaqSection() {
           answer: (
             <p>
               The app is mainly for capturing receipts and checking documents on the move. The website gives a broader review
-              workspace for finance tasks such as inbox review, supplier rules, claims, vault access, reconciliation, and settings.
+              workspace for finance tasks such as inbox review, supplier rules, claims, vault access, exports, and settings.
             </p>
           ),
-          searchText: "difference between app and website mobile capture review workspace supplier rules claims vault reconciliation settings",
+          searchText: "difference between app and website mobile capture review workspace supplier rules claims vault exports settings",
         },
         {
           question: "Why do I see Costs, Sales, Vault, Claims, or other areas?",
