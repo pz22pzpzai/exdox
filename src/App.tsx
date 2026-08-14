@@ -1487,6 +1487,7 @@ function DashboardShell(props: {
   const [uploadBusy, setUploadBusy] = useState(false);
   const [confirmationResendBusy, setConfirmationResendBusy] = useState(false);
   const [confirmationResendFeedback, setConfirmationResendFeedback] = useState<string | null>(null);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
@@ -1516,6 +1517,20 @@ function DashboardShell(props: {
         { to: "/contact", label: "Contact", icon: "contact" },
       ];
   const defaultRoute = getDefaultRoute(props.session);
+  const dashboardNavigationLinks = (onNavigate?: () => void) => visibleNavItems.map((item) => (
+    <NavLink
+      key={item.to}
+      className={({ isActive }) =>
+        `sidebar-link${isActive ? " active" : ""}${"locked" in item && item.locked ? " locked" : ""}`
+      }
+      to={"locked" in item && item.locked ? `/billing?locked=${encodeURIComponent(item.to)}` : item.to}
+      onClick={onNavigate}
+    >
+      <NavIcon name={item.icon} />
+      {item.label}
+      {"locked" in item && item.locked ? <span className="sidebar-lock-tag">Locked</span> : null}
+    </NavLink>
+  ));
 
   return (
     <div className="dashboard-shell">
@@ -1526,19 +1541,7 @@ function DashboardShell(props: {
             <strong>Exdox</strong>
           </Link>
           <nav className="sidebar-nav" aria-label="Primary">
-            {visibleNavItems.map((item) => (
-              <NavLink
-                key={item.to}
-                className={({ isActive }) =>
-                  `sidebar-link${isActive ? " active" : ""}${"locked" in item && item.locked ? " locked" : ""}`
-                }
-                to={"locked" in item && item.locked ? `/billing?locked=${encodeURIComponent(item.to)}` : item.to}
-              >
-                <NavIcon name={item.icon} />
-                {item.label}
-                {"locked" in item && item.locked ? <span className="sidebar-lock-tag">Locked</span> : null}
-              </NavLink>
-            ))}
+            {dashboardNavigationLinks()}
           </nav>
         </div>
         <div className="sidebar-card">
@@ -1558,8 +1561,49 @@ function DashboardShell(props: {
         </div>
       </aside>
 
+      {mobileNavigationOpen ? (
+        <>
+          <button
+            className="dashboard-nav-backdrop"
+            type="button"
+            aria-label="Close navigation menu"
+            onClick={() => setMobileNavigationOpen(false)}
+          />
+          <aside className="mobile-dashboard-nav" aria-label="Workspace navigation">
+            <div className="mobile-dashboard-nav-header">
+              <Link className="brand-lockup" to={defaultRoute} onClick={() => setMobileNavigationOpen(false)} aria-label="Exdox workspace home">
+                <img className="brand-mark" src={publicBrandMarkSrc} alt="" />
+                <strong>Exdox</strong>
+              </Link>
+              <button
+                className="mobile-dashboard-close"
+                type="button"
+                aria-label="Close navigation menu"
+                onClick={() => setMobileNavigationOpen(false)}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+            <nav className="sidebar-nav mobile-dashboard-links" aria-label="Mobile primary">
+              {dashboardNavigationLinks(() => setMobileNavigationOpen(false))}
+            </nav>
+          </aside>
+        </>
+      ) : null}
+
       <main className="workspace">
         <header className="topbar">
+          <button
+            className="dashboard-menu-button"
+            type="button"
+            aria-label="Open navigation menu"
+            aria-expanded={mobileNavigationOpen}
+            onClick={() => setMobileNavigationOpen(true)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
           <div>
             <p className="topbar-kicker">{workspaceShellKicker(location.pathname, businessAdmin)}</p>
             <h1>{businessAdmin ? routeTitle(location.pathname) : employeeRouteTitle(location.pathname)}</h1>
