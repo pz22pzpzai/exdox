@@ -2130,13 +2130,6 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
                 <small>Add employees or another workspace administrator.</small>
               </div>
             </Link>
-            <Link className="onboarding-step" to="/contact">
-              <span>4</span>
-              <div>
-                <strong>Contact support</strong>
-                <small>Get help with onboarding, billing, or access.</small>
-              </div>
-            </Link>
           </div>
         </section>
       ) : null}
