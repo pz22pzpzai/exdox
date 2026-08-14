@@ -192,7 +192,7 @@ export async function registerWithEmail(input: {
   };
 }
 
-export async function confirmEmailWithToken(input: { email: string; token: string }): Promise<SessionState> {
+export async function confirmEmailWithToken(input: { email: string; token: string }): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/confirm-email`, {
     method: "POST",
     headers: {
@@ -206,16 +206,6 @@ export async function confirmEmailWithToken(input: { email: string; token: strin
     throw new Error(("message" in payload && payload.message) || "Email confirmation failed.");
   }
 
-  let hydrated: SessionState;
-  try {
-    const session = await fetchSession(payload.token);
-    hydrated = { ...session, token: payload.token };
-  } catch {
-    hydrated = buildFallbackSession(payload.token, payload.user);
-  }
-
-  saveStoredSession(hydrated);
-  return hydrated;
 }
 
 export async function resendConfirmationEmail(input: { email: string }): Promise<{ message: string; delivered?: boolean }> {

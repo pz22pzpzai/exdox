@@ -1115,9 +1115,8 @@ export function App() {
               setAuthError(null);
               setError(null);
               try {
-                const confirmedSession = await confirmEmailWithToken({ email, token });
-                await loadWorkspace(confirmedSession.token, confirmedSession);
-                navigate("/overview?confirmed=1", { replace: true });
+                await confirmEmailWithToken({ email, token });
+                navigate(`/login?email=${encodeURIComponent(email)}&confirmed=1`, { replace: true });
               } catch (confirmError) {
                 setAuthError(confirmError instanceof Error ? confirmError.message : "Email confirmation failed.");
               } finally {
