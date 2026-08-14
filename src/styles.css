@@ -1983,11 +1983,6 @@ input {
   left: 32px;
 }
 
-.callout-hmrc {
-  top: 24px;
-  left: 42%;
-}
-
 .callout-total {
   top: 62px;
   right: 28px;
@@ -2285,12 +2280,6 @@ input {
   .login-callout {
     padding: 6px 10px;
     font-size: 0.72rem;
-  }
-
-  .callout-hmrc {
-    top: 12px;
-    left: auto;
-    right: 12px;
   }
 
   .callout-total {
