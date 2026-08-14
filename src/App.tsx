@@ -1878,79 +1878,113 @@ function DashboardShell(props: {
   );
 }
 
-type HelpChatTopic = {
-  label: string;
-  answer: string;
+type HelpChatMessage = {
+  id: number;
+  sender: "assistant" | "visitor";
+  text: string;
 };
 
-const helpChatTopics: HelpChatTopic[] = [
-  {
-    label: "How do I upload a receipt?",
-    answer: "Use Upload Costs in the workspace header, or capture the receipt in the Exdox mobile app. The document then appears in Costs Inbox for review.",
-  },
-  {
-    label: "What happens during review?",
-    answer: "Exdox extracts the document details, highlights anything needing attention, and lets an authorised reviewer save changes and approve the expense. Approved items move on to the next workflow stage.",
-  },
-  {
-    label: "Where can I see my allowance?",
-    answer: "Business administrators can see Usage allowance left on Overview and the full allowance details in Billing. Vault uploads use the same monthly document allowance.",
-  },
-  {
-    label: "What can employees access?",
-    answer: "Employees can submit and track their own expenses and claims. Their browser view is read-only for company records, and they cannot access business billing, settings, or other users' documents.",
-  },
-  {
-    label: "How do I get account help?",
-    answer: "For account, billing, security, or document-specific help, use the Contact page. Please do not share passwords, card details, or private documents in a chat message.",
-  },
-];
+const helpChatQuickPrompts = ["Getting started", "Upload a document", "Review and approval", "Billing and plans"];
+
+function helpChatReply(message: string) {
+  const input = message.toLowerCase();
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(input)) {
+    return "Hello. I am the Exdox support assistant. I can explain how Exdox works and point you to the right place for help.";
+  }
+  if (/(upload|add|submit).*(receipt|invoice|document)|\b(receipt|invoice)\b/.test(input)) {
+    return "You can upload a document using Upload Costs, Upload Sales, or Upload Vault in the workspace header. On mobile, capture the receipt in the Exdox app and it will appear in the matching review queue.";
+  }
+  if (/(review|approve|approval|next expense|save changes)/.test(input)) {
+    return "Review the extracted fields, save any corrections, then select Approve when the document is ready. Exdox offers the next item to review, or an export option when the queue is clear.";
+  }
+  if (/(allowance|limit|usage|documents left|vault)/.test(input)) {
+    return "Business administrators can see the remaining document allowance on Overview and the full plan breakdown in Billing. Costs, sales, and Vault uploads all count towards the monthly document allowance.";
+  }
+  if (/(employee|staff|team|invite|access)/.test(input)) {
+    return "Employees can submit and track their own expenses and claims. Their web view does not expose company billing, settings, approval controls, or other users' records.";
+  }
+  if (/(price|pricing|plan|trial|billing|card|cancel|subscription)/.test(input)) {
+    return "Plans and trial details are on the Pricing page. Business administrators can manage their trial or subscription from Billing, including cancellation before a renewal.";
+  }
+  if (/(password|login|sign in|email confirm|confirmation)/.test(input)) {
+    return "Use Forgot Password on the login page if you cannot sign in. After registration, confirm your email using the latest Exdox message to keep uninterrupted workspace access.";
+  }
+  if (/(contact|support|security|help)/.test(input)) {
+    return "For account-specific, billing, or security help, use the Contact page. Please do not send passwords, card details, or private documents in this chat.";
+  }
+  return "I can help with general Exdox guidance on uploads, reviews, plans, employee access, and signing in. For account-specific support, please use the Contact page.";
+}
 
 function HelpChatWidget() {
   const [open, setOpen] = useState(false);
-  const [selectedTopic, setSelectedTopic] = useState<HelpChatTopic | null>(null);
+  const [draft, setDraft] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
+  const [messages, setMessages] = useState<HelpChatMessage[]>([
+    { id: 1, sender: "assistant", text: "Hello. I am the Exdox support assistant. How can I help today?" },
+  ]);
 
-  const toggle = () => {
-    setOpen((current) => !current);
-    setSelectedTopic(null);
+  const sendMessage = (rawMessage: string) => {
+    const text = rawMessage.trim();
+    if (!text || isReplying) {
+      return;
+    }
+    setMessages((current) => [...current, { id: Date.now(), sender: "visitor", text }]);
+    setDraft("");
+    setIsReplying(true);
+    window.setTimeout(() => {
+      setMessages((current) => [...current, { id: Date.now() + 1, sender: "assistant", text: helpChatReply(text) }]);
+      setIsReplying(false);
+    }, 420);
   };
+
+  const toggle = () => setOpen((current) => !current);
 
   return (
     <div className={`help-chat${open ? " is-open" : ""}`}>
       {open ? (
-        <section className="help-chat-panel" role="dialog" aria-label="Exdox help">
+        <section className="help-chat-panel" role="dialog" aria-label="Exdox support chat">
           <div className="help-chat-header">
-            <div>
-              <span className="help-chat-eyebrow">Exdox help</span>
-              <strong>How can we help?</strong>
+            <div className="help-chat-avatar" aria-hidden="true">E</div>
+            <div className="help-chat-title">
+              <strong>Exdox support</strong>
+              <span><i /> Online now</span>
             </div>
-            <button className="help-chat-close" type="button" onClick={toggle} aria-label="Close Exdox help">
+            <button className="help-chat-close" type="button" onClick={toggle} aria-label="Close Exdox support chat">
               ×
             </button>
           </div>
           <div className="help-chat-body">
-            <p className="help-chat-intro">Choose a topic for a quick answer. This assistant does not access account or document data.</p>
-            <div className="help-chat-topics">
-              {helpChatTopics.map((topic) => (
-                <button
-                  key={topic.label}
-                  className={`help-chat-topic${selectedTopic?.label === topic.label ? " selected" : ""}`}
-                  type="button"
-                  onClick={() => setSelectedTopic(topic)}
-                >
-                  {topic.label}
-                </button>
+            <div className="help-chat-thread" aria-live="polite">
+              {messages.map((message) => (
+                <div key={message.id} className={`help-chat-message ${message.sender}`}>
+                  {message.text}
+                </div>
+              ))}
+              {isReplying ? <div className="help-chat-message assistant help-chat-typing"><span /><span /><span /></div> : null}
+            </div>
+            <div className="help-chat-prompts" aria-label="Suggested questions">
+              {helpChatQuickPrompts.map((prompt) => (
+                <button key={prompt} type="button" onClick={() => sendMessage(prompt)} disabled={isReplying}>{prompt}</button>
               ))}
             </div>
-            {selectedTopic ? (
-              <div className="help-chat-answer" role="status">
-                <strong>{selectedTopic.label}</strong>
-                <p>{selectedTopic.answer}</p>
-              </div>
-            ) : null}
-            <Link className="help-chat-contact" to="/contact" onClick={() => setOpen(false)}>
-              Contact Exdox support
-            </Link>
+            <form
+              className="help-chat-composer"
+              onSubmit={(event) => {
+                event.preventDefault();
+                sendMessage(draft);
+              }}
+            >
+              <input
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder="Ask a question..."
+                aria-label="Ask Exdox support a question"
+              />
+              <button type="submit" disabled={!draft.trim() || isReplying} aria-label="Send message">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 9-18 9 3-9-3-9Zm3 9h8" /></svg>
+              </button>
+            </form>
+            <p className="help-chat-disclaimer">General guidance only. <Link to="/contact" onClick={() => setOpen(false)}>Contact support</Link> for account-specific help.</p>
           </div>
         </section>
       ) : null}
@@ -1959,13 +1993,13 @@ function HelpChatWidget() {
         type="button"
         onClick={toggle}
         aria-expanded={open}
-        aria-label={open ? "Close Exdox help" : "Open Exdox help"}
+        aria-label={open ? "Close Exdox support chat" : "Open Exdox support chat"}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M19 3H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h3.5L12 21l3.5-4H19a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3Z" />
           <path d="M7 9h10M7 12h6" />
         </svg>
-        <span>Help</span>
+        <span>Chat with us</span>
       </button>
     </div>
   );
