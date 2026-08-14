@@ -479,6 +479,16 @@ function workspaceShellKicker(pathname: string, businessAdmin: boolean) {
   return "Exdox workspace";
 }
 
+function employeeRouteTitle(pathname: string) {
+  if (pathname.startsWith("/claims")) {
+    return "My Claims";
+  }
+  if (pathname.startsWith("/contact")) {
+    return "Contact Exdox";
+  }
+  return "My Expenses";
+}
+
 function isSignedInPublicPage(pathname: string) {
   if (pathname === "/pricing" || pathname === "/account-deletion") {
     return true;
@@ -1533,9 +1543,19 @@ function DashboardShell(props: {
           </nav>
         </div>
         <div className="sidebar-card">
-          <span>Secure workspace</span>
-          <strong>Organisation-based access</strong>
-          <p>Uploads, review queues, and settings stay separated by organisation and user permissions.</p>
+          {businessAdmin ? (
+            <>
+              <span>Secure workspace</span>
+              <strong>Organisation-based access</strong>
+              <p>Uploads, review queues, and settings stay separated by organisation and user permissions.</p>
+            </>
+          ) : (
+            <>
+              <span>Personal workspace</span>
+              <strong>Employee view</strong>
+              <p>Review your own expenses and claims, download your history, and contact Exdox support.</p>
+            </>
+          )}
         </div>
       </aside>
 
@@ -1543,33 +1563,42 @@ function DashboardShell(props: {
         <header className="topbar">
           <div>
             <p className="topbar-kicker">{workspaceShellKicker(location.pathname, businessAdmin)}</p>
-            <h1>{businessAdmin ? routeTitle(location.pathname) : "My Expenses"}</h1>
+            <h1>{businessAdmin ? routeTitle(location.pathname) : employeeRouteTitle(location.pathname)}</h1>
           </div>
           <div className="topbar-actions">
-            <select
-              className="org-selector"
-              value={props.session.activeOrganisationId}
-              onChange={(event) => props.onActiveOrganisationChange(Number(event.target.value))}
-            >
-              {props.session.organisations.map((organisation) => (
-                <option key={organisation.id} value={organisation.id}>
-                  {customerFacingOrganisationName(organisation.name)}
-                </option>
-                ))}
-            </select>
-            {actionBreakdown.length ? (
-              <button
-                className="icon-button action-count-button"
-                type="button"
-                aria-label={actionLabel}
-                title={actionLabel}
-                onClick={() => navigate("/overview/attention")}
-              >
-                {actionLabel}
-              </button>
+            {businessAdmin ? (
+              <>
+                <select
+                  className="org-selector"
+                  value={props.session.activeOrganisationId}
+                  onChange={(event) => props.onActiveOrganisationChange(Number(event.target.value))}
+                >
+                  {props.session.organisations.map((organisation) => (
+                    <option key={organisation.id} value={organisation.id}>
+                      {customerFacingOrganisationName(organisation.name)}
+                    </option>
+                  ))}
+                </select>
+                {actionBreakdown.length ? (
+                  <button
+                    className="icon-button action-count-button"
+                    type="button"
+                    aria-label={actionLabel}
+                    title={actionLabel}
+                    onClick={() => navigate("/overview/attention")}
+                  >
+                    {actionLabel}
+                  </button>
+                ) : (
+                  <span className="icon-button action-count-button action-count-static" aria-label={actionLabel} title={actionLabel}>
+                    {actionLabel}
+                  </span>
+                )}
+              </>
             ) : (
-              <span className="icon-button action-count-button action-count-static" aria-label={actionLabel} title={actionLabel}>
-                {actionLabel}
+              <span className="employee-workspace-label">
+                <span>Personal workspace</span>
+                <strong>My Exdox</strong>
               </span>
             )}
               {isRouteAllowed(props.session, "/settings") ? (
@@ -4280,6 +4309,7 @@ function EmployeeDropboxPage(props: {
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
   const [filtersReady, setFiltersReady] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
   const vatTrackingEnabled = isVatTrackingEnabled(props.settings);
 
@@ -4326,10 +4356,10 @@ function EmployeeDropboxPage(props: {
     <div className="stack-page">
       <section className="page-hero">
         <div>
-          <h2>My drop box</h2>
+          <h2>My expenses</h2>
           <p>
-            View the receipts you submitted through the Exdox app and follow their review status.
-            Uploads, editing, approval, company settings, billing, and other employees' records are unavailable on the employee website.
+            View the expenses you submitted through the Exdox app, follow their review status, and download your personal history.
+            Business settings, approvals, billing, and other employees' records are not available in this view.
           </p>
         </div>
         <div className="filter-row">
@@ -4358,8 +4388,25 @@ function EmployeeDropboxPage(props: {
             <option value="highest_total">Highest total</option>
             <option value="lowest_total">Lowest total</option>
           </select>
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={!filteredReceipts.length}
+            title={filteredReceipts.length ? "Download your personal expenses as CSV" : "There are no expenses in the current view to export"}
+            onClick={async () => {
+              if (await downloadCsv(
+                `my-expenses-${new Date().toISOString().slice(0, 10)}.csv`,
+                buildInboxExportRows(filteredReceipts, props.settings),
+              )) {
+                setFeedback("Your personal expenses CSV was downloaded.");
+              }
+            }}
+          >
+            Export my expenses CSV
+          </button>
         </div>
       </section>
+      {feedback ? <div className="success-banner" role="status">{feedback}</div> : null}
       <section className="panel table-panel">
         {filteredReceipts.length ? (
           <table className="data-table">
