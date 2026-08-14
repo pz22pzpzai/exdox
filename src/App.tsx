@@ -1873,6 +1873,100 @@ function DashboardShell(props: {
           )}
         </Routes>
       </main>
+      <HelpChatWidget />
+    </div>
+  );
+}
+
+type HelpChatTopic = {
+  label: string;
+  answer: string;
+};
+
+const helpChatTopics: HelpChatTopic[] = [
+  {
+    label: "How do I upload a receipt?",
+    answer: "Use Upload Costs in the workspace header, or capture the receipt in the Exdox mobile app. The document then appears in Costs Inbox for review.",
+  },
+  {
+    label: "What happens during review?",
+    answer: "Exdox extracts the document details, highlights anything needing attention, and lets an authorised reviewer save changes and approve the expense. Approved items move on to the next workflow stage.",
+  },
+  {
+    label: "Where can I see my allowance?",
+    answer: "Business administrators can see Usage allowance left on Overview and the full allowance details in Billing. Vault uploads use the same monthly document allowance.",
+  },
+  {
+    label: "What can employees access?",
+    answer: "Employees can submit and track their own expenses and claims. Their browser view is read-only for company records, and they cannot access business billing, settings, or other users' documents.",
+  },
+  {
+    label: "How do I get account help?",
+    answer: "For account, billing, security, or document-specific help, use the Contact page. Please do not share passwords, card details, or private documents in a chat message.",
+  },
+];
+
+function HelpChatWidget() {
+  const [open, setOpen] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<HelpChatTopic | null>(null);
+
+  const toggle = () => {
+    setOpen((current) => !current);
+    setSelectedTopic(null);
+  };
+
+  return (
+    <div className={`help-chat${open ? " is-open" : ""}`}>
+      {open ? (
+        <section className="help-chat-panel" role="dialog" aria-label="Exdox help">
+          <div className="help-chat-header">
+            <div>
+              <span className="help-chat-eyebrow">Exdox help</span>
+              <strong>How can we help?</strong>
+            </div>
+            <button className="help-chat-close" type="button" onClick={toggle} aria-label="Close Exdox help">
+              ×
+            </button>
+          </div>
+          <div className="help-chat-body">
+            <p className="help-chat-intro">Choose a topic for a quick answer. This assistant does not access account or document data.</p>
+            <div className="help-chat-topics">
+              {helpChatTopics.map((topic) => (
+                <button
+                  key={topic.label}
+                  className={`help-chat-topic${selectedTopic?.label === topic.label ? " selected" : ""}`}
+                  type="button"
+                  onClick={() => setSelectedTopic(topic)}
+                >
+                  {topic.label}
+                </button>
+              ))}
+            </div>
+            {selectedTopic ? (
+              <div className="help-chat-answer" role="status">
+                <strong>{selectedTopic.label}</strong>
+                <p>{selectedTopic.answer}</p>
+              </div>
+            ) : null}
+            <Link className="help-chat-contact" to="/contact" onClick={() => setOpen(false)}>
+              Contact Exdox support
+            </Link>
+          </div>
+        </section>
+      ) : null}
+      <button
+        className="help-chat-trigger"
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        aria-label={open ? "Close Exdox help" : "Open Exdox help"}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19 3H5a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h3.5L12 21l3.5-4H19a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3Z" />
+          <path d="M7 9h10M7 12h6" />
+        </svg>
+        <span>Help</span>
+      </button>
     </div>
   );
 }
@@ -7061,6 +7155,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
 
       <main>{props.children}</main>
       <SiteFooterBlock />
+      <HelpChatWidget />
     </div>
   );
 }
