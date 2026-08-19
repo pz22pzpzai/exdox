@@ -2084,7 +2084,7 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
   const totalCosts = sumGross(store.costs);
   const totalSales = sumGross(store.sales);
   const vaultDocuments = store.vault.length;
-  const pendingClaims = store.claims.filter((claim) => claim.status === "pending").length;
+  const pendingClaims = pendingClaimsNeedingAction(store.claims).length;
   const monthlyDocumentUsage = Math.max(0, session.billing?.monthlyDocumentUsage ?? 0);
   const monthlyDocumentLimit = session.billing?.monthlyDocumentLimit ?? null;
   const remainingDocumentAllowance = monthlyDocumentLimit === null
@@ -2568,7 +2568,7 @@ function IntegrationsPage({ store }: { store: AppStore }) {
   const readyCosts = store.costs.filter((record) => record.status === "Ready").length;
   const readySales = store.sales.filter((record) => record.status === "Ready").length;
   const publishedRecords = allRecords.filter((record) => record.status === "Published").length;
-  const reviewedClaims = store.claims.filter((claim) => claim.status === "pending").length;
+  const reviewedClaims = pendingClaimsNeedingAction(store.claims).length;
   const recentUploads = allRecords
     .slice()
     .sort((left, right) => compareIsoDate(right.createdAt, left.createdAt))
@@ -2672,7 +2672,7 @@ function WorkflowPage({ store }: { store: AppStore }) {
   const documentsNeedingReview = allDocuments.filter((record) => countsAsManualReview(record));
   const costReady = store.costs.filter((record) => record.status === "Ready");
   const salesReady = store.sales.filter((record) => record.status === "Ready");
-  const pendingClaims = store.claims.filter((claim) => claim.status === "pending");
+  const pendingClaims = pendingClaimsNeedingAction(store.claims);
   const publishedDocuments = allDocuments.filter((record) => record.status === "Published");
   const processingDocuments = allDocuments.filter((record) => record.status === "Processing");
   const reviewByWorkspace = [
@@ -2815,6 +2815,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
   const readyDocuments = allDocuments.filter((record) => record.status === "Ready");
   const publishedDocuments = allDocuments.filter((record) => record.status === "Published");
   const processingDocuments = allDocuments.filter((record) => record.status === "Processing");
+  const pendingClaims = pendingClaimsNeedingAction(store.claims).length;
   const automatedCoverage = allDocuments.length
     ? Math.round(((publishedDocuments.length + readyDocuments.length) / allDocuments.length) * 100)
     : 0;
@@ -2859,7 +2860,7 @@ function ProductivityPage({ store }: { store: AppStore }) {
             <li>
               <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=pending")}>
                 <strong>Approval queue</strong>
-                <span>{store.claims.filter((claim) => claim.status === "pending").length} claim{store.claims.filter((claim) => claim.status === "pending").length === 1 ? " is" : "s are"} waiting on approval.</span>
+                <span>{pendingClaims} claim{pendingClaims === 1 ? " is" : "s are"} waiting on approval.</span>
               </button>
             </li>
           </ul>
