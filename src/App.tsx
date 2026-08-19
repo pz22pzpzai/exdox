@@ -2813,8 +2813,6 @@ function ProductivityPage({ store }: { store: AppStore }) {
   const readyDocuments = allDocuments.filter((record) => record.status === "Ready");
   const publishedDocuments = allDocuments.filter((record) => record.status === "Published");
   const processingDocuments = allDocuments.filter((record) => record.status === "Processing");
-  const lowConfidenceDocuments = allDocuments.filter((record) => isLowConfidence(record));
-  const duplicateGroups = buildDuplicateInsights([...store.costs, ...store.sales]).groups.length;
   const automatedCoverage = allDocuments.length
     ? Math.round(((publishedDocuments.length + readyDocuments.length) / allDocuments.length) * 100)
     : 0;
@@ -2835,8 +2833,6 @@ function ProductivityPage({ store }: { store: AppStore }) {
         <MetricCard label="Automation coverage" value={`${automatedCoverage}%`} detail="Ready or published records across all queues" onClick={() => navigate(readyDocuments.length ? firstInboxRouteForStatus(store, "Ready") : firstPublishedOrArchiveRoute(store))} />
         <MetricCard label="Review completion" value={`${reviewCompletion}%`} detail="Records that no longer need manual review" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"))} />
         <MetricCard label="Claim completion" value={`${claimCompletion}%`} detail="Claims approved or fully paid" onClick={() => navigate(firstClaimCompletionRoute(store))} />
-        <MetricCard label="Low-confidence drag" value={String(lowConfidenceDocuments.length)} detail="Records still slowing down review quality" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => isLowConfidence(record), "Low confidence"))} />
-        <MetricCard label="Duplicate drag" value={String(duplicateGroups)} detail="Repeat-upload groups still consuming time" onClick={() => navigate(firstInboxRouteForDuplicateReview(store))} />
       </section>
 
       <section className="overview-panels">
@@ -2877,12 +2873,6 @@ function ProductivityPage({ store }: { store: AppStore }) {
               <button className="summary-action-row" type="button" onClick={() => navigate("/rules")}>
                 <strong>Supplier rules in place</strong>
                 <span>{store.rules.length} rule{store.rules.length === 1 ? " is" : "s are"} available to standardise category, tax, and payment defaults.</span>
-              </button>
-            </li>
-            <li>
-              <button className="summary-action-row" type="button" onClick={() => navigate("/overview/data-health")}>
-                <strong>Data-health blockers</strong>
-                <span>{lowConfidenceDocuments.length + duplicateGroups} active quality blocker{lowConfidenceDocuments.length + duplicateGroups === 1 ? " is" : "s are"} still reducing hands-off throughput.</span>
               </button>
             </li>
             <li>
