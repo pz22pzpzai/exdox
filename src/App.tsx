@@ -45,6 +45,7 @@ import {
   sendInvite,
   submitContactForm,
   updateClaimStatus,
+  upgradeBillingPlan,
   uploadDocuments,
 } from "./api";
 import type {
@@ -1910,6 +1911,7 @@ function DashboardShell(props: {
                 <Route path="/settings/delete-account" element={<DeleteAccountPage session={props.session} />} />
               ) : null}
               <Route path="/billing" element={<BillingPage session={props.session} />} />
+              <Route path="/billing/upgrade" element={<BillingUpgradePage session={props.session} />} />
               <Route path="*" element={<Navigate to={defaultRoute} replace />} />
             </>
           ) : (
@@ -8646,13 +8648,14 @@ function BillingPage(props: { session: SessionState }) {
   const navigate = useNavigate();
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const lockedRoute = new URLSearchParams(useLocation().search).get("locked");
+  const search = new URLSearchParams(useLocation().search);
+  const lockedRoute = search.get("locked");
   const lockedRouteLabel = lockedRoute ? routeTitle(lockedRoute) : null;
   const billing = props.session.billing;
+  const trialSetupRequired = billing?.status === "inactive" && !billing?.stripeSubscriptionId;
   const selectedBillingStep = billing
     ? resolvePricingSliderStep(billing.planId, billing.monthlyDocumentLimit ?? undefined, billing.includedUsers ?? undefined)
     : null;
-  const trialSetupRequired = billing?.status === "inactive" && !billing?.stripeSubscriptionId;
   const trialDateLabel = billing?.trialEndsAt ? formatLongDate(billing.trialEndsAt) : null;
   const cancellationDateLabel = billing?.cancellationScheduledFor ? formatLongDate(billing.cancellationScheduledFor) : null;
 
@@ -8716,6 +8719,38 @@ function BillingPage(props: { session: SessionState }) {
             : "Online billing is not live in this workspace yet. Use billing support to coordinate trial setup, cancellation, or plan changes."}
         </p>
         <div className="section-actions">
+          {trialSetupRequired && selectedBillingStep ? (
+            <button
+              className="primary-action"
+              type="button"
+              disabled={busyPlan !== null || !billing.stripeConfigured}
+              onClick={async () => {
+                setBusyPlan("checkout");
+                setMessage(null);
+                try {
+                  const response = await createBillingCheckoutSession(props.session.token, {
+                    planId: selectedBillingStep.planId,
+                    billingCycle: "monthly",
+                  });
+                  if (response.checkoutUrl) {
+                    window.location.href = response.checkoutUrl;
+                  } else {
+                    setMessage("Online checkout is not available for this workspace yet.");
+                  }
+                } catch (error) {
+                  setMessage(error instanceof Error ? error.message : "Could not start checkout.");
+                } finally {
+                  setBusyPlan(null);
+                }
+              }}
+            >
+              {busyPlan === "checkout" ? "Opening checkout..." : "Start free trial"}
+            </button>
+          ) : billing.stripeSubscriptionId ? (
+            <button className="primary-action" type="button" onClick={() => navigate("/billing/upgrade")}>
+              Upgrade plan
+            </button>
+          ) : null}
           <button className="secondary-action" type="button" onClick={() => navigate("/pricing")}>
             Compare plans
           </button>
@@ -8750,104 +8785,128 @@ function BillingPage(props: { session: SessionState }) {
           )}
         </div>
         {message ? <div className="error-banner">{message}</div> : null}
+        {search.get("upgraded") === "1" ? <div className="success-banner">Plan upgraded. Your new allowance is now active.</div> : null}
+      </div>
+    </section>
+  );
+}
+
+function BillingUpgradePage(props: { session: SessionState }) {
+  const navigate = useNavigate();
+  const billing = props.session.billing;
+  const currentIndex = billing
+    ? Math.max(0, pricingSliderSteps.findIndex((step) => step.planId === billing.planId && step.documents === billing.monthlyDocumentLimit && step.users === billing.includedUsers))
+    : 0;
+  const maxIndex = Math.max(0, pricingSliderSteps.findIndex((step) => step.planId === "enterprise") - 1);
+  const [sliderIndex, setSliderIndex] = useState(currentIndex);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const selectedStep = pricingSliderSteps[Math.min(sliderIndex, maxIndex)] ?? pricingSliderSteps[0]!;
+  const currentDocuments = billing?.monthlyDocumentLimit ?? 0;
+  const currentUsers = billing?.includedUsers ?? 0;
+  const isUpgrade = selectedStep.documents > currentDocuments && selectedStep.users > currentUsers;
+
+  if (!billing || !billing.stripeSubscriptionId || !billing.stripeConfigured) {
+    return (
+      <section className="panel-stack">
+        <div className="panel">
+          <h2>Upgrade plan</h2>
+          <p>Complete billing setup before changing your plan.</p>
+          <div className="section-actions">
+            <button className="primary-action" type="button" onClick={() => navigate("/billing")}>Back to billing</button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel-stack upgrade-plan-page">
+      <div className="panel">
+        <div className="panel-header">
+          <div>
+            <p className="section-kicker">Plan change</p>
+            <h2>Upgrade your Exdox plan</h2>
+          </div>
+          <button className="secondary-action" type="button" onClick={() => navigate("/billing")}>Back to billing</button>
+        </div>
+        <p className="muted-copy">Choose a higher allowance. Exdox updates your existing Stripe subscription and applies the new workspace access and limits immediately. It does not create a second subscription.</p>
       </div>
 
-      <div className="pricing-grid pricing-grid-expanded">
-        {pricingPlans.map((plan) => {
-          const active = billing.planId === plan.id;
-          const canStartTrialOnThisPlan = trialSetupRequired && active;
-          return (
-            <article key={plan.id} className={`pricing-card${active ? " current-plan" : ""}`}>
-              <span>{plan.name}</span>
-              <strong>{plan.tagline}</strong>
-              <p>
-                {plan.id === "enterprise"
-                  ? "Private rollout pricing"
-                  : active && selectedBillingStep
-                    ? `${currency(priceWithVat(selectedBillingStep.monthlyPrice))} per month`
-                    : plan.monthlyPrice != null
-                      ? `${currency(priceWithVat(plan.monthlyPrice))} per month`
-                      : "Custom pricing"}
-              </p>
-              <p>{active && selectedBillingStep ? `${selectedBillingStep.documents.toLocaleString()} documents / month` : plan.monthlyDocuments}</p>
-              <p>{active && selectedBillingStep ? `${selectedBillingStep.users} users included` : plan.users}</p>
-              <ul className="pricing-feature-list">
-                {plan.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
-                ))}
-              </ul>
-              {canStartTrialOnThisPlan ? (
-                <button
-                  className="public-button"
-                  type="button"
-                  disabled={busyPlan !== null || !billing.stripeConfigured}
-                  onClick={async () => {
-                    setBusyPlan(plan.id);
-                    setMessage(null);
-                    try {
-                      const response = await createBillingCheckoutSession(props.session.token, {
-                        planId: plan.id,
-                        billingCycle: "monthly",
-                      });
-                      if (response.checkoutUrl) {
-                        window.location.href = response.checkoutUrl;
-                      } else {
-                        setMessage("Online checkout is not available for this workspace yet.");
-                      }
-                    } catch (error) {
-                      setMessage(error instanceof Error ? error.message : "Could not start checkout.");
-                    } finally {
-                      setBusyPlan(null);
-                    }
-                  }}
-                >
-                  {busyPlan === plan.id ? "Opening checkout..." : "Start free trial"}
-                </button>
-              ) : active ? (
-                <button className="secondary-action" type="button" disabled>
-                  Current plan
-                </button>
-              ) : plan.id === "enterprise" ? (
-                <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
-              ) : !billing.stripeConfigured || Boolean(billing.stripeSubscriptionId) ? (
-                <button
-                  className="public-button"
-                  type="button"
-                  onClick={() => navigate(`${supportPagePath}?subject=${encodeURIComponent("Billing support")}`)}
-                >
-                  Open billing support
-                </button>
-              ) : (
-                <button
-                  className="public-button"
-                  type="button"
-                  disabled={busyPlan !== null}
-                  onClick={async () => {
-                    setBusyPlan(plan.id);
-                    setMessage(null);
-                    try {
-                      const response = await createBillingCheckoutSession(props.session.token, {
-                        planId: plan.id,
-                        billingCycle: "monthly",
-                      });
-                      if (response.checkoutUrl) {
-                        window.location.href = response.checkoutUrl;
-                      } else {
-                        setMessage("Online checkout is not available for this workspace yet.");
-                      }
-                    } catch (error) {
-                      setMessage(error instanceof Error ? error.message : "Could not start checkout.");
-                    } finally {
-                      setBusyPlan(null);
-                    }
-                  }}
-                >
-                  {busyPlan === plan.id ? "Opening checkout..." : trialSetupRequired ? "Change plan and start trial" : "Upgrade"}
-                </button>
-              )}
-            </article>
-          );
-        })}
+      <div className="pricing-page-layout upgrade-plan-layout">
+        <article className="slider-pricing-card">
+          <div className="slider-price-row">
+            <strong>{currency(selectedStep.monthlyPrice)}</strong>
+            <span>per month</span>
+          </div>
+          <span className="slider-vat-note">GBP, includes VAT</span>
+          <div className="slider-capacity-copy">
+            <strong>{selectedStep.documents.toLocaleString()}</strong>
+            <span>documents per month</span>
+          </div>
+          <div className="slider-capacity-copy">
+            <strong>{selectedStep.users}</strong>
+            <span>users included</span>
+          </div>
+          <input
+            className="pricing-slider"
+            type="range"
+            min={0}
+            max={maxIndex}
+            step={1}
+            value={Math.min(sliderIndex, maxIndex)}
+            onChange={(event) => setSliderIndex(Number(event.target.value))}
+            aria-label="Upgrade allowance slider"
+          />
+          <div className="slider-bands" aria-hidden="true">
+            {["Capture", "Control", "Operations"].map((label) => <span key={label} className={selectedStep.accessBand === label ? "active" : ""}>{label}</span>)}
+          </div>
+          <p className="slider-helper">Drag the slider to choose your new allowance.</p>
+          <button
+            className="primary-action"
+            type="button"
+            disabled={!isUpgrade || busy}
+            onClick={async () => {
+              setBusy(true);
+              setMessage(null);
+              try {
+                await upgradeBillingPlan(props.session.token, {
+                  planId: selectedStep.planId,
+                  monthlyDocumentLimit: selectedStep.documents,
+                  includedUsers: selectedStep.users,
+                });
+                window.location.assign("/billing?upgraded=1");
+              } catch (error) {
+                setMessage(error instanceof Error ? error.message : "Could not upgrade the plan.");
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? "Updating plan..." : isUpgrade ? `Upgrade to ${selectedStep.accessBand}` : "Choose a higher allowance"}
+          </button>
+          {message ? <div className="error-banner">{message}</div> : null}
+        </article>
+        <aside className="slider-side-stack">
+          <article className="slider-info-card">
+            <h2>Current allowance</h2>
+            <ul className="slider-credit-list">
+              <li><strong>{currentDocuments.toLocaleString()}</strong><span>documents per month</span></li>
+              <li><strong>{currentUsers}</strong><span>users included</span></li>
+              <li><strong>{billing.planLabel ?? billing.planId}</strong><span>current workflow plan</span></li>
+            </ul>
+          </article>
+          <article className="slider-info-card slider-access-card">
+            <h2>{selectedStep.accessBand} access</h2>
+            <p>{selectedStep.tagline}</p>
+            <div className="slider-access-group">
+              <strong>Included workspace areas</strong>
+              <div className="slider-access-tags">
+                {selectedStep.unlockedWorkspaces.map((workspace) => <span key={workspace}>{workspace}</span>)}
+              </div>
+            </div>
+            <p>Any immediate prorated billing adjustment is handled by Stripe against this same subscription.</p>
+          </article>
+        </aside>
       </div>
     </section>
   );

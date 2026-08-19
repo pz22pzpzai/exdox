@@ -3451,6 +3451,10 @@ input {
   grid-row: 1;
 }
 
+.upgrade-plan-layout .slider-bands {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .slider-pricing-card,
 .slider-info-card {
   border: 1px solid var(--line);

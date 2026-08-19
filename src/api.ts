@@ -289,6 +289,16 @@ export async function createBillingPortalSession(token: string): Promise<{ porta
   });
 }
 
+export async function upgradeBillingPlan(
+  token: string,
+  payload: { planId: BillingPlanId; monthlyDocumentLimit: number; includedUsers: number },
+): Promise<{ billing: BillingSummary; entitlements: NonNullable<SessionState["entitlements"]> }> {
+  return apiFetch("/billing/upgrade-plan", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function deleteAccount(
   token: string,
   input: { password: string; confirmation: string },
