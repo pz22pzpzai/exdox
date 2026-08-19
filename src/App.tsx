@@ -2438,10 +2438,9 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
 function DataHealthPage({ store }: { store: AppStore }) {
   const navigate = useNavigate();
   const allRecords = [...store.costs, ...store.sales, ...store.vault];
-  const duplicateInsights = buildDuplicateInsights([...store.costs, ...store.sales]);
-  const healthIssues = buildWorkspaceHealthIssues(store, 6);
+  const healthIssues = buildWorkspaceHealthIssues(store, 6, false);
   const codingGapRecords = buildCodingGapRecords(store);
-  const attentionRecords = buildAttentionRecords(store, duplicateInsights.byReceiptId);
+  const attentionRecords = buildAttentionRecords(store, false);
   const workspaceBreakdown = [
     { label: "Costs", route: "/costs", records: attentionRecords.filter(({ record }) => record.workspaceContext === "cost") },
     { label: "Sales", route: "/sales", records: attentionRecords.filter(({ record }) => record.workspaceContext === "sales") },
@@ -2449,7 +2448,6 @@ function DataHealthPage({ store }: { store: AppStore }) {
   ];
   const unreadableCount = allRecords.filter((record) => looksUnreadable(record)).length;
   const processingCount = allRecords.filter((record) => record.status === "Processing").length;
-  const lowConfidenceCount = allRecords.filter((record) => isLowConfidence(record)).length;
   const reviewCount = allRecords.filter((record) => countsAsManualReview(record)).length;
 
   return (
@@ -2468,22 +2466,10 @@ function DataHealthPage({ store }: { store: AppStore }) {
           onClick={() => navigate(attentionRouteForIssue("Processing"))}
         />
         <MetricCard
-          label="Low confidence"
-          value={String(lowConfidenceCount)}
-          detail="Extraction needs a closer check"
-          onClick={() => navigate(attentionRouteForIssue("Low confidence"))}
-        />
-        <MetricCard
           label="Needs review"
           value={String(reviewCount)}
           detail="Review or publish decisions are still outstanding"
           onClick={() => navigate(attentionRouteForIssue("Needs review"))}
-        />
-        <MetricCard
-          label="Duplicate groups"
-          value={String(duplicateInsights.groups.length)}
-          detail="Likely repeat uploads awaiting review"
-          onClick={() => navigate(firstInboxRouteForDuplicateReview(store))}
         />
         <MetricCard
           label="Missing details"
@@ -2539,7 +2525,7 @@ function DataHealthPage({ store }: { store: AppStore }) {
             ) : (
               <li>
                 <strong>No data-health blockers right now</strong>
-                <span>Unreadable, low-confidence, duplicate, and incomplete records will show up here automatically.</span>
+                <span>Unreadable, processing, review-required, and incomplete records will show up here automatically.</span>
               </li>
             )}
           </ul>
@@ -2564,29 +2550,6 @@ function DataHealthPage({ store }: { store: AppStore }) {
           </ul>
         </article>
 
-        <article className="panel">
-          <div className="panel-heading">
-            <h2>Duplicate review</h2>
-            <span>Candidate groups pulled from live records</span>
-          </div>
-          <ul className="summary-list">
-            {duplicateInsights.groups.length ? (
-              duplicateInsights.groups.slice(0, 6).map((group) => (
-                <li key={group.key}>
-                  <button className="summary-action-row" type="button" onClick={() => navigate(recordRoute(group.records[0]!))}>
-                    <strong>{group.vendorLabel} | {currency(group.grossAmount)}</strong>
-                    <span>{group.documentDate} | {group.workspaceLabel} | {group.records.length} linked uploads</span>
-                  </button>
-                </li>
-              ))
-            ) : (
-              <li>
-                <strong>No duplicate groups open</strong>
-                <span>Repeat-upload candidates will appear here as soon as the same evidence shows up more than once.</span>
-              </li>
-            )}
-          </ul>
-        </article>
       </section>
     </div>
   );
@@ -9069,13 +9032,13 @@ function buildDuplicateInsights(records: ReceiptRecord[]) {
   };
 }
 
-function buildWorkspaceHealthIssues(store: AppStore, limit = 4) {
+function buildWorkspaceHealthIssues(store: AppStore, limit = 4, includeQualitySignals = true) {
   const allRecords = [...store.costs, ...store.sales, ...store.vault];
   const unreadableCount = allRecords.filter((record) => looksUnreadable(record)).length;
   const processingCount = allRecords.filter((record) => record.status === "Processing").length;
-  const duplicateGroups = buildDuplicateInsights([...store.costs, ...store.sales]).groups.length;
+  const duplicateGroups = includeQualitySignals ? buildDuplicateInsights([...store.costs, ...store.sales]).groups.length : 0;
   const pendingReviewCount = allRecords.filter((record) => countsAsManualReview(record)).length;
-  const lowConfidenceCount = allRecords.filter((record) => isLowConfidence(record)).length;
+  const lowConfidenceCount = includeQualitySignals ? allRecords.filter((record) => isLowConfidence(record)).length : 0;
   const issues: Array<{ label: string; detail: string; route: string }> = [];
 
   if (unreadableCount) {
@@ -9127,17 +9090,17 @@ function buildCodingGapRecords(store: AppStore) {
     .sort((left, right) => compareIsoDate(right.updatedAt, left.updatedAt));
 }
 
-function buildAttentionRecords(
-  store: AppStore,
-  duplicateGroupsByReceiptId: Map<number, DuplicateInsightGroup>,
-) {
+function buildAttentionRecords(store: AppStore, includeQualitySignals = true) {
+  const duplicateGroupsByReceiptId = includeQualitySignals
+    ? buildDuplicateInsights([...store.costs, ...store.sales]).byReceiptId
+    : null;
   return [...store.costs, ...store.sales, ...store.vault]
     .map((record) => {
       const reasons: string[] = [];
       if (looksUnreadable(record)) reasons.push("Unreadable");
       if (record.status === "Processing") reasons.push("Processing");
-      if (duplicateGroupsByReceiptId.has(record.id)) reasons.push("Possible duplicate");
-      if (isLowConfidence(record)) reasons.push("Low confidence");
+      if (duplicateGroupsByReceiptId?.has(record.id)) reasons.push("Possible duplicate");
+      if (includeQualitySignals && isLowConfidence(record)) reasons.push("Low confidence");
       if (countsAsManualReview(record)) reasons.push("Needs review");
       if (needsCodingAttention(record)) reasons.push("Missing details");
       return { record, reasons };
