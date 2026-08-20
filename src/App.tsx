@@ -2563,7 +2563,6 @@ function IntegrationsPage({ store }: { store: AppStore }) {
   const sourceCounts = {
     mobile: allRecords.filter((record) => record.receiptSource === "mobile").length,
     web_upload: allRecords.filter((record) => record.receiptSource === "web_upload").length,
-    email: allRecords.filter((record) => record.receiptSource === "email").length,
   };
   const readyCosts = store.costs.filter((record) => record.status === "Ready").length;
   const readySales = store.sales.filter((record) => record.status === "Ready").length;
@@ -2579,7 +2578,6 @@ function IntegrationsPage({ store }: { store: AppStore }) {
       <section className="metrics-grid">
         <MetricCard label="Mobile capture" value={String(sourceCounts.mobile)} detail="Receipts from the app" onClick={() => navigate(firstInboxRouteForSource(store, "mobile"))} />
         <MetricCard label="Web uploads" value={String(sourceCounts.web_upload)} detail="Drag-and-drop from the browser" onClick={() => navigate(firstInboxRouteForSource(store, "web_upload"))} />
-        <MetricCard label="Email intake" value={String(sourceCounts.email)} detail="Documents submitted by email" onClick={() => navigate(firstInboxRouteForSource(store, "email"))} />
         <MetricCard label="Ready to export" value={String(readyCosts + readySales)} detail="Reviewed documents ready for CSV export" onClick={() => navigate(firstInboxRouteForStatus(store, "Ready"))} />
       </section>
 
@@ -2593,7 +2591,6 @@ function IntegrationsPage({ store }: { store: AppStore }) {
             {([
               { source: "mobile", label: "Mobile receipt capture", detail: "Sent from the synced app workflow." },
               { source: "web_upload", label: "Web drag-and-drop", detail: "Uploaded directly into the website inboxes." },
-              { source: "email", label: "Email submission", detail: "Documents arriving through the email intake route." },
             ] as const).map((item) => (
               <li key={item.source}>
                 <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForSource(store, item.source))}>
