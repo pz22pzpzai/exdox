@@ -542,10 +542,6 @@ export async function uploadDocuments(
         "payment_method",
         workspaceContext === "sales" ? "bank_transfer" : workspaceContext === "vault" ? "not_applicable" : "business_card",
       );
-      if (workspaceContext === "vault") {
-        formData.set("skip_processing", "true");
-      }
-
       const response = await fetch(`${API_BASE_URL}/api/v1/expenses/process`, {
         method: "POST",
         headers: {

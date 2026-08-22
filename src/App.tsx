@@ -9911,7 +9911,7 @@ function buildPendingReceipts(
     paymentMethod:
       workspaceContext === "sales" ? "bank_transfer" : workspaceContext === "vault" ? "not_applicable" : "business_card",
     claimId: null,
-    status: workspaceContext === "vault" ? "Ready" : "Processing",
+    status: "Processing",
     category:
       workspaceContext === "sales" ? "Accounts receivable" : workspaceContext === "vault" ? "Vault" : "Uncategorised",
     description: null,
@@ -9930,7 +9930,7 @@ function buildPendingReceipts(
     netAmount: null,
     vatAmount: null,
     taxRateApplied: null,
-    needsReview: workspaceContext === "vault" ? false : true,
+    needsReview: true,
     rawTextSummary: "Uploading into processing queue...",
     createdAt: now,
     updatedAt: now,
