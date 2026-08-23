@@ -1788,6 +1788,7 @@ function DashboardShell(props: {
                       title="Costs Inbox"
                       records={props.store.costs}
                       basePath="/costs"
+                      showEmployeeFilter
                       settings={props.store.settings}
                       uploadBusy={uploadBusy}
                       onUpload={(files) => props.onUpload("cost", files)}
@@ -3071,6 +3072,7 @@ function InboxPage({
   title,
   records,
   basePath,
+  showEmployeeFilter = false,
   settings,
   uploadBusy,
   onUpload,
@@ -3078,6 +3080,7 @@ function InboxPage({
   title: string;
   records: ReceiptRecord[];
   basePath: "/costs" | "/sales" | "/vault";
+  showEmployeeFilter?: boolean;
   settings: OrganisationSettings | null;
   uploadBusy: boolean;
   onUpload: (files: File[]) => Promise<void>;
@@ -3089,6 +3092,7 @@ function InboxPage({
   const [issueFilter, setIssueFilter] = useState<"All" | "Needs review" | "Unreadable" | "Possible duplicates" | "Low confidence" | "Processing">("All");
   const [sourceFilter, setSourceFilter] = useState<ReceiptRecord["receiptSource"] | "All">("All");
   const [documentTypeFilter, setDocumentTypeFilter] = useState<ReceiptRecord["documentType"] | "All">("All");
+  const [employeeFilter, setEmployeeFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total" | "lowest_confidence">("newest");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [filtersReady, setFiltersReady] = useState(false);
@@ -3102,6 +3106,7 @@ function InboxPage({
     const nextIssue = params.get("issue");
     const nextSource = params.get("source");
     const nextDocumentType = params.get("documentType");
+    const nextEmployee = params.get("employee");
     const nextSort = params.get("sort");
 
     setQuery(nextSearch);
@@ -3117,6 +3122,7 @@ function InboxPage({
     );
     setSourceFilter(nextSource === "mobile" || nextSource === "web_upload" || nextSource === "email" || nextSource === "bank_import" ? nextSource : "All");
     setDocumentTypeFilter(nextDocumentType === "receipt" || nextDocumentType === "invoice" || nextDocumentType === "unknown" ? nextDocumentType : "All");
+    setEmployeeFilter(showEmployeeFilter && nextEmployee ? nextEmployee : "All");
     setSortOrder(
       nextSort === "oldest" ||
       nextSort === "highest_total" ||
@@ -3126,7 +3132,7 @@ function InboxPage({
         : "newest",
     );
     setFiltersReady(true);
-  }, [location.search]);
+  }, [location.search, showEmployeeFilter]);
 
   useEffect(() => {
     if (!filtersReady) {
@@ -3139,9 +3145,10 @@ function InboxPage({
       issue: issueFilter !== "All" ? issueFilter : null,
       source: sourceFilter !== "All" ? sourceFilter : null,
       documentType: documentTypeFilter !== "All" ? documentTypeFilter : null,
+      employee: showEmployeeFilter && employeeFilter !== "All" ? employeeFilter : null,
       sort: sortOrder !== "newest" ? sortOrder : null,
     });
-  }, [documentTypeFilter, filtersReady, issueFilter, location.pathname, location.search, navigate, query, sortOrder, sourceFilter, statusFilter]);
+  }, [documentTypeFilter, employeeFilter, filtersReady, issueFilter, location.pathname, location.search, navigate, query, showEmployeeFilter, sortOrder, sourceFilter, statusFilter]);
 
   const search = deferredQuery.trim().toLowerCase();
   const isVaultInbox = basePath === "/vault";
@@ -3158,8 +3165,23 @@ function InboxPage({
         ? "Sales CSV downloaded."
         : "Costs CSV downloaded.";
   const duplicateInsights = buildDuplicateInsights(records);
+  const employeeOptions = Array.from(
+    new Map(
+      records
+        .filter((record) => Boolean(record.uploadedByUserId))
+        .map((record) => [
+          record.uploadedByUserId as number,
+          {
+            id: record.uploadedByUserId as number,
+            label: record.uploadedByName?.trim()
+              ? `${record.uploadedByName.trim()}${record.uploadedByEmail?.trim() ? ` (${record.uploadedByEmail.trim()})` : ""}`
+              : record.uploadedByEmail?.trim() || `Employee #${record.uploadedByUserId}`,
+          },
+        ]),
+    ).values(),
+  ).sort((left, right) => left.label.localeCompare(right.label));
   const hasActiveFilters = Boolean(
-    search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || documentTypeFilter !== "All",
+    search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || documentTypeFilter !== "All" || employeeFilter !== "All",
   );
   const filtered = records.filter((record) => {
     const matchesSearch =
@@ -3170,6 +3192,7 @@ function InboxPage({
     const matchesStatus = statusFilter === "All" || record.status === statusFilter;
     const matchesSource = sourceFilter === "All" || record.receiptSource === sourceFilter;
     const matchesDocumentType = documentTypeFilter === "All" || (record.documentType ?? "unknown") === documentTypeFilter;
+    const matchesEmployee = employeeFilter === "All" || String(record.uploadedByUserId) === employeeFilter;
     const matchesIssue =
       issueFilter === "All"
         ? true
@@ -3182,7 +3205,7 @@ function InboxPage({
               : issueFilter === "Low confidence"
                 ? isLowConfidence(record)
               : record.status === "Processing";
-    return matchesSearch && matchesStatus && matchesSource && matchesDocumentType && matchesIssue;
+    return matchesSearch && matchesStatus && matchesSource && matchesDocumentType && matchesEmployee && matchesIssue;
   }).sort((left, right) => compareInboxRecords(left, right, sortOrder));
 
   return (
@@ -3237,6 +3260,14 @@ function InboxPage({
             <option value="invoice">Invoice</option>
             <option value="unknown">Unknown</option>
           </select>
+          {showEmployeeFilter ? (
+            <select value={employeeFilter} onChange={(event) => setEmployeeFilter(event.target.value)} aria-label="Filter by employee">
+              <option value="All">All employees</option>
+              {employeeOptions.map((employee) => (
+                <option key={employee.id} value={employee.id}>{employee.label}</option>
+              ))}
+            </select>
+          ) : null}
           <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>

@@ -14,6 +14,9 @@ export type TaxRate =
 export type ReceiptRecord = {
   id: number;
   organisationId: number;
+  uploadedByUserId?: number;
+  uploadedByName?: string | null;
+  uploadedByEmail?: string | null;
   workspaceContext: "cost" | "sales" | "vault";
   paymentMethod: PaymentMethod;
   claimId: number | null;
