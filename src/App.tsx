@@ -3517,6 +3517,12 @@ function DocumentWorkspacePage(props: {
   const reviewItemLabel = props.mode === "sales" ? "sales document" : "expense";
   const claimAttachmentAllowed = receipt.paymentMethod === "cash_personal";
   const previewAsImage = canPreviewReceiptAsImage(receipt);
+  const reviewedRecordsForExport = [
+    ...props.fallbackRecords.filter((record) => record.id !== receipt.id),
+    receipt.status === "Ready" && !receipt.needsReview
+      ? { ...receipt, status: "Ready" as const, needsReview: false }
+      : receipt,
+  ];
 
   return (
     <>
@@ -4061,21 +4067,38 @@ function DocumentWorkspacePage(props: {
                 Review the next {reviewItemLabel}
               </button>
             ) : (
-              <button
-                className="primary-action"
-                type="button"
-                onClick={async () => {
-                  if (await downloadCsv(
-                    `${props.mode === "sales" ? "sales-documents" : "expenses"}-${new Date().toISOString().slice(0, 10)}.csv`,
-                    buildInboxExportRows(props.fallbackRecords, props.settings ?? null),
-                  )) {
-                    setFeedback(`${props.mode === "sales" ? "Sales documents" : "Expenses"} CSV downloaded.`);
-                  }
-                  setPostApprovePrompt(null);
-                }}
-              >
-                Export CSV for {props.mode === "sales" ? "sales" : "expenses"}
-              </button>
+              <>
+                <button
+                  className="primary-action"
+                  type="button"
+                  onClick={async () => {
+                    if (await downloadCsv(
+                      `${props.mode === "sales" ? "sales-documents" : "expenses"}-${new Date().toISOString().slice(0, 10)}.csv`,
+                      buildInboxExportRows(reviewedRecordsForExport, props.settings ?? null),
+                    )) {
+                      setFeedback(`${props.mode === "sales" ? "Sales documents" : "Expenses"} CSV downloaded.`);
+                    }
+                    setPostApprovePrompt(null);
+                  }}
+                >
+                  Download {props.mode === "sales" ? "sales" : "expense"} detail CSV
+                </button>
+                {props.mode === "cost" ? (
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    onClick={async () => {
+                      const rows = buildEmployeeReimbursementPaymentRows(reviewedRecordsForExport, props.settings ?? null);
+                      if (await downloadCsv(`employee-reimbursements-${new Date().toISOString().slice(0, 10)}.csv`, rows)) {
+                        setFeedback("Employee reimbursement payment summary downloaded.");
+                      }
+                      setPostApprovePrompt(null);
+                    }}
+                  >
+                    Download reimbursement payment summary
+                  </button>
+                ) : null}
+              </>
             )}
             <button className="secondary-action" type="button" onClick={() => setPostApprovePrompt(null)}>
               Close
@@ -9777,6 +9800,49 @@ function buildMasterExpenseExportRows(rows: MasterExpenseExportRow[]) {
     total_approved: row.totalAmount.toFixed(2),
     currency: row.currency,
   }));
+}
+
+function buildEmployeeReimbursementPaymentRows(records: ReceiptRecord[], settings?: OrganisationSettings | null) {
+  const employeeTotals = new Map<string, {
+    employeeName: string;
+    employeeEmail: string;
+    currency: string;
+    approvedExpenseCount: number;
+    totalReimbursement: number;
+  }>();
+
+  records
+    .filter((record) =>
+      record.workspaceContext === "cost" &&
+      record.paymentMethod === "cash_personal" &&
+      record.status === "Ready" &&
+      !record.needsReview,
+    )
+    .forEach((record) => {
+      const employeeName = record.uploadedByName?.trim() || record.uploadedByEmail?.trim() || "Unassigned employee";
+      const employeeEmail = record.uploadedByEmail?.trim() || "";
+      const key = String(record.uploadedByUserId ?? (employeeEmail || employeeName));
+      const current = employeeTotals.get(key) ?? {
+        employeeName,
+        employeeEmail,
+        currency: record.currency?.trim() || "GBP",
+        approvedExpenseCount: 0,
+        totalReimbursement: 0,
+      };
+      current.approvedExpenseCount += 1;
+      current.totalReimbursement += normalizeReceiptForVatExport(record, settings).totalAmount ?? 0;
+      employeeTotals.set(key, current);
+    });
+
+  return Array.from(employeeTotals.values())
+    .sort((left, right) => left.employeeName.localeCompare(right.employeeName))
+    .map((employee) => ({
+      employee_name: employee.employeeName,
+      employee_email: employee.employeeEmail,
+      approved_personal_expenses: String(employee.approvedExpenseCount),
+      total_reimbursement_due: employee.totalReimbursement.toFixed(2),
+      currency: employee.currency,
+    }));
 }
 
 function buildRuleExportRows(rules: SupplierRule[]) {
