@@ -6,8 +6,10 @@ import type {
   BankRequisition,
   ClaimRecord,
   EmployeeReimbursementPaymentRow,
+  Department,
   MasterExpenseExportRow,
   InviteResult,
+  TeamMember,
   OrganisationSettings,
   ReceiptRecord,
   ReconciliationLine,
@@ -546,13 +548,32 @@ export async function saveSettings(
 
 export async function sendInvite(
   token: string,
-  payload: { email: string; fullName?: string },
+  payload: { email: string; fullName?: string; role?: "Business_Admin" | "Standard_Employee"; departmentId?: number | null },
 ): Promise<InviteResult> {
   const response = await apiFetch<{ invite: InviteResult }>("/invite", token, {
     method: "POST",
     body: JSON.stringify(payload),
   });
   return response.invite;
+}
+
+export async function getTeam(token: string): Promise<{ departments: Department[]; members: TeamMember[] }> {
+  return apiFetch('/team', token);
+}
+
+export async function createDepartment(token: string, name: string): Promise<Department> {
+  const response = await apiFetch<{ department: Department }>('/team', token, {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+  return response.department;
+}
+
+export async function assignTeamMemberDepartment(token: string, userId: number, departmentId: number | null): Promise<void> {
+  await apiFetch('/team', token, {
+    method: 'PUT',
+    body: JSON.stringify({ userId, departmentId }),
+  });
 }
 
 export async function uploadDocuments(

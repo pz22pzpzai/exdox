@@ -1057,6 +1057,39 @@ button.status-box:focus-visible {
   color: #65758c;
 }
 
+.team-management-section {
+  border-top: 1px solid #d3dfeb;
+  margin-top: 20px;
+  padding-top: 20px;
+}
+
+.team-member-list {
+  display: grid;
+  gap: 10px;
+}
+
+.team-member-row {
+  align-items: center;
+  border: 1px solid #d3dfeb;
+  border-radius: 10px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem);
+  padding: 12px;
+}
+
+.team-member-row small {
+  color: #65758c;
+  display: block;
+  margin-top: 3px;
+}
+
+@media (max-width: 640px) {
+  .team-member-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .account-deletion-workspace-page {
   max-width: 900px;
 }

@@ -17,6 +17,8 @@ export type ReceiptRecord = {
   uploadedByUserId?: number;
   uploadedByName?: string | null;
   uploadedByEmail?: string | null;
+  uploadedByDepartmentId?: number | null;
+  uploadedByDepartmentName?: string | null;
   workspaceContext: "cost" | "sales" | "vault";
   paymentMethod: PaymentMethod;
   claimId: number | null;
@@ -165,6 +167,26 @@ export type InviteResult = {
   };
 };
 
+export type Department = {
+  id: number;
+  organisationId: number;
+  name: string;
+  managerUserId: number | null;
+  managerName?: string | null;
+};
+
+export type TeamMember = {
+  id: number;
+  organisationId: number;
+  email: string;
+  fullName: string | null;
+  role: "Business_Admin" | "Standard_Employee";
+  status: "pending_invite" | "pending_confirmation" | "active";
+  departmentId: number | null;
+  departmentName: string | null;
+  invitedByUserId: number | null;
+};
+
 export type SessionUser = {
   id: number;
   organisationId: number;
@@ -172,6 +194,7 @@ export type SessionUser = {
   fullName: string | null;
   role: "Business_Admin" | "Standard_Employee";
   status: "pending_invite" | "pending_confirmation" | "active";
+  isOwner?: boolean;
   emailConfirmationDueAt?: string | null;
 };
 

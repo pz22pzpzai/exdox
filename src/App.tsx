@@ -18,6 +18,7 @@ import {
   createBillingCheckoutSession,
   createBillingPortalSession,
   createClaim,
+  createDepartment,
   exportEmployeeReimbursements,
   exportMasterExpenses,
   markEmployeeReimbursementsPaid,
@@ -26,6 +27,7 @@ import {
   deleteReceipt,
   fetchSession,
   getClaim,
+  getTeam,
   getReceipt,
   getReceiptAssetUrl,
   getSettings,
@@ -40,6 +42,7 @@ import {
   resendConfirmationEmail,
   registerWithEmail,
   matchReconciliation,
+  assignTeamMemberDepartment,
   removeRule,
   saveStoredSession,
   saveReceipt,
@@ -56,8 +59,10 @@ import type {
   BillingPlanId,
   ClaimRecord,
   EmployeeReimbursementPaymentRow,
+  Department,
   InboxStatus,
   InviteResult,
+  TeamMember,
   MasterExpenseExportRow,
   OrganisationSettings,
   ReceiptRecord,
@@ -1496,7 +1501,12 @@ function DashboardShell(props: {
     consentId?: string | null;
   }) => Promise<{ linked: boolean; state: string; externalRequisitionId: string | null }>;
   onSettingsSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
-  onInviteEmployee: (payload: { email: string; fullName?: string }) => Promise<InviteResult>;
+  onInviteEmployee: (payload: {
+    email: string;
+    fullName?: string;
+    role?: "Business_Admin" | "Standard_Employee";
+    departmentId?: number | null;
+  }) => Promise<InviteResult>;
   onActiveOrganisationChange: (organisationId: number) => Promise<void>;
   onSignOut: () => void;
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null; downloadUrl: string | null }>;
@@ -1525,7 +1535,9 @@ function DashboardShell(props: {
     ? actionBreakdown.map((item) => `${item.count} ${item.label}${item.count === 1 ? "" : "s"}`).join(" + ")
     : "No actions needed";
   const visibleNavItems = businessAdmin
-    ? navItems.map((item) => ({
+    ? navItems
+      .filter((item) => props.session.user.isOwner || item.to !== "/billing")
+      .map((item) => ({
         ...item,
         locked: !isRouteAllowed(props.session, item.to),
       }))
@@ -1933,8 +1945,12 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/settings") ? (
                 <Route path="/settings/delete-account" element={<DeleteAccountPage session={props.session} />} />
               ) : null}
-              <Route path="/billing" element={<BillingPage session={props.session} />} />
-              <Route path="/billing/upgrade" element={<BillingUpgradePage session={props.session} />} />
+              {props.session.user.isOwner ? (
+                <>
+                  <Route path="/billing" element={<BillingPage session={props.session} />} />
+                  <Route path="/billing/upgrade" element={<BillingUpgradePage session={props.session} />} />
+                </>
+              ) : null}
               <Route path="*" element={<Navigate to={defaultRoute} replace />} />
             </>
           ) : (
@@ -3183,6 +3199,7 @@ function InboxPage({
   const [sourceFilter, setSourceFilter] = useState<ReceiptRecord["receiptSource"] | "All">("All");
   const [documentTypeFilter, setDocumentTypeFilter] = useState<ReceiptRecord["documentType"] | "All">("All");
   const [employeeFilter, setEmployeeFilter] = useState("All");
+  const [departmentFilter, setDepartmentFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total" | "lowest_confidence">("newest");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [markingPaymentsPaid, setMarkingPaymentsPaid] = useState(false);
@@ -3198,6 +3215,7 @@ function InboxPage({
     const nextSource = params.get("source");
     const nextDocumentType = params.get("documentType");
     const nextEmployee = params.get("employee");
+    const nextDepartment = params.get("department");
     const nextSort = params.get("sort");
 
     setQuery(nextSearch);
@@ -3223,6 +3241,7 @@ function InboxPage({
     setSourceFilter(nextSource === "mobile" || nextSource === "web_upload" || nextSource === "email" || nextSource === "bank_import" ? nextSource : "All");
     setDocumentTypeFilter(nextDocumentType === "receipt" || nextDocumentType === "invoice" || nextDocumentType === "unknown" ? nextDocumentType : "All");
     setEmployeeFilter(showEmployeeFilter && nextEmployee ? nextEmployee : "All");
+    setDepartmentFilter(basePath === "/costs" && nextDepartment ? nextDepartment : "All");
     setSortOrder(
       nextSort === "oldest" ||
       nextSort === "highest_total" ||
@@ -3246,9 +3265,10 @@ function InboxPage({
       source: sourceFilter !== "All" ? sourceFilter : null,
       documentType: documentTypeFilter !== "All" ? documentTypeFilter : null,
       employee: showEmployeeFilter && employeeFilter !== "All" ? employeeFilter : null,
+      department: basePath === "/costs" && departmentFilter !== "All" ? departmentFilter : null,
       sort: sortOrder !== "newest" ? sortOrder : null,
     });
-  }, [documentTypeFilter, employeeFilter, filtersReady, issueFilter, location.pathname, location.search, navigate, query, showEmployeeFilter, sortOrder, sourceFilter, statusFilter]);
+  }, [basePath, departmentFilter, documentTypeFilter, employeeFilter, filtersReady, issueFilter, location.pathname, location.search, navigate, query, showEmployeeFilter, sortOrder, sourceFilter, statusFilter]);
 
   const search = deferredQuery.trim().toLowerCase();
   const isVaultInbox = basePath === "/vault";
@@ -3286,8 +3306,18 @@ function InboxPage({
         ]),
     ).values(),
   ).sort((left, right) => left.label.localeCompare(right.label));
+  const departmentOptions = Array.from(
+    new Map(
+      records
+        .filter((record) => Boolean(record.uploadedByDepartmentId && record.uploadedByDepartmentName))
+        .map((record) => [
+          record.uploadedByDepartmentId as number,
+          { id: record.uploadedByDepartmentId as number, label: record.uploadedByDepartmentName as string },
+        ]),
+    ).values(),
+  ).sort((left, right) => left.label.localeCompare(right.label));
   const hasActiveFilters = Boolean(
-    search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || documentTypeFilter !== "All" || employeeFilter !== "All",
+    search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || documentTypeFilter !== "All" || employeeFilter !== "All" || departmentFilter !== "All",
   );
   const filtered = records.filter((record) => {
     const matchesSearch =
@@ -3299,6 +3329,7 @@ function InboxPage({
     const matchesSource = sourceFilter === "All" || record.receiptSource === sourceFilter;
     const matchesDocumentType = documentTypeFilter === "All" || (record.documentType ?? "unknown") === documentTypeFilter;
     const matchesEmployee = employeeFilter === "All" || String(record.uploadedByUserId) === employeeFilter;
+    const matchesDepartment = departmentFilter === "All" || String(record.uploadedByDepartmentId) === departmentFilter;
     const matchesIssue =
       issueFilter === "All"
         ? true
@@ -3311,7 +3342,7 @@ function InboxPage({
               : issueFilter === "Low confidence"
                 ? isLowConfidence(record)
               : record.status === "Processing";
-    return matchesSearch && matchesStatus && matchesSource && matchesDocumentType && matchesEmployee && matchesIssue;
+    return matchesSearch && matchesStatus && matchesSource && matchesDocumentType && matchesEmployee && matchesDepartment && matchesIssue;
   }).sort((left, right) => compareInboxRecords(left, right, sortOrder));
 
   return (
@@ -3373,6 +3404,14 @@ function InboxPage({
               <option value="All">All employees</option>
               {employeeOptions.map((employee) => (
                 <option key={employee.id} value={employee.id}>{employee.label}</option>
+              ))}
+            </select>
+          ) : null}
+          {basePath === "/costs" ? (
+            <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} aria-label="Filter by department">
+              <option value="All">All departments</option>
+              {departmentOptions.map((department) => (
+                <option key={department.id} value={department.id}>{department.label}</option>
               ))}
             </select>
           ) : null}
@@ -5695,7 +5734,12 @@ function SettingsPage(props: {
   session: SessionState;
   settings: OrganisationSettings | null;
   onSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
-  onInviteEmployee: (payload: { email: string; fullName?: string }) => Promise<InviteResult>;
+  onInviteEmployee: (payload: {
+    email: string;
+    fullName?: string;
+    role?: "Business_Admin" | "Standard_Employee";
+    departmentId?: number | null;
+  }) => Promise<InviteResult>;
   onSignOut: () => void;
 }) {
   const navigate = useNavigate();
@@ -5712,6 +5756,12 @@ function SettingsPage(props: {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"Business_Admin" | "Standard_Employee">("Standard_Employee");
+  const [inviteDepartmentId, setInviteDepartmentId] = useState("");
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [newDepartmentName, setNewDepartmentName] = useState("");
+  const [teamBusy, setTeamBusy] = useState(false);
   const [inviteFeedback, setInviteFeedback] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [lastInvite, setLastInvite] = useState<InviteResult | null>(null);
@@ -5751,6 +5801,18 @@ function SettingsPage(props: {
   useEffect(() => {
     setPreferences(loadProfileSettingsDraft(props.session));
   }, [props.session]);
+
+  const refreshTeam = async () => {
+    const team = await getTeam(props.session.token);
+    setDepartments(team.departments);
+    setTeamMembers(team.members);
+  };
+
+  useEffect(() => {
+    void refreshTeam().catch((teamError) => {
+      setInviteError(teamError instanceof Error ? teamError.message : "Could not load team settings.");
+    });
+  }, [props.session.token]);
 
   if (!draft) {
     return <div className="empty-state">Settings unavailable.</div>;
@@ -6017,13 +6079,13 @@ function SettingsPage(props: {
         <div className="panel settings-panel">
       <div className="panel-heading">
         <h2>Team & access</h2>
-        <span>Invite staff and hand off claim or upload work cleanly</span>
+        <span>Add managers, organise departments, and assign employees to the right team</span>
       </div>
       {inviteError ? <div className="error-banner">{inviteError}</div> : null}
       {inviteFeedback ? <div className="success-banner">{inviteFeedback}</div> : null}
       <div className="form-grid">
         <label>
-          Employee name
+          Team member name
           <input
             value={inviteName}
             disabled={inviteBusy}
@@ -6032,7 +6094,7 @@ function SettingsPage(props: {
           />
         </label>
         <label>
-          Employee email
+          Team member email
           <input
             type="email"
             value={inviteEmail}
@@ -6041,10 +6103,23 @@ function SettingsPage(props: {
             placeholder="employee@company.co.uk"
           />
         </label>
+        <label>
+          Access level
+          <select value={inviteRole} disabled={inviteBusy} onChange={(event) => setInviteRole(event.target.value as typeof inviteRole)}>
+            <option value="Standard_Employee">Employee - submit their own expenses</option>
+            <option value="Business_Admin">Manager - review claims and export CSVs</option>
+          </select>
+        </label>
+        <label>
+          Department
+          <select value={inviteDepartmentId} disabled={inviteBusy} onChange={(event) => setInviteDepartmentId(event.target.value)}>
+            <option value="">No department yet</option>
+            {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+          </select>
+        </label>
       </div>
       <p>
-        Send a standard employee invite so staff can submit receipts into the synced Exdox workspace from
-        mobile and web.
+        Managers can review expenses, claims, and download company CSV exports. Employees retain their personal expense view only.
       </p>
       <div className="toolbar">
         <button
@@ -6063,6 +6138,8 @@ function SettingsPage(props: {
               const invite = await props.onInviteEmployee({
                 email: inviteEmail.trim(),
                 fullName: inviteName.trim() || undefined,
+                role: inviteRole,
+                departmentId: inviteDepartmentId ? Number(inviteDepartmentId) : null,
               });
               setLastInvite(invite);
               setInviteFeedback(
@@ -6072,6 +6149,9 @@ function SettingsPage(props: {
               );
               setInviteName("");
               setInviteEmail("");
+              setInviteRole("Standard_Employee");
+              setInviteDepartmentId("");
+              await refreshTeam();
             } catch (saveError) {
               setInviteError(saveError instanceof Error ? saveError.message : "Could not create the invite.");
             } finally {
@@ -6134,6 +6214,78 @@ function SettingsPage(props: {
           </button>
         </div>
       ) : null}
+      <div className="team-management-section">
+        <div className="panel-heading">
+          <h3>Departments</h3>
+          <span>Use your own structure, such as drivers, office staff, or depot teams.</span>
+        </div>
+        <div className="toolbar">
+          <input
+            value={newDepartmentName}
+            disabled={teamBusy}
+            placeholder="New department name"
+            onChange={(event) => setNewDepartmentName(event.target.value)}
+          />
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={teamBusy || !newDepartmentName.trim()}
+            onClick={async () => {
+              setTeamBusy(true);
+              setInviteError(null);
+              try {
+                await createDepartment(props.session.token, newDepartmentName.trim());
+                setNewDepartmentName("");
+                await refreshTeam();
+                setInviteFeedback("Department added.");
+              } catch (departmentError) {
+                setInviteError(departmentError instanceof Error ? departmentError.message : "Could not add the department.");
+              } finally {
+                setTeamBusy(false);
+              }
+            }}
+          >
+            Add department
+          </button>
+        </div>
+      </div>
+      <div className="team-management-section">
+        <div className="panel-heading">
+          <h3>Team members</h3>
+          <span>Move employees between departments whenever the structure changes.</span>
+        </div>
+        <div className="team-member-list">
+          {teamMembers.map((member) => (
+            <div className="team-member-row" key={member.id}>
+              <div>
+                <strong>{member.fullName?.trim() || member.email}</strong>
+                <small>{member.email} · {member.role === "Business_Admin" ? "Manager" : "Employee"}</small>
+              </div>
+              <select
+                value={member.departmentId ?? ""}
+                disabled={teamBusy}
+                aria-label={`Department for ${member.fullName?.trim() || member.email}`}
+                onChange={async (event) => {
+                  setTeamBusy(true);
+                  setInviteError(null);
+                  try {
+                    await assignTeamMemberDepartment(props.session.token, member.id, event.target.value ? Number(event.target.value) : null);
+                    await refreshTeam();
+                    setInviteFeedback("Team member department updated.");
+                  } catch (assignmentError) {
+                    setInviteError(assignmentError instanceof Error ? assignmentError.message : "Could not update the department.");
+                  } finally {
+                    setTeamBusy(false);
+                  }
+                }}
+              >
+                <option value="">No department</option>
+                {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+              </select>
+            </div>
+          ))}
+        </div>
+      </div>
         </div>
       </div>
 
@@ -6171,6 +6323,7 @@ function SettingsPage(props: {
           </div>
         </div>
 
+        {props.session.user.isOwner ? (
         <div className="panel settings-panel">
           <div className="panel-heading">
             <h2>Billing & subscription</h2>
@@ -6210,6 +6363,7 @@ function SettingsPage(props: {
             </button>
           </div>
         </div>
+        ) : null}
 
         <div className="panel settings-panel">
           <div className="panel-heading">
@@ -6221,10 +6375,12 @@ function SettingsPage(props: {
               <strong>Supplier rules</strong>
               <span>Control automatic category, tax, and payment defaults.</span>
             </button>
-            <button className="settings-link-card" type="button" onClick={() => navigate("/billing")}>
-              <strong>Billing</strong>
-              <span>Review plan status, trial dates, and subscription actions.</span>
-            </button>
+            {props.session.user.isOwner ? (
+              <button className="settings-link-card" type="button" onClick={() => navigate("/billing")}>
+                <strong>Billing</strong>
+                <span>Review plan status, trial dates, and subscription actions.</span>
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -10350,7 +10506,7 @@ function isRouteAllowed(session: SessionState, pathname: string) {
     return true;
   }
 
-  if (isBusinessAdmin(session) && pathname.startsWith("/billing")) {
+  if (session.user.isOwner && pathname.startsWith("/billing")) {
     return true;
   }
 
@@ -10363,7 +10519,7 @@ function isRouteAllowed(session: SessionState, pathname: string) {
 }
 
 function getDefaultRoute(session: SessionState) {
-  if (isBusinessAdmin(session) && session.billing && !isBillingStatusActive(session.billing.status)) {
+  if (session.user.isOwner && session.billing && !isBillingStatusActive(session.billing.status)) {
     return "/billing";
   }
   const allowedRoutes = session.allowedWebRoutes;
@@ -10376,7 +10532,7 @@ function getDefaultRoute(session: SessionState) {
 }
 
 function getAttentionRoute(session: SessionState, store: AppStore) {
-  if (isBusinessAdmin(session) && session.billing && !isBillingStatusActive(session.billing.status)) {
+  if (session.user.isOwner && session.billing && !isBillingStatusActive(session.billing.status)) {
     return "/billing";
   }
   if (!isBusinessAdmin(session)) {
