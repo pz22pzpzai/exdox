@@ -9182,7 +9182,9 @@ function workspaceLabel(context: ReceiptRecord["workspaceContext"]) {
 }
 
 function countsAsManualReview(record: ReceiptRecord) {
-  return record.workspaceContext !== "vault" && record.status === "Review" && record.needsReview;
+  // The workflow status shown in the inbox is the source of truth for review queues.
+  // `needsReview` is extraction metadata and can be false even while a record remains in Review.
+  return record.workspaceContext !== "vault" && record.status === "Review";
 }
 
 function duplicateCandidateKeys(record: ReceiptRecord) {
