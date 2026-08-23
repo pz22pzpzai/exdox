@@ -18,6 +18,7 @@ import {
   createBillingCheckoutSession,
   createBillingPortalSession,
   createClaim,
+  exportEmployeeReimbursements,
   exportMasterExpenses,
   createRequisition,
   deleteAccount,
@@ -53,6 +54,7 @@ import type {
   BillingCycle,
   BillingPlanId,
   ClaimRecord,
+  EmployeeReimbursementPaymentRow,
   InboxStatus,
   InviteResult,
   MasterExpenseExportRow,
@@ -1802,6 +1804,7 @@ function DashboardShell(props: {
                   element={
                     <DocumentWorkspacePage
                       mode="cost"
+                      sessionToken={props.session.token}
                       fallbackRecords={props.store.costs}
                       claims={props.store.claims}
                       settings={props.store.settings}
@@ -1834,6 +1837,7 @@ function DashboardShell(props: {
                   element={
                     <DocumentWorkspacePage
                       mode="sales"
+                      sessionToken={props.session.token}
                       fallbackRecords={props.store.sales}
                       claims={props.store.claims}
                       settings={props.store.settings}
@@ -1866,6 +1870,7 @@ function DashboardShell(props: {
                   element={
                     <DocumentWorkspacePage
                       mode="vault"
+                      sessionToken={props.session.token}
                       fallbackRecords={props.store.vault}
                       claims={props.store.claims}
                       settings={props.store.settings}
@@ -3502,6 +3507,7 @@ function InboxPage({
 
 function DocumentWorkspacePage(props: {
   mode: "cost" | "sales" | "vault";
+  sessionToken: string;
   fallbackRecords: ReceiptRecord[];
   claims: ClaimRecord[];
   settings?: OrganisationSettings | null;
@@ -4156,11 +4162,24 @@ function DocumentWorkspacePage(props: {
                     className="secondary-action"
                     type="button"
                     onClick={async () => {
-                      const rows = buildEmployeeReimbursementPaymentRows(reviewedRecordsForExport, props.settings ?? null);
-                      if (await downloadCsv(`employee-reimbursements-${new Date().toISOString().slice(0, 10)}.csv`, rows)) {
-                        setFeedback("Employee reimbursement payment summary downloaded.");
+                      try {
+                        const result = await exportEmployeeReimbursements(props.sessionToken);
+                        const downloaded = await downloadCsv(
+                          `employee-reimbursements-${new Date().toISOString().slice(0, 10)}.csv`,
+                          buildEmployeeReimbursementPaymentRows(result.rows),
+                        );
+                        if (!downloaded) {
+                          throw new Error("Could not download the employee reimbursement payment summary.");
+                        }
+                        setFeedback(
+                          result.notifications.failed
+                            ? `Employee reimbursement payment summary downloaded. ${result.notifications.sent} employee notification${result.notifications.sent === 1 ? " was" : "s were"} sent; ${result.notifications.failed} could not be delivered.`
+                            : `Employee reimbursement payment summary downloaded and ${result.notifications.sent} employee notification${result.notifications.sent === 1 ? " was" : "s were"} sent.`,
+                        );
+                        setPostApprovePrompt(null);
+                      } catch (exportError) {
+                        setError(exportError instanceof Error ? exportError.message : "Could not prepare the employee reimbursement payment summary.");
                       }
-                      setPostApprovePrompt(null);
                     }}
                   >
                     Download reimbursement payment summary
@@ -9870,41 +9889,8 @@ function buildMasterExpenseExportRows(rows: MasterExpenseExportRow[]) {
   }));
 }
 
-function buildEmployeeReimbursementPaymentRows(records: ReceiptRecord[], settings?: OrganisationSettings | null) {
-  const employeeTotals = new Map<string, {
-    employeeName: string;
-    employeeEmail: string;
-    currency: string;
-    approvedExpenseCount: number;
-    totalReimbursement: number;
-  }>();
-
-  records
-    .filter((record) =>
-      record.workspaceContext === "cost" &&
-      record.paymentMethod === "cash_personal" &&
-      record.status === "Ready" &&
-      !record.needsReview,
-    )
-    .forEach((record) => {
-      const employeeName = record.uploadedByName?.trim() || record.uploadedByEmail?.trim() || "Unassigned employee";
-      const employeeEmail = record.uploadedByEmail?.trim() || "";
-      const key = String(record.uploadedByUserId ?? (employeeEmail || employeeName));
-      const current = employeeTotals.get(key) ?? {
-        employeeName,
-        employeeEmail,
-        currency: record.currency?.trim() || "GBP",
-        approvedExpenseCount: 0,
-        totalReimbursement: 0,
-      };
-      current.approvedExpenseCount += 1;
-      current.totalReimbursement += normalizeReceiptForVatExport(record, settings).totalAmount ?? 0;
-      employeeTotals.set(key, current);
-    });
-
-  return Array.from(employeeTotals.values())
-    .sort((left, right) => left.employeeName.localeCompare(right.employeeName))
-    .map((employee) => ({
+function buildEmployeeReimbursementPaymentRows(rows: EmployeeReimbursementPaymentRow[]) {
+  return rows.map((employee) => ({
       employee_name: employee.employeeName,
       employee_email: employee.employeeEmail,
       approved_personal_expenses: String(employee.approvedExpenseCount),

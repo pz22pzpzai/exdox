@@ -91,6 +91,15 @@ export type MasterExpenseExportRow = {
   currency: string;
 };
 
+export type EmployeeReimbursementPaymentRow = {
+  employeeId: number;
+  employeeName: string;
+  employeeEmail: string;
+  approvedExpenseCount: number;
+  totalReimbursement: number;
+  currency: string;
+};
+
 export type SupplierRule = {
   id: number;
   supplierMatchText: string;

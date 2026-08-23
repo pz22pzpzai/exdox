@@ -5,6 +5,7 @@ import type {
   BillingSummary,
   BankRequisition,
   ClaimRecord,
+  EmployeeReimbursementPaymentRow,
   MasterExpenseExportRow,
   InviteResult,
   OrganisationSettings,
@@ -427,6 +428,17 @@ export async function exportMasterExpenses(
   return apiFetch('/claims/master-export', token, {
     method: 'POST',
     body: JSON.stringify({ employeeIds }),
+  });
+}
+
+export async function exportEmployeeReimbursements(
+  token: string,
+): Promise<{
+  rows: EmployeeReimbursementPaymentRow[];
+  notifications: { sent: number; failed: number };
+}> {
+  return apiFetch('/costs/reimbursement-export', token, {
+    method: 'POST',
   });
 }
 
