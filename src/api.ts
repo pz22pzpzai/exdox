@@ -442,6 +442,12 @@ export async function exportEmployeeReimbursements(
   });
 }
 
+export async function markEmployeeReimbursementsPaid(token: string): Promise<{ paidCount: number }> {
+  return apiFetch('/costs/reimbursement-mark-paid', token, {
+    method: 'POST',
+  });
+}
+
 export async function listRules(token: string): Promise<SupplierRule[]> {
   const response = await apiFetch<{ rules: SupplierRule[] }>("/rules", token);
   return response.rules;

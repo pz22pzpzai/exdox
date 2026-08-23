@@ -20,6 +20,7 @@ import {
   createClaim,
   exportEmployeeReimbursements,
   exportMasterExpenses,
+  markEmployeeReimbursementsPaid,
   createRequisition,
   deleteAccount,
   deleteReceipt,
@@ -1323,6 +1324,16 @@ export function App() {
                   vault: current.vault.map((item) => (item.id === id ? saved : item)),
                 }));
               }}
+              onReimbursementsMarkedPaid={async () => {
+                const result = await markEmployeeReimbursementsPaid(session.token);
+                const costs = await listReceipts(session.token, "cost");
+                setStore((current) => ({ ...current, costs }));
+                return result.paidCount;
+              }}
+              onReimbursementsExported={async () => {
+                const costs = await listReceipts(session.token, "cost");
+                setStore((current) => ({ ...current, costs }));
+              }}
               onReceiptDelete={async (id) => {
                 await deleteReceipt(session.token, id);
                 const refreshedClaims = await listClaims(session.token);
@@ -1466,6 +1477,8 @@ function DashboardShell(props: {
   error: string | null;
   onUpload: (workspaceContext: "cost" | "sales" | "vault", files: File[]) => Promise<void>;
   onReceiptSave: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
+  onReimbursementsMarkedPaid: () => Promise<number>;
+  onReimbursementsExported: () => Promise<void>;
   onReceiptDelete: (id: number) => Promise<void>;
   onAttachReceiptToClaim: (receiptId: number, claimId: number) => Promise<ReceiptRecord>;
   onClaimCreate: (payload: { name?: string; description?: string; currency?: string }) => Promise<ClaimRecord>;
@@ -1794,6 +1807,7 @@ function DashboardShell(props: {
                       settings={props.store.settings}
                       uploadBusy={uploadBusy}
                       onUpload={(files) => props.onUpload("cost", files)}
+                      onReimbursementsMarkedPaid={props.onReimbursementsMarkedPaid}
                     />
                   }
                 />
@@ -1811,6 +1825,7 @@ function DashboardShell(props: {
                       onSave={props.onReceiptSave}
                       onDelete={props.onReceiptDelete}
                       onAttachToClaim={props.onAttachReceiptToClaim}
+                      onReimbursementsExported={props.onReimbursementsExported}
                       loadReceipt={props.loadReceipt}
                     />
                   }
@@ -3149,6 +3164,7 @@ function InboxPage({
   settings,
   uploadBusy,
   onUpload,
+  onReimbursementsMarkedPaid,
 }: {
   title: string;
   records: ReceiptRecord[];
@@ -3157,6 +3173,7 @@ function InboxPage({
   settings: OrganisationSettings | null;
   uploadBusy: boolean;
   onUpload: (files: File[]) => Promise<void>;
+  onReimbursementsMarkedPaid?: () => Promise<number>;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -3168,6 +3185,7 @@ function InboxPage({
   const [employeeFilter, setEmployeeFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total" | "lowest_confidence">("newest");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [markingPaymentsPaid, setMarkingPaymentsPaid] = useState(false);
   const [filtersReady, setFiltersReady] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const vatTrackingEnabled = isVatTrackingEnabled(settings);
@@ -3183,7 +3201,16 @@ function InboxPage({
     const nextSort = params.get("sort");
 
     setQuery(nextSearch);
-    setStatusFilter(nextStatus === "Processing" || nextStatus === "Review" || nextStatus === "Ready" || nextStatus === "Published" ? nextStatus : "All");
+    setStatusFilter(
+      nextStatus === "Processing" ||
+      nextStatus === "Review" ||
+      nextStatus === "Ready" ||
+      nextStatus === "Published" ||
+      nextStatus === "Payment processing" ||
+      nextStatus === "Paid"
+        ? nextStatus
+        : "All",
+    );
     setIssueFilter(
       nextIssue === "Needs review" ||
       nextIssue === "Unreadable" ||
@@ -3238,6 +3265,12 @@ function InboxPage({
         ? "Sales CSV downloaded."
         : "Costs CSV downloaded.";
   const duplicateInsights = buildDuplicateInsights(records);
+  const paymentProcessingCount = records.filter(
+    (record) =>
+      record.workspaceContext === "cost" &&
+      record.paymentMethod === "cash_personal" &&
+      record.status === "Payment processing",
+  ).length;
   const employeeOptions = Array.from(
     new Map(
       records
@@ -3311,6 +3344,8 @@ function InboxPage({
             <option value="Review">Review</option>
             <option value="Ready">Ready</option>
             <option value="Published">Published</option>
+            {basePath === "/costs" ? <option value="Payment processing">Payment processing</option> : null}
+            {basePath === "/costs" ? <option value="Paid">Paid</option> : null}
           </select>
           <select value={issueFilter} onChange={(event) => setIssueFilter(event.target.value as typeof issueFilter)}>
             <option value="All">All issues</option>
@@ -3364,6 +3399,29 @@ function InboxPage({
           >
             Export CSV
           </button>
+          {basePath === "/costs" && paymentProcessingCount && onReimbursementsMarkedPaid ? (
+            <button
+              className="primary-action"
+              type="button"
+              disabled={markingPaymentsPaid}
+              onClick={async () => {
+                if (!window.confirm(`Mark all ${paymentProcessingCount} reimbursement expense${paymentProcessingCount === 1 ? "" : "s"} as paid? This removes them from the active payment batch.`)) {
+                  return;
+                }
+                setMarkingPaymentsPaid(true);
+                try {
+                  const paidCount = await onReimbursementsMarkedPaid();
+                  setFeedback(`${paidCount} reimbursement expense${paidCount === 1 ? " was" : "s were"} marked as paid.`);
+                } catch (paymentError) {
+                  setFeedback(paymentError instanceof Error ? paymentError.message : "Could not mark the reimbursement payment batch as paid.");
+                } finally {
+                  setMarkingPaymentsPaid(false);
+                }
+              }}
+            >
+              {markingPaymentsPaid ? "Marking paid..." : `Mark ${paymentProcessingCount} as paid`}
+            </button>
+          ) : null}
         </div>
       </section>
       {feedback ? <div className="success-banner">{feedback}</div> : null}
@@ -3514,6 +3572,7 @@ function DocumentWorkspacePage(props: {
   onSave: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onAttachToClaim: (receiptId: number, claimId: number) => Promise<ReceiptRecord>;
+  onReimbursementsExported?: () => Promise<void>;
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null; downloadUrl: string | null }>;
 }) {
   const { id } = useParams();
@@ -3585,6 +3644,10 @@ function DocumentWorkspacePage(props: {
   const vatTrackingEnabled = isVatTrackingEnabled(props.settings ?? null);
   const receiptPublished = receipt.status === "Published";
   const receiptApproved = receipt.status === "Ready" && !receipt.needsReview;
+  const reimbursementPaymentLocked =
+    props.mode === "cost" &&
+    receipt.paymentMethod === "cash_personal" &&
+    (receipt.status === "Payment processing" || receipt.status === "Paid");
   const nextReviewReceipt = isVaultRecord
     ? null
     : props.fallbackRecords.find((record) => record.id !== receipt.id && countsAsManualReview(record));
@@ -3720,14 +3783,20 @@ function DocumentWorkspacePage(props: {
           </label>
           <label>
             Workflow Status
-            <select value={receipt.status} onChange={(event) => setReceipt({ ...receipt, status: event.target.value as ReceiptRecord["status"] })}>
+            <select
+              value={receipt.status}
+              disabled={reimbursementPaymentLocked}
+              onChange={(event) => setReceipt({ ...receipt, status: event.target.value as ReceiptRecord["status"] })}
+            >
               <option value="Processing">Processing</option>
               <option value="Review">Review</option>
               <option value="Ready">Ready</option>
               <option value="Published">Published</option>
+              {receipt.status === "Payment processing" ? <option value="Payment processing">Payment processing</option> : null}
+              {receipt.status === "Paid" ? <option value="Paid">Paid</option> : null}
             </select>
           </label>
-          {!isVaultRecord ? (
+          {!isVaultRecord && !reimbursementPaymentLocked ? (
             <>
               <label>
                 {vatTrackingEnabled ? "Net Amount" : "Total"}
@@ -3814,6 +3883,13 @@ function DocumentWorkspacePage(props: {
               </select>
               <span className="field-hint">Attach personal spend to the employee's claim before approving it for the master export.</span>
             </label>
+          ) : null}
+          {reimbursementPaymentLocked ? (
+            <span className="field-hint">
+              {receipt.status === "Paid"
+                ? "This reimbursement has been marked as paid."
+                : "This reimbursement is in the active payment batch."}
+            </span>
           ) : null}
         </div>
 
@@ -3959,7 +4035,7 @@ function DocumentWorkspacePage(props: {
         ) : null}
 
         <div className="toolbar">
-          {!isVaultRecord ? (
+          {!isVaultRecord && !reimbursementPaymentLocked ? (
             <button
               className={receiptApproved && !receiptPublished ? "secondary-action" : "primary-action"}
               type="button"
@@ -4176,6 +4252,7 @@ function DocumentWorkspacePage(props: {
                             ? `Employee reimbursement payment summary downloaded. ${result.notifications.sent} employee notification${result.notifications.sent === 1 ? " was" : "s were"} sent; ${result.notifications.failed} could not be delivered.`
                             : `Employee reimbursement payment summary downloaded and ${result.notifications.sent} employee notification${result.notifications.sent === 1 ? " was" : "s were"} sent.`,
                         );
+                        await props.onReimbursementsExported?.();
                         setPostApprovePrompt(null);
                       } catch (exportError) {
                         setError(exportError instanceof Error ? exportError.message : "Could not prepare the employee reimbursement payment summary.");
@@ -6495,7 +6572,7 @@ function normalizeInboxStatusLabel(status: "pending" | "approved" | "paid" | "re
   if (trimmed === "rejected") {
     return "Processing";
   }
-  if (trimmed === "Processing" || trimmed === "Ready" || trimmed === "Review" || trimmed === "Published") {
+  if (trimmed === "Processing" || trimmed === "Ready" || trimmed === "Review" || trimmed === "Published" || trimmed === "Payment processing" || trimmed === "Paid") {
     return trimmed;
   }
   return "Review";
@@ -6509,7 +6586,7 @@ function StatusPill({
   label?: string;
 }) {
   const normalized = normalizeInboxStatusLabel(status);
-  return <span className={`status-pill status-${normalized.toLowerCase()}`}>{label ?? normalized}</span>;
+  return <span className={`status-pill status-${normalized.toLowerCase().replace(/\s+/g, "-")}`}>{label ?? normalized}</span>;
 }
 
 function SignalPill({ tone, children }: { tone: "warning" | "info"; children: string }) {

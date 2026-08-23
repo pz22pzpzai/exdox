@@ -841,6 +841,11 @@ button.status-box:focus-visible {
   color: #124f43;
 }
 
+.status-payment-processing {
+  background: rgba(198, 138, 58, 0.16);
+  color: #9a651f;
+}
+
 .status-processing,
 .status-rejected {
   background: rgba(168, 74, 58, 0.14);

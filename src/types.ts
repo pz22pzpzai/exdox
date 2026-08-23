@@ -1,4 +1,4 @@
-export type InboxStatus = "Processing" | "Ready" | "Review" | "Published";
+export type InboxStatus = "Processing" | "Ready" | "Review" | "Published" | "Payment processing" | "Paid";
 export type PaymentMethod =
   | "business_card"
   | "cash_personal"
