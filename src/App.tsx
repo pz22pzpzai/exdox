@@ -1961,35 +1961,103 @@ type HelpChatMessage = {
   text: string;
 };
 
-const helpChatQuickPrompts = ["Getting started", "Upload a document", "Review and approval", "Billing and plans"];
+const helpChatQuickPrompts = ["How do I get started?", "How do I upload a receipt?", "Why is my document in review?", "What can I do in Exdox?"];
 
 function helpChatReply(message: string) {
-  const input = message.toLowerCase();
-  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(input)) {
-    return "Hello. I am the Exdox support assistant. I can explain how Exdox works and point you to the right place for help.";
+  const input = message.toLowerCase().replace(/[^a-z0-9£@]+/g, " ").trim();
+  const includes = (...terms: string[]) => terms.some((term) => input.includes(term));
+
+  if (!input) {
+    return "It looks as though your message did not come through. Tell me what you are trying to do and I will point you in the right direction.";
   }
-  if (/(upload|add|submit).*(receipt|invoice|document)|\b(receipt|invoice)\b/.test(input)) {
-    return "You can upload a document using Upload Costs, Upload Sales, or Upload Vault in the workspace header. On mobile, capture the receipt in the Exdox app and it will appear in the matching review queue.";
+  if (/^(hi|hello|hey|hiya|good morning|good afternoon|good evening|morning|afternoon|evening)\b/.test(input) && input.split(" ").length <= 4) {
+    return "Hello! I’m the Exdox assistant. I can help you find your way around receipts, sales, claims, Vault, reviews, plans, and account access. What would you like to do?";
   }
-  if (/(review|approve|approval|next expense|save changes)/.test(input)) {
-    return "Review the extracted fields, save any corrections, then select Approve when the document is ready. Exdox offers the next item to review, or an export option when the queue is clear.";
+  if (/(how are you|how s it going|hows it going|are you okay|are you there)/.test(input)) {
+    return "I’m here and ready to help. What are you working on in Exdox today?";
   }
-  if (/(allowance|limit|usage|documents left|vault)/.test(input)) {
-    return "Business administrators can see the remaining document allowance on Overview and the full plan breakdown in Billing. Costs, sales, and Vault uploads all count towards the monthly document allowance.";
+  if (/^(thanks|thank you|cheers|great|perfect|that helps|ok|okay)\b/.test(input)) {
+    return "You’re very welcome. If anything else comes up, just ask — I’m happy to help.";
   }
-  if (/(employee|staff|team|invite|access)/.test(input)) {
-    return "Employees can submit and track their own expenses and claims. Their web view does not expose company billing, settings, approval controls, or other users' records.";
+  if (/^(bye|goodbye|see you|see ya|talk later|that s all|thats all)\b/.test(input)) {
+    return "Goodbye for now. Take care, and come back whenever you need a hand with Exdox.";
   }
-  if (/(price|pricing|plan|trial|billing|card|cancel|subscription)/.test(input)) {
-    return "Plans and trial details are on the Pricing page. Business administrators can manage their trial or subscription from Billing, including cancellation before a renewal.";
+  if (includes("what can you do", "what do you do", "how can you help", "help me", "getting started", "get started", "new here", "new user")) {
+    return "I can explain how Exdox works and help with everyday tasks: capturing receipts, uploading cost or sales documents, reviewing extracted details, claims, Vault, supplier rules, exports, plans, and signing in. Tell me what you are trying to achieve and we can take it step by step.";
   }
-  if (/(password|login|sign in|email confirm|confirmation)/.test(input)) {
-    return "Use Forgot Password on the login page if you cannot sign in. After registration, confirm your email using the latest Exdox message to keep uninterrupted workspace access.";
+  if (includes("what is exdox", "what does exdox", "about exdox", "what is this")) {
+    return "Exdox is a connected finance workspace for capturing business documents, reviewing them, keeping source evidence safe, managing employee claims, and preparing export-ready records. The mobile app is ideal for capture on the move; the website gives you the wider review and administration workspace.";
   }
-  if (/(contact|support|security|help)/.test(input)) {
-    return "For account-specific, billing, or security help, use the Contact page. Please do not send passwords, card details, or private documents in this chat.";
+  if (includes("app or website", "app and website", "mobile app", "android", "phone")) {
+    return "Use the mobile app to capture receipts or upload files while you are out and about. Use the website for the wider workspace: reviewing Costs and Sales, managing Claims and Vault, working with supplier rules, exports, billing, and settings. Both use the same Exdox account and sync to the same organisation.";
   }
-  return "I can help with general Exdox guidance on uploads, reviews, plans, employee access, and signing in. For account-specific support, please use the Contact page.";
+  if (includes("upload", "add", "submit", "take a photo", "camera", "receipt", "invoice", "document")) {
+    if (includes("sales", "customer invoice", "outbound")) {
+      return "For sales evidence, choose Upload Sales in the workspace and add the relevant invoice or supporting document. It will enter the Sales review flow, where you can check the extracted details before it is approved.";
+    }
+    if (includes("vault", "archive", "store a file")) {
+      return "Use Upload Vault for documents you want to keep as protected source evidence. Vault items are stored separately from the Costs and Sales review queues, but they still receive Exdox processing so you can find and check their details later.";
+    }
+    return "To upload a cost document on the website, choose Upload Costs and select the receipt, bill, or invoice. In the mobile app, use the camera button to take a photo or choose a file. Exdox reads the document, then places it in the relevant review queue so you can confirm the details.";
+  }
+  if (includes("review", "approve", "approval", "next expense", "save changes", "ready", "to be reviewed", "to be review")) {
+    return "A document in review is waiting for a person to check it. Open it, confirm or correct details such as supplier, date, total, category, and VAT where relevant, save your changes, then approve it when it is accurate. This keeps the final record and exports reliable.";
+  }
+  if (includes("processing", "reading", "still loading", "stuck", "not finished", "taking long")) {
+    return "A short processing period is normal while Exdox reads and prepares the document. Try refreshing the relevant queue and opening the record again. If it remains in processing longer than expected, please contact support with the document name and approximate upload time — but never send passwords or card details in chat.";
+  }
+  if (includes("wrong", "incorrect", "mistake", "edit", "change", "fix", "unknown supplier", "missing details")) {
+    return "That is exactly what the review step is for. Open the document, update the supplier, date, amount, category, tax, or other incorrect field, and save the changes before approval. “Unknown supplier” or “Missing details” usually means a key review field still needs completing, rather than a problem with your account.";
+  }
+  if (includes("duplicate", "same receipt", "twice", "again", "already uploaded")) {
+    return "Exdox checks for duplicate receipts so the same document does not become two normal records. If you uploaded a receipt twice, the duplicate should be blocked, particularly when the same file is used. If two records remain, avoid approving both and contact support with their filenames or dates.";
+  }
+  if (includes("sync", "not showing", "can t see", "cannot see", "missing from website", "missing from app", "different on")) {
+    return "The app and website normally stay in sync, although a new upload or recent edit can take a moment to settle. Refresh the list, reopen the document, and check its latest saved details. If it still appears in one place but not the other, support can investigate the account-specific record.";
+  }
+  if (includes("costs", "costs inbox", "expense", "purchase")) {
+    return "Costs is where receipts, supplier bills, and purchase documents are reviewed. Use the Costs Inbox to search and filter documents, open a row, check the extracted details, save corrections, and move each item through its review workflow.";
+  }
+  if (includes("sales", "sales inbox")) {
+    return "Sales is the workspace for your outbound sales evidence. Upload the relevant sales documents there, review the extracted information, and keep the approved record alongside the rest of your Exdox evidence trail.";
+  }
+  if (includes("vault", "archive")) {
+    return "Vault is Exdox’s protected document store. Use it for source documents you need to retain and retrieve, separate from your active Costs and Sales review queues. You can upload files to Vault and later search or open them from the workspace.";
+  }
+  if (includes("claim", "reimbursement", "personal expense", "employee expense")) {
+    return "Claims are for employee expenses and reimbursement workflows. Employees can submit and track their own expenses and claims; business administrators can review the appropriate claim records and export approved reimbursement information when the review is complete.";
+  }
+  if (includes("employee", "staff", "team", "invite", "user access", "permissions", "role")) {
+    return "Business administrators manage the organisation workspace and its controls. Employees can submit and track their own expenses and claims, but they do not see company billing, settings, approval controls, or other people’s records. For an invite or access issue, use the Contact page’s Access support option.";
+  }
+  if (includes("search", "find", "filter", "where is", "locate")) {
+    return "In Costs, Sales, and Vault, start with the search box and narrow the result with the available status or issue filters. Supplier names, filenames, categories, notes, and document wording are useful things to search for.";
+  }
+  if (includes("export", "csv", "download", "report", "reporting")) {
+    return "Exdox provides CSV exports from the relevant workspace views once documents or claims are in the right state. Business administrators can also use the claims area for approved-expense and reimbursement summaries. If you tell me what you need to export, I can point you to the closest area.";
+  }
+  if (includes("supplier rule", "rules", "category", "categorise", "categorize")) {
+    return "Supplier rules help keep repeat documents consistent. In the website workspace, review a document’s supplier and category, then use the Rules area to manage the matching behaviour available to your plan. You should still review new or unusual documents before approval.";
+  }
+  if (includes("vat", "tax", "net", "gross")) {
+    return "During review, check that the total and tax information matches the document. VAT-registered workspaces can review net, VAT, gross, and tax-rate information; where VAT tracking is turned off, Exdox uses a simpler gross-total view. If you are unsure what should be recorded, check with your accountant or finance adviser.";
+  }
+  if (includes("price", "pricing", "plan", "trial", "billing", "card", "cancel", "subscription", "upgrade", "allowance", "limit", "usage", "documents left")) {
+    return "You can compare plan capacity and pricing on the Pricing page. Business administrators can see document usage, manage their trial or subscription, upgrade where available, and cancel before renewal from Billing. Costs, Sales, and Vault uploads count towards the monthly document allowance.";
+  }
+  if (includes("password", "login", "log in", "sign in", "forgot", "reset", "email confirm", "confirmation", "activate", "invite link")) {
+    return "For sign-in trouble, first make sure you are using the email address linked to the workspace, then use Forgot Password on the login page if needed. After registration, confirm your email using the latest Exdox email. If an invitation or activation link is not working, the Contact page has an Access support route.";
+  }
+  if (includes("delete", "close account", "remove account", "data removal")) {
+    return "A business administrator can permanently close an Exdox workspace from Profile/Settings. Closing the workspace cancels its linked subscription and removes the workspace data, so please make sure you have any records you need before continuing. The Account deletion page explains the process.";
+  }
+  if (includes("privacy", "data", "secure", "security", "gdpr", "cookies", "terms")) {
+    return "Exdox keeps organisation records within authenticated workspace access and uses protected document retrieval. For the full details on privacy, cookies, terms, or a security request, please use the links in the website footer or the Contact page. Please do not share passwords, payment details, or private documents in this chat.";
+  }
+  if (includes("contact", "support", "speak to", "human", "person", "email", "phone", "demo", "onboarding")) {
+    return "For help that needs someone to look at your specific account, use the Contact page. It has routes for general questions, access support, billing support, onboarding, demos, security, and account deletion. You can also email contact@exdox.co.uk. Please keep passwords, card details, and private documents out of chat messages.";
+  }
+  return "I want to make sure I point you to the right place. I can help with receipts and uploads, Costs, Sales, Vault, Claims, review, syncing, plans, access, and support. Could you tell me a little more about what you are trying to do?";
 }
 
 function HelpChatWidget() {
