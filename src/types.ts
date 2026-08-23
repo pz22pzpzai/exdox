@@ -70,10 +70,22 @@ export type ClaimRecord = {
   status: "pending" | "approved" | "paid" | "rejected";
   totalAmount: number;
   documentCount: number;
+  claimantName?: string | null;
+  claimantEmail?: string | null;
   createdAt: string;
   updatedAt: string;
   createdByUserId?: number;
   organisationId?: number;
+};
+
+export type MasterExpenseExportRow = {
+  employeeId: number;
+  employeeName: string;
+  employeeEmail: string;
+  approvedClaimCount: number;
+  approvedDocumentCount: number;
+  totalAmount: number;
+  currency: string;
 };
 
 export type SupplierRule = {

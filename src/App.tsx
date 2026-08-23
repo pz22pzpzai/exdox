@@ -18,6 +18,7 @@ import {
   createBillingCheckoutSession,
   createBillingPortalSession,
   createClaim,
+  exportMasterExpenses,
   createRequisition,
   deleteAccount,
   deleteReceipt,
@@ -54,6 +55,7 @@ import type {
   ClaimRecord,
   InboxStatus,
   InviteResult,
+  MasterExpenseExportRow,
   OrganisationSettings,
   ReceiptRecord,
   ReconciliationLine,
@@ -1875,7 +1877,7 @@ function DashboardShell(props: {
                 />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
-                <Route path="/claims" element={<ClaimsPage claims={props.store.claims} onCreateClaim={props.onClaimCreate} />} />
+                <Route path="/claims" element={<ClaimsPage session={props.session} claims={props.store.claims} onCreateClaim={props.onClaimCreate} />} />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route
@@ -1927,7 +1929,7 @@ function DashboardShell(props: {
               />
               <Route
                 path="/claims"
-                element={<ClaimsPage claims={props.store.claims} onCreateClaim={props.onClaimCreate} employeeMode />}
+                element={<ClaimsPage session={props.session} claims={props.store.claims} onCreateClaim={props.onClaimCreate} employeeMode />}
               />
               <Route
                 path="/claims/:id"
@@ -3690,15 +3692,16 @@ function DocumentWorkspacePage(props: {
           </label>
           {props.mode === "cost" ? (
             <label className="form-span-2">
-              Expense Claim
+              Expense claim and employee
               <select value={selectedClaimId} onChange={(event) => setSelectedClaimId(event.target.value)}>
-                <option value="">Select claim</option>
+                <option value="">Select employee claim</option>
                 {eligibleClaims.map((claim) => (
                   <option key={claim.id} value={claim.id}>
                     {formatClaimOptionLabel(claim)}
                   </option>
                 ))}
               </select>
+              <span className="field-hint">Attach personal spend to the employee's claim before approving it for the master export.</span>
             </label>
           ) : null}
         </div>
@@ -4109,10 +4112,12 @@ function DocumentWorkspacePage(props: {
 }
 
 function ClaimsPage({
+  session,
   claims,
   onCreateClaim,
   employeeMode,
 }: {
+  session: SessionState;
   claims: ClaimRecord[];
   onCreateClaim: (payload: { name?: string; description?: string; currency?: string }) => Promise<ClaimRecord>;
   employeeMode?: boolean;
@@ -4130,6 +4135,8 @@ function ClaimsPage({
   const [statusFilter, setStatusFilter] = useState<ClaimRecord["status"] | "all">("all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
   const [filtersReady, setFiltersReady] = useState(false);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
+  const [exportBusy, setExportBusy] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -4163,6 +4170,28 @@ function ClaimsPage({
   const filteredClaims = claims
     .filter((claim) => statusFilter === "all" || claim.status === statusFilter)
     .sort((left, right) => compareClaimRecords(left, right, sortOrder));
+  const exportEmployees = Array.from(
+    new Map(
+      claims
+        .filter((claim) => (claim.status === "approved" || claim.status === "paid") && Boolean(claim.createdByUserId))
+        .map((claim) => [
+          claim.createdByUserId as number,
+          {
+            id: claim.createdByUserId as number,
+            name: claim.claimantName || claim.claimantEmail || "Workspace user",
+            email: claim.claimantEmail || "",
+          },
+        ]),
+    ).values(),
+  );
+
+  useEffect(() => {
+    setSelectedEmployeeIds((current) => {
+      const availableIds = new Set(exportEmployees.map((employee) => employee.id));
+      const retained = current.filter((id) => availableIds.has(id));
+      return retained.length ? retained : exportEmployees.map((employee) => employee.id);
+    });
+  }, [claims]);
 
   return (
     <div className="stack-page">
@@ -4208,6 +4237,69 @@ function ClaimsPage({
           </button>
         </div>
       </section>
+      {!employeeMode ? (
+        <section className="panel settings-panel master-expense-export">
+          <div className="panel-heading">
+            <div>
+              <h2>Master approved expense export</h2>
+              <span>One accounting row per employee. Individual receipts are not included.</span>
+            </div>
+            <span>{exportEmployees.length} employee{exportEmployees.length === 1 ? "" : "s"} with approved expenses</span>
+          </div>
+          <div className="employee-export-list" aria-label="Employees included in master expense export">
+            {exportEmployees.length ? exportEmployees.map((employee) => (
+              <label className="employee-export-option" key={employee.id}>
+                <input
+                  type="checkbox"
+                  checked={selectedEmployeeIds.includes(employee.id)}
+                  onChange={(event) => {
+                    setSelectedEmployeeIds((current) => event.target.checked
+                      ? [...new Set([...current, employee.id])]
+                      : current.filter((id) => id !== employee.id));
+                  }}
+                />
+                <span>
+                  <strong>{employee.name}</strong>
+                  {employee.email ? <small>{employee.email}</small> : null}
+                </span>
+              </label>
+            )) : <span className="field-hint">Approved employee expense claims will appear here once they are reviewed.</span>}
+          </div>
+          <div className="toolbar">
+            <button
+              className="primary-action"
+              type="button"
+              disabled={exportBusy || !selectedEmployeeIds.length}
+              onClick={async () => {
+                setExportBusy(true);
+                setError(null);
+                setFeedback(null);
+                try {
+                  const result = await exportMasterExpenses(session.token, selectedEmployeeIds);
+                  const downloaded = await downloadCsv(
+                    `master-approved-expenses-${new Date().toISOString().slice(0, 10)}.csv`,
+                    buildMasterExpenseExportRows(result.rows),
+                  );
+                  if (!downloaded) {
+                    throw new Error("Could not download the master expense CSV.");
+                  }
+                  setFeedback(
+                    result.notifications.failed
+                      ? `Master expense CSV downloaded. ${result.notifications.sent} employee summary email${result.notifications.sent === 1 ? " was" : "s were"} sent; ${result.notifications.failed} could not be delivered.`
+                      : `Master expense CSV downloaded and ${result.notifications.sent} employee summary email${result.notifications.sent === 1 ? " was" : "s were"} sent.`,
+                  );
+                } catch (exportError) {
+                  setError(exportError instanceof Error ? exportError.message : "Could not create the master expense export.");
+                } finally {
+                  setExportBusy(false);
+                }
+              }}
+            >
+              {exportBusy ? "Preparing export..." : "Download master expense CSV"}
+            </button>
+          </div>
+        </section>
+      ) : null}
       <section className="panel settings-panel">
         <div className="panel-heading">
           <h2>Create claim</h2>
@@ -9645,6 +9737,17 @@ function buildClaimsListExportRows(claims: ClaimRecord[]) {
   }));
 }
 
+function buildMasterExpenseExportRows(rows: MasterExpenseExportRow[]) {
+  return rows.map((row) => ({
+    employee_name: row.employeeName,
+    employee_email: row.employeeEmail,
+    approved_claims: String(row.approvedClaimCount),
+    approved_receipt_lines: String(row.approvedDocumentCount),
+    total_approved: row.totalAmount.toFixed(2),
+    currency: row.currency,
+  }));
+}
+
 function buildRuleExportRows(rules: SupplierRule[]) {
   return rules.map((rule) => ({
     rule_id: String(rule.id),
@@ -9948,7 +10051,7 @@ function vaultStatusLabel(record: ReceiptRecord) {
 }
 
 function claimEmployeeLabel(claim: ClaimRecord) {
-  return claim.createdByUserId ? "Workspace user" : "Employee pending";
+  return claim.claimantName || claim.claimantEmail || (claim.createdByUserId ? "Workspace user" : "Employee pending");
 }
 
 function formatClaimReference(claim: ClaimRecord) {

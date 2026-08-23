@@ -5,6 +5,7 @@ import type {
   BillingSummary,
   BankRequisition,
   ClaimRecord,
+  MasterExpenseExportRow,
   InviteResult,
   OrganisationSettings,
   ReceiptRecord,
@@ -412,6 +413,21 @@ export async function attachReceiptToClaim(
     body: JSON.stringify(payload),
   });
   return response.receipt;
+}
+
+export async function exportMasterExpenses(
+  token: string,
+  employeeIds: number[],
+): Promise<{
+  organisationName: string;
+  exportedAt: string;
+  rows: MasterExpenseExportRow[];
+  notifications: { sent: number; failed: number };
+}> {
+  return apiFetch('/claims/master-export', token, {
+    method: 'POST',
+    body: JSON.stringify({ employeeIds }),
+  });
 }
 
 export async function listRules(token: string): Promise<SupplierRule[]> {

@@ -1013,6 +1013,45 @@ button.status-box:focus-visible {
   max-width: none;
 }
 
+.master-expense-export {
+  border-color: #b8d9ed;
+  background: linear-gradient(135deg, #ffffff 0%, #f4faff 100%);
+}
+
+.employee-export-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.employee-export-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+  padding: 10px 12px;
+  border: 1px solid #d3dfeb;
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.employee-export-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: #087fc1;
+}
+
+.employee-export-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.employee-export-option small {
+  color: #65758c;
+}
+
 .account-deletion-workspace-page {
   max-width: 900px;
 }
