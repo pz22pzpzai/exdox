@@ -2170,7 +2170,7 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
               {
                 key: "processing",
                 label: "Processing",
-                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => item.status === "Processing").length,
+                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => hasInboxStatus(item, "Processing")).length,
                 route: firstInboxRouteForStatus(store, "Processing"),
               },
               {
@@ -2182,13 +2182,13 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
               {
                 key: "ready",
                 label: "Ready",
-                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => item.status === "Ready").length,
+                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => hasInboxStatus(item, "Ready")).length,
                 route: firstInboxRouteForStatus(store, "Ready"),
               },
               {
                 key: "published",
                 label: "Published",
-                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => item.status === "Published").length,
+                count: [...store.costs, ...store.sales, ...store.vault].filter((item) => hasInboxStatus(item, "Published")).length,
                 route: firstInboxRouteForStatus(store, "Published"),
               },
             ].map((item) => (
@@ -9184,7 +9184,11 @@ function workspaceLabel(context: ReceiptRecord["workspaceContext"]) {
 function countsAsManualReview(record: ReceiptRecord) {
   // The workflow status shown in the inbox is the source of truth for review queues.
   // `needsReview` is extraction metadata and can be false even while a record remains in Review.
-  return record.workspaceContext !== "vault" && record.status === "Review";
+  return record.workspaceContext !== "vault" && normalizeInboxStatusLabel(record.status) === "Review";
+}
+
+function hasInboxStatus(record: ReceiptRecord, status: InboxStatus) {
+  return normalizeInboxStatusLabel(record.status) === status;
 }
 
 function duplicateCandidateKeys(record: ReceiptRecord) {
