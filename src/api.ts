@@ -537,7 +537,7 @@ export async function getSettings(token: string): Promise<OrganisationSettings> 
 
 export async function saveSettings(
   token: string,
-  payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">,
+  payload: Pick<OrganisationSettings, "baseCurrency" | "isVatRegistered" | "defaultTaxRate">,
 ): Promise<OrganisationSettings> {
   const response = await apiFetch<{ settings: OrganisationSettings }>("/settings", token, {
     method: "PUT",

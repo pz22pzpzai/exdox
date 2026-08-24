@@ -443,6 +443,7 @@ function buildFallbackOrganisationSettings(session: SessionState): OrganisationS
   return {
     organisationId: activeOrganisation?.id ?? session.activeOrganisationId ?? session.user.organisationId,
     organisationName: customerFacingOrganisationName(activeOrganisation?.name),
+    baseCurrency: "GBP",
     isVatRegistered: true,
     defaultTaxRate: "20% Standard",
   };
@@ -1500,7 +1501,7 @@ function DashboardShell(props: {
     requisitionId?: string | null;
     consentId?: string | null;
   }) => Promise<{ linked: boolean; state: string; externalRequisitionId: string | null }>;
-  onSettingsSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
+  onSettingsSave: (payload: Pick<OrganisationSettings, "baseCurrency" | "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
   onInviteEmployee: (payload: {
     email: string;
     fullName?: string;
@@ -3931,14 +3932,40 @@ function DocumentWorkspacePage(props: {
             <input value={receipt.currency ?? "GBP"} readOnly />
           </label>
           <label>
-            GBP equivalent
-            <input value={currency(receipt.baseTotalAmount ?? receiptGrossAmount(receipt))} readOnly />
+            {receipt.baseCurrency ?? "GBP"} equivalent
+            <input value={currency(receipt.baseTotalAmount ?? receiptGrossAmount(receipt), receipt.baseCurrency ?? "GBP")} readOnly />
           </label>
           {receipt.exchangeRate ? (
             <label className="form-span-2">
               FX audit
               <input value={`1 ${receipt.currency ?? "GBP"} = ${receipt.exchangeRate} ${receipt.baseCurrency ?? "GBP"} | ${receipt.exchangeRateProvider ?? "Recorded rate"} | ${receipt.exchangeRateDate ?? ""}`} readOnly />
             </label>
+          ) : null}
+          {receipt.currency && receipt.baseCurrency && receipt.currency !== receipt.baseCurrency ? (
+            <>
+              <label>
+                Actual settlement rate
+                <input
+                  type="number"
+                  step="0.00000001"
+                  value={receipt.exchangeRate ?? ""}
+                  onChange={(event) => setReceipt({
+                    ...receipt,
+                    exchangeRate: Number(event.target.value),
+                    exchangeRateOverride: true,
+                    exchangeRateProvider: "manual_settlement",
+                  })}
+                />
+              </label>
+              <label>
+                Settlement note
+                <input
+                  value={receipt.exchangeRateNote ?? ""}
+                  placeholder="Card statement or reimbursement reference"
+                  onChange={(event) => setReceipt({ ...receipt, exchangeRateNote: event.target.value, exchangeRateOverride: true })}
+                />
+              </label>
+            </>
           ) : null}
           <label>
             Due Date
@@ -5857,7 +5884,7 @@ function BankCallbackPage(props: {
 function SettingsPage(props: {
   session: SessionState;
   settings: OrganisationSettings | null;
-  onSave: (payload: Pick<OrganisationSettings, "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
+  onSave: (payload: Pick<OrganisationSettings, "baseCurrency" | "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
   onInviteEmployee: (payload: {
     email: string;
     fullName?: string;
@@ -6119,6 +6146,10 @@ function SettingsPage(props: {
           <span>Organisation #{draft.organisationId}</span>
         </div>
         <div>
+          <strong>Base currency</strong>
+          <span>{draft.baseCurrency}</span>
+        </div>
+        <div>
           <strong>VAT posture</strong>
           <span>{draft.isVatRegistered ? "VAT registered" : "No VAT registration"}</span>
         </div>
@@ -6133,6 +6164,16 @@ function SettingsPage(props: {
       </div>
       {copyFeedback ? <div className="success-banner">{copyFeedback}</div> : null}
       <div className="form-grid">
+        <label>
+          Company base currency
+          <select value={draft.baseCurrency} disabled={saving} onChange={(event) => setDraft({ ...draft, baseCurrency: event.target.value })}>
+            <option value="GBP">GBP - Pound sterling</option>
+            <option value="EUR">EUR - Euro</option>
+            <option value="USD">USD - US dollar</option>
+            <option value="CAD">CAD - Canadian dollar</option>
+            <option value="AUD">AUD - Australian dollar</option>
+          </select>
+        </label>
         <label className="toggle-field">
           Company is VAT Registered
           <button
@@ -6170,6 +6211,7 @@ function SettingsPage(props: {
             setFeedback(null);
             try {
               await props.onSave({
+                baseCurrency: draft.baseCurrency,
                 isVatRegistered: draft.isVatRegistered,
                 defaultTaxRate: draft.defaultTaxRate,
               });
@@ -9522,10 +9564,10 @@ function NavIcon({ name }: { name: string }) {
   return <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name] ?? paths.overview}</svg>;
 }
 
-function currency(value: number | null) {
+function currency(value: number | null, currencyCode = "GBP") {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
-    currency: "GBP",
+    currency: currencyCode,
   }).format(value ?? 0);
 }
 
@@ -10132,6 +10174,13 @@ function buildInboxExportRows(records: ReceiptRecord[], settings?: OrganisationS
     net_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).netAmount),
     vat_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).vatAmount),
     total_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).totalAmount),
+    original_currency: record.currency ?? "GBP",
+    base_currency: record.baseCurrency ?? "GBP",
+    base_total_amount: formatExportNumber(record.baseTotalAmount ?? normalizeReceiptForVatExport(record, settings).totalAmount),
+    exchange_rate: formatExportNumber(record.exchangeRate ?? null),
+    exchange_rate_date: record.exchangeRateDate ?? "",
+    exchange_rate_provider: record.exchangeRateProvider ?? "",
+    exchange_rate_override: record.exchangeRateOverride ? "yes" : "no",
     subtotal_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).subtotalAmount),
     total_tax_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).totalTaxAmount),
     tax_rate: normalizeReceiptForVatExport(record, settings).taxRateApplied,
@@ -10161,6 +10210,13 @@ function buildReceiptSummaryExportRows(receipt: ReceiptRecord, settings?: Organi
     net_amount: formatExportNumber(normalized.netAmount),
     vat_amount: formatExportNumber(normalized.vatAmount),
     total_amount: formatExportNumber(normalized.totalAmount),
+    original_currency: receipt.currency ?? "GBP",
+    base_currency: receipt.baseCurrency ?? "GBP",
+    base_total_amount: formatExportNumber(receipt.baseTotalAmount ?? normalized.totalAmount),
+    exchange_rate: formatExportNumber(receipt.exchangeRate ?? null),
+    exchange_rate_date: receipt.exchangeRateDate ?? "",
+    exchange_rate_provider: receipt.exchangeRateProvider ?? "",
+    exchange_rate_override: receipt.exchangeRateOverride ? "yes" : "no",
     subtotal_amount: formatExportNumber(normalized.subtotalAmount),
     total_tax_amount: formatExportNumber(normalized.totalTaxAmount),
     tax_rate: normalized.taxRateApplied,

@@ -156,6 +156,7 @@ export type BankRequisition = {
 export type OrganisationSettings = {
   organisationId: number;
   organisationName: string;
+  baseCurrency: string;
   isVatRegistered: boolean;
   defaultTaxRate: string;
 };
