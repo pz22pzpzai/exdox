@@ -3927,6 +3927,20 @@ function DocumentWorkspacePage(props: {
             <input value={receipt.invoiceNumber ?? ""} onChange={(event) => setReceipt({ ...receipt, invoiceNumber: event.target.value })} />
           </label>
           <label>
+            Original currency
+            <input value={receipt.currency ?? "GBP"} readOnly />
+          </label>
+          <label>
+            GBP equivalent
+            <input value={currency(receipt.baseTotalAmount ?? receiptGrossAmount(receipt))} readOnly />
+          </label>
+          {receipt.exchangeRate ? (
+            <label className="form-span-2">
+              FX audit
+              <input value={`1 ${receipt.currency ?? "GBP"} = ${receipt.exchangeRate} ${receipt.baseCurrency ?? "GBP"} | ${receipt.exchangeRateProvider ?? "Recorded rate"} | ${receipt.exchangeRateDate ?? ""}`} readOnly />
+            </label>
+          ) : null}
+          <label>
             Due Date
             <input type="date" value={receipt.dueDate ?? ""} onChange={(event) => setReceipt({ ...receipt, dueDate: event.target.value })} />
           </label>

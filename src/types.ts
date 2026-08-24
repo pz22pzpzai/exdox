@@ -38,6 +38,13 @@ export type ReceiptRecord = {
   dueDate: string | null;
   invoiceNumber: string | null;
   currency: string | null;
+  baseCurrency?: string;
+  exchangeRate?: number | null;
+  exchangeRateDate?: string | null;
+  exchangeRateProvider?: string | null;
+  baseTotalAmount?: number | null;
+  exchangeRateOverride?: boolean;
+  exchangeRateNote?: string | null;
   totalAmount: number | null;
   netAmount: number | null;
   vatAmount: number | null;
