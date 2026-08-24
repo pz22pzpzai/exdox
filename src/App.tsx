@@ -1997,7 +1997,12 @@ type HelpChatMessage = {
   text: string;
 };
 
-const helpChatQuickPrompts = ["How do I get started?", "How do I upload a receipt?", "Why is my document in review?", "What can I do in Exdox?"];
+const helpChatQuickPrompts = [
+  "How do I get started?",
+  "How do I upload a receipt?",
+  "How do reimbursement payments work?",
+  "How do I invite a manager?",
+];
 
 function helpChatReply(message: string) {
   const input = message.toLowerCase().replace(/[^a-z0-9£@]+/g, " ").trim();
@@ -2017,6 +2022,111 @@ function helpChatReply(message: string) {
   }
   if (/^(bye|goodbye|see you|see ya|talk later|that s all|thats all)\b/.test(input)) {
     return "Goodbye for now. Take care, and come back whenever you need a hand with Exdox.";
+  }
+  if (includes("register", "sign up", "create account", "open an account", "new account")) {
+    return "Choose Register to start. Select A business or A sole trader to choose a plan, create the workspace, set up the card for the free trial, and then sign in. Select An employee of a business if you are joining an employer's workspace. Employees do not set up billing.";
+  }
+  if (includes("business or sole trader", "sole trader", "business owner", "which account type", "account type")) {
+    return "Businesses and sole traders follow the same plan and billing flow. A business can use its company name; a sole trader can use a trading name or continue with a personal email address. Both become the workspace owner and control billing. Employees use the separate employee route.";
+  }
+  if (includes("join company", "join a company", "join my employer", "employee registration", "employee sign up", "employee signup", "employee account", "company email")) {
+    return "Employees do not need a card. If your employer uses a private company email domain, register as an employee with that email to join the matching confirmed workspace. If you use a public address such as Gmail or Outlook, ask the business owner to send an individual invite from Profile/Settings.";
+  }
+  if (includes("invite", "invitation", "add employee", "add staff", "add a user")) {
+    return "The business owner or a manager can open Profile/Settings, choose Team & access, enter the person's email, select Employee or Manager, choose an optional department, and create the invite. The recipient follows the Exdox link to create their own password and access the right workspace.";
+  }
+  if (includes("manager", "other admin", "additional admin", "add admin", "admin access")) {
+    return "Managers are additional business administrators. They can review company expenses and claims, manage operational workflow, and download company CSV exports. Only the original workspace owner can manage Stripe billing, cancel the subscription, or delete the workspace.";
+  }
+  if (includes("department", "team department", "drivers", "office staff", "depot")) {
+    return "Create and manage departments in Profile/Settings under Team & access. You can name them to match your business, then assign or move employees between them. In Costs Inbox, use the department filter to focus review work on one team without changing that employee's access level.";
+  }
+  if (includes("confirm email", "email confirmation", "verify email", "verification link", "confirmation link", "resend confirmation")) {
+    return "Use the newest confirmation email from Exdox and open its link on any device. The link confirms the email, then takes you to the Exdox login page so you can sign in normally. If it has expired or does not work, use Resend confirmation email from the workspace or contact Access support.";
+  }
+  if (includes("free trial", "card setup", "card details", "stripe checkout", "first charge", "charged")) {
+    return "For a business or sole-trader workspace, card setup is completed securely in Stripe Checkout. The 14-day trial starts after checkout. The first subscription charge is taken only when the trial ends, unless the workspace owner cancels before renewal. Employees never enter the business card details.";
+  }
+  if (includes("google play", "play store", "download app", "android app", "install app")) {
+    return "The Exdox Android app is available through Google Play. Use the app for capture on the move and the website for wider review, team, billing, and administration tasks. Sign in with the same Exdox email address on both.";
+  }
+  if (includes("overview", "dashboard", "no actions needed", "actions needed", "attention queue")) {
+    return "Overview is the workspace summary. The action button totals live work that still needs attention, such as document reviews, Vault processing, or pending claims. Select it to open the Attention queue. 'No actions needed' means there is no current review or payment action in that workspace.";
+  }
+  if (includes("data health", "unreadable", "missing supplier", "missing category")) {
+    return "Data Health highlights records that need a practical check: unreadable uploads, processing documents, review work, or missing supplier/category details. It is not an error score. Open the relevant item, complete the missing details, and save the review.";
+  }
+  if (includes("submission channels", "mobile capture", "web upload", "how can documents enter")) {
+    return "Documents enter Exdox through the mobile app capture flow or the website upload buttons for Costs, Sales, and Vault. Exdox does not currently offer inbound email submission, bank feeds, or accounting-software imports, so those are not routes you need to configure.";
+  }
+  if (includes("workflow", "workflow page", "productivity", "automation")) {
+    return "Workflows, Productivity, and Automation are operational views of the same workspace. They help a business admin see where documents are waiting, find the next queue, and manage supplier-rule defaults. They do not replace the final human review and approval step.";
+  }
+  if (includes("reviewed in purchases", "reviewed purchase", "reviewed receipt", "ready for reimbursement", "awaiting reimbursement")) {
+    return "A Reviewed purchase has passed document review but has not yet been included in a reimbursement payment batch, so it remains in Purchases. When an admin downloads the Employee reimbursement payment summary, eligible personal expenses move to Payment processing and then appear in the employee's Reports archive.";
+  }
+  if (includes("payment processing", "mark as paid", "payment batch", "reimbursement payment", "reimbursement summary", "reimbursement csv")) {
+    return "After all eligible personal expenses are approved, a business admin downloads the Employee reimbursement payment summary CSV. Exdox marks those expenses Payment processing so they cannot appear in the next batch. Once the business has paid them, use the bulk Mark as paid action. Employees then see the records as Paid in Reports.";
+  }
+  if (includes("master export", "master csv", "approved expense export", "accountant csv", "expense summary csv")) {
+    return "In Expense Claims, business admins can use Master approved expense export. Select the relevant employee claims and Exdox creates one accountant-friendly row per employee with totals and counts, not individual receipt lines. The selected employees receive an Exdox summary email without their payment amount.";
+  }
+  if (includes("export all", "detailed csv", "cost csv", "sales csv", "download csv")) {
+    return "Use Export CSV in Costs, Sales, Vault, Claims, or Settings for the information shown in that area. Filter first if you only need one status, employee, department, supplier, or date range. For employee payment totals, use Employee reimbursement payment summary rather than a detailed receipt export.";
+  }
+  if (includes("claim approved", "claim rejected", "claim pending", "expense claim status", "submit claim", "create claim", "attach to claim")) {
+    return "Employees create a claim and attach their own personal-spend receipts. A manager or business admin then reviews it. Pending means it is waiting for a decision; Approved means it is ready for the finance payment process; Rejected means the employee should check the feedback and make the needed changes. Paid is the final payment state.";
+  }
+  if (includes("cost review", "approve cost", "approve receipt", "costs inbox", "supplier bill")) {
+    return "Costs Inbox is for receipts, supplier bills, and purchase evidence. Open each Review item, check supplier, date, category, payment method, totals, and VAT where applicable, save corrections, then approve it. Approved personal-spend items can later be included in a reimbursement payment summary.";
+  }
+  if (includes("sales review", "approve sales", "sales invoice", "sales inbox")) {
+    return "Sales Inbox is for sales invoices and supporting sales documents. Upload through Upload Sales, then open the Review item, check the extracted customer, invoice number, date, totals, category, and VAT, save corrections, and approve it. Sales records are separate from employee reimbursement workflows.";
+  }
+  if (includes("vault ocr", "vault processing", "vault status", "vault upload", "archive document")) {
+    return "Vault is for source evidence you need to store separately from active Costs and Sales. Upload with Upload Vault. Exdox reads the file using the same OCR route as receipt and invoice uploads, then records a Ready or Review outcome. Vault documents do count towards the workspace document allowance.";
+  }
+  if (includes("supplier rules", "automatic category", "default category", "automatic tax", "automatic payment method")) {
+    return "Supplier Rules let business administrators save repeat defaults for matching supplier documents, including category, tax rate, and payment method. Create or adjust rules in Supplier Rules, but still review unfamiliar or unusual documents before approval.";
+  }
+  if (includes("filter employee", "filter department", "filter costs", "filter sales", "filter vault", "search costs")) {
+    return "Use the inbox filters to narrow records by status, issue, source, document type, employee, department, and sort order where available. The employee and department filters are especially useful for managers processing work for a particular team. Search works well with supplier, filename, category, note, or document text.";
+  }
+  if (includes("usage allowance", "documents remaining", "documents left", "monthly allowance", "document limit", "over limit")) {
+    return "Business admins can see current document usage and remaining allowance on Overview and Billing. Costs, Sales, and Vault uploads count towards the monthly limit. If the allowance is too small, the workspace owner can use Billing to compare or upgrade the plan.";
+  }
+  if (includes("upgrade plan", "change plan", "more users", "more documents", "increase allowance")) {
+    return "Only the workspace owner can change the subscription. Go to Billing and choose Upgrade plan, select a higher plan or allowance, and complete the secure Stripe update. Exdox updates the existing subscription and the workspace allowance; it does not create a separate customer subscription.";
+  }
+  if (includes("cancel subscription", "cancel trial", "stop trial", "cancel billing", "payment details", "billing portal")) {
+    return "Only the original workspace owner can cancel or change payment details. Go to Billing or Profile/Settings and open Manage or cancel subscription. The Stripe billing portal shows the active trial or subscription and confirms any cancellation date before you finish.";
+  }
+  if (includes("account deletion", "delete workspace", "delete my business", "close workspace")) {
+    return "Only the original workspace owner can delete a workspace. Go to Profile/Settings, choose Account deletion, review the consequences, and complete the confirmation. This cancels the linked Stripe subscription and permanently removes workspace data, so export anything you need first. Employees and managers cannot delete the business workspace.";
+  }
+  if (includes("change email", "change account email", "change my email", "profile email")) {
+    return "Email-address changes are handled through Profile/Settings using Open email change request. This protects the workspace from an unauthorised account change. Use Access support if you cannot sign in to submit the request.";
+  }
+  if (includes("two factor", "2fa", "authenticator", "google authenticator")) {
+    return "Two-factor authentication is not self-serve yet. You can request it from Profile/Settings using Open 2FA request, or contact the Exdox security team. Never share a password, verification code, or recovery code in this chat.";
+  }
+  if (includes("browser preferences", "start page", "date format", "compact tables", "alerts", "notifications")) {
+    return "Profile/Settings lets each user choose their default landing page, date format, compact table view, and browser-specific upload, review, and claim alerts. These preferences apply only to the browser where you save them, not to every person in the workspace.";
+  }
+  if (includes("bank", "open banking", "bank feed", "reconciliation", "xero", "quickbooks", "sage", "accounting software")) {
+    return "Exdox does not currently provide bank feeds, Open Banking, bank reconciliation, or live accounting-software integrations. Do not rely on the product for those connections yet. You can use the available CSV exports for your accountant or finance process instead.";
+  }
+  if (includes("employee view", "employee dashboard", "what can employees see", "employee permissions", "my expenses", "my claims")) {
+    return "Employees use the same login but receive a personal Exdox workspace. They can see only their own expenses and claims, track their reimbursement status, download their personal expense CSV, and contact support. They cannot see the business dashboard, other employees' data, billing, company settings, or approval controls.";
+  }
+  if (includes("organisation switch", "current organisation", "switch organisation", "multiple organisations")) {
+    return "If your account has permission for more than one workspace, business administrators can use the organisation selector in the top bar to switch between them. Records, review queues, usage, team settings, and exports stay separate for each organisation.";
+  }
+  if (includes("contact form", "contact us", "access support", "billing support", "security contact", "support request")) {
+    return "Use Contact for account-specific help. The form can route general questions, Access support, Billing support, onboarding, security requests, and account-deletion queries to contact@exdox.co.uk. When signed in, your name and email are prefilled. The form sends the message directly; it does not open an email draft.";
+  }
+  if (includes("cookie", "cookies", "privacy policy", "terms and conditions", "terms of service")) {
+    return "The footer links to Exdox's Privacy, Cookies, and Terms pages. The cookie prompt lets you choose essential-only or all cookies. You can change that choice later using Cookie preferences in the footer. For a personal data or security request, use Contact rather than sharing private details in chat.";
   }
   if (includes("what can you do", "what do you do", "how can you help", "help me", "getting started", "get started", "new here", "new user")) {
     return "I can explain how Exdox works and help with everyday tasks: capturing receipts, uploading cost or sales documents, reviewing extracted details, claims, Vault, supplier rules, exports, plans, and signing in. Tell me what you are trying to achieve and we can take it step by step.";
