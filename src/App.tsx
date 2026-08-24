@@ -6146,7 +6146,7 @@ function SettingsPage(props: {
           <span>Organisation #{draft.organisationId}</span>
         </div>
         <div>
-          <strong>Base currency</strong>
+          <strong>Workspace currency</strong>
           <span>{draft.baseCurrency}</span>
         </div>
         <div>
@@ -6165,7 +6165,7 @@ function SettingsPage(props: {
       {copyFeedback ? <div className="success-banner">{copyFeedback}</div> : null}
       <div className="form-grid">
         <label>
-          Company base currency
+          Choose your currency
           <select value={draft.baseCurrency} disabled={saving} onChange={(event) => setDraft({ ...draft, baseCurrency: event.target.value })}>
             <option value="GBP">GBP - Pound sterling</option>
             <option value="EUR">EUR - Euro</option>
@@ -6196,6 +6196,9 @@ function SettingsPage(props: {
           </select>
         </label>
       </div>
+      <p>
+        This is the reporting currency for the whole workspace. New and existing workspaces use GBP unless a business admin changes it here. Receipt OCR preserves an uploaded document's original currency and records its equivalent in the workspace currency.
+      </p>
       <p>
         Turn VAT off to force downstream extraction toward gross-only treatment and a `No VAT` tax tier across
         incoming receipt processing.
