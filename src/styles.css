@@ -1963,6 +1963,17 @@ input {
   justify-items: start;
 }
 
+.amount-with-base {
+  display: grid;
+  gap: 3px;
+}
+
+.amount-with-base span {
+  color: var(--muted-text);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
 .signal-pill {
   display: inline-flex;
   align-items: center;

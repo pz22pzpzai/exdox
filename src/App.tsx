@@ -3674,9 +3674,16 @@ function InboxPage({
                       <td>{receiptDocumentDate(record)}</td>
                       <td>{record.vendorName ?? "Unknown supplier"}</td>
                       <td>{record.category ?? "Uncategorised"}</td>
-                      {vatTrackingEnabled ? <td>{currency(record.netAmount)}</td> : null}
-                      {vatTrackingEnabled ? <td>{currency(record.vatAmount)}</td> : null}
-                      <td>{currency(receiptGrossAmount(record))}</td>
+                      {vatTrackingEnabled ? <td>{currency(record.netAmount, receiptCurrency(record))}</td> : null}
+                      {vatTrackingEnabled ? <td>{currency(record.vatAmount, receiptCurrency(record))}</td> : null}
+                      <td>
+                        <div className="amount-with-base">
+                          <strong>{currency(receiptGrossAmount(record), receiptCurrency(record))}</strong>
+                          {hasForeignCurrencyConversion(record) ? (
+                            <span>{currency(record.baseTotalAmount ?? null, receiptBaseCurrency(record))} base equivalent</span>
+                          ) : null}
+                        </div>
+                      </td>
                       <td>{sourceLabel(record.receiptSource)}</td>
                       <td>
                         <button
@@ -9572,6 +9579,22 @@ function currency(value: number | null, currencyCode = "GBP") {
     style: "currency",
     currency: currencyCode,
   }).format(value ?? 0);
+}
+
+function receiptCurrency(record: { currency?: string | null }) {
+  return record.currency?.trim().toUpperCase() || "GBP";
+}
+
+function receiptBaseCurrency(record: { baseCurrency?: string | null }) {
+  return record.baseCurrency?.trim().toUpperCase() || "GBP";
+}
+
+function hasForeignCurrencyConversion(record: {
+  currency?: string | null;
+  baseCurrency?: string | null;
+  baseTotalAmount?: number | null;
+}) {
+  return record.baseTotalAmount != null && receiptCurrency(record) !== receiptBaseCurrency(record);
 }
 
 function formatLongDate(value: string) {
