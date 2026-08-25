@@ -3799,6 +3799,7 @@ function DocumentWorkspacePage(props: {
   const notes = receipt.notes ?? [];
   const isVaultRecord = props.mode === "vault";
   const vatTrackingEnabled = isVatTrackingEnabled(props.settings ?? null);
+  const foreignCurrencyDocument = Boolean(receipt.currency && receipt.currency.toUpperCase() !== "GBP");
   const receiptPublished = receipt.status === "Published";
   const receiptApproved = receipt.status === "Ready" && !receipt.needsReview;
   const reimbursementPaymentLocked =
@@ -3948,6 +3949,34 @@ function DocumentWorkspacePage(props: {
               <input value={`1 ${receipt.currency ?? "GBP"} = ${receipt.exchangeRate} ${receipt.baseCurrency ?? "GBP"} | ${receipt.exchangeRateProvider ?? "Recorded rate"} | ${receipt.exchangeRateDate ?? ""}`} readOnly />
             </label>
           ) : null}
+          {foreignCurrencyDocument ? (
+            <>
+              <label>
+                Foreign tax on source document
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={receipt.foreignTaxAmount ?? ""}
+                  placeholder="Not shown on document"
+                  onChange={(event) => setReceipt({ ...receipt, foreignTaxAmount: event.target.value === "" ? null : Number(event.target.value) })}
+                />
+              </label>
+              <label>
+                UK VAT treatment
+                <select
+                  value={receipt.ukVatTreatment ?? "no_uk_vat_to_reclaim"}
+                  onChange={(event) => setReceipt({ ...receipt, ukVatTreatment: event.target.value as NonNullable<ReceiptRecord["ukVatTreatment"]> })}
+                >
+                  <option value="no_uk_vat_to_reclaim">No UK VAT to reclaim</option>
+                  <option value="reverse_charge_required">Reverse charge required</option>
+                  <option value="import_vat">Import VAT evidence held</option>
+                  <option value="accountant_review">Accountant review required</option>
+                </select>
+                <span className="field-hint">Foreign sales tax is recorded separately and is not treated as UK VAT.</span>
+              </label>
+            </>
+          ) : null}
           {receipt.currency && receipt.baseCurrency && receipt.currency !== receipt.baseCurrency ? (
             <>
               <label>
@@ -4012,7 +4041,7 @@ function DocumentWorkspacePage(props: {
               {vatTrackingEnabled ? (
                 <>
                   <label>
-                    VAT Amount
+                    {foreignCurrencyDocument ? "UK VAT Amount" : "VAT Amount"}
                     <input type="number" value={receipt.vatAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, vatAmount: Number(event.target.value) })} />
                   </label>
                   <label>
@@ -4020,7 +4049,7 @@ function DocumentWorkspacePage(props: {
                     <input type="number" value={receiptGrossAmount(receipt)} onChange={(event) => setReceipt({ ...receipt, totalAmount: Number(event.target.value) })} />
                   </label>
                   <label>
-                    HMRC Tax Tier
+                    {foreignCurrencyDocument ? "UK VAT Tier" : "HMRC Tax Tier"}
                     <select value={receipt.taxRateApplied ?? "No VAT"} onChange={(event) => setReceipt({ ...receipt, taxRateApplied: event.target.value })}>
                       {taxRates.map((rate) => (
                         <option key={rate} value={rate}>
@@ -10209,6 +10238,9 @@ function buildInboxExportRows(records: ReceiptRecord[], settings?: OrganisationS
     exchange_rate_override: record.exchangeRateOverride ? "yes" : "no",
     subtotal_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).subtotalAmount),
     total_tax_amount: formatExportNumber(normalizeReceiptForVatExport(record, settings).totalTaxAmount),
+    foreign_tax_amount: formatExportNumber(record.foreignTaxAmount ?? null),
+    foreign_tax_label: record.foreignTaxLabel ?? "",
+    uk_vat_treatment: formatUkVatTreatment(record.ukVatTreatment),
     tax_rate: normalizeReceiptForVatExport(record, settings).taxRateApplied,
     confidence_score: record.confidenceScore == null ? "" : String(record.confidenceScore),
     needs_review: record.needsReview ? "yes" : "no",
@@ -10217,6 +10249,23 @@ function buildInboxExportRows(records: ReceiptRecord[], settings?: OrganisationS
     created_at: record.createdAt,
     updated_at: record.updatedAt,
   }));
+}
+
+function formatUkVatTreatment(value: ReceiptRecord["ukVatTreatment"]) {
+  switch (value) {
+    case "no_uk_vat_to_reclaim":
+      return "No UK VAT to reclaim";
+    case "uk_vat_included":
+      return "UK VAT included";
+    case "reverse_charge_required":
+      return "Reverse charge required";
+    case "import_vat":
+      return "Import VAT evidence held";
+    case "accountant_review":
+      return "Accountant review required";
+    default:
+      return "Not applicable";
+  }
 }
 
 function buildReceiptSummaryExportRows(receipt: ReceiptRecord, settings?: OrganisationSettings | null) {
@@ -10245,6 +10294,9 @@ function buildReceiptSummaryExportRows(receipt: ReceiptRecord, settings?: Organi
     exchange_rate_override: receipt.exchangeRateOverride ? "yes" : "no",
     subtotal_amount: formatExportNumber(normalized.subtotalAmount),
     total_tax_amount: formatExportNumber(normalized.totalTaxAmount),
+    foreign_tax_amount: formatExportNumber(receipt.foreignTaxAmount ?? null),
+    foreign_tax_label: receipt.foreignTaxLabel ?? "",
+    uk_vat_treatment: formatUkVatTreatment(receipt.ukVatTreatment),
     tax_rate: normalized.taxRateApplied,
     payment_method: receipt.paymentMethod,
     confidence_score: receipt.confidenceScore == null ? "" : String(receipt.confidenceScore),

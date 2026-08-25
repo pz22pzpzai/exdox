@@ -51,6 +51,15 @@ export type ReceiptRecord = {
   taxRateApplied: string | null;
   subtotalAmount?: number | null;
   totalTaxAmount?: number | null;
+  foreignTaxAmount?: number | null;
+  foreignTaxLabel?: string | null;
+  ukVatTreatment?:
+    | "not_applicable"
+    | "no_uk_vat_to_reclaim"
+    | "uk_vat_included"
+    | "reverse_charge_required"
+    | "import_vat"
+    | "accountant_review";
   confidenceScore?: number | null;
   confidenceSource?: "model_self_assessment" | "unavailable";
   needsReview: boolean;
