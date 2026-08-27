@@ -191,6 +191,7 @@ const pricingPlans: Array<{
       "Web upload for finance review",
       "Employee drop box",
       "Expense claims",
+      "Employee reimbursement payment summary",
       "VAT fields and manual edits",
       "Data health follow-up",
     ],
