@@ -242,19 +242,15 @@ const pricingPlans: Array<{
   {
     id: "enterprise",
     name: "Enterprise",
-    tagline: "Custom rollout for multi-entity finance teams",
-    monthlyDocuments: "50,000 documents / month",
-    users: "500 users included",
+    tagline: "Future enterprise rollout",
+    monthlyDocuments: "Capacity to be confirmed",
+    users: "Availability to be confirmed",
     cta: "Coming soon",
     trialLabel: "Coming soon",
-    unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims", "Multi-entity"],
+    unlockedWorkspaces: [],
     features: [
-      "Everything in Operations",
-      "Multi-entity support planning",
-      "Custom rollout and onboarding",
-      "Priority support",
-      "Custom document/user limits",
-      "Stripe-ready billing setup",
+      "Not currently available for purchase",
+      "Capacity and onboarding will be announced after validation",
     ],
   },
 ];
@@ -380,19 +376,6 @@ const pricingSliderSteps: Array<{
     tagline: "Rules, vault storage, and expanded workflow controls",
     unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims"],
     lockedWorkspaces: ["Multi-entity"],
-  },
-  {
-    label: "500 users",
-    markerLabel: "Enterprise",
-    users: 500,
-    documents: 50000,
-    monthlyPrice: 455.13,
-    annualMonthlyPrice: 364.1,
-    planId: "enterprise",
-    accessBand: "Enterprise",
-    tagline: "Custom rollout for multi-entity finance teams",
-    unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims", "Multi-entity"],
-    lockedWorkspaces: [],
   },
 ];
 
@@ -1520,6 +1503,7 @@ function DashboardShell(props: {
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
+  const approvalWorkflowsEnabled = hasSessionFeature(props.session, "approval_workflows");
   const costReviewCount = props.store.costs.filter((receipt) => countsAsManualReview(receipt)).length;
   const salesReviewCount = props.store.sales.filter((receipt) => countsAsManualReview(receipt)).length;
   const vaultAttentionCount = props.store.vault.filter((receipt) => receipt.needsReview || receipt.status === "Processing").length;
@@ -1839,6 +1823,7 @@ function DashboardShell(props: {
                       onDelete={props.onReceiptDelete}
                       onAttachToClaim={props.onAttachReceiptToClaim}
                       onReimbursementsExported={props.onReimbursementsExported}
+                      canUseApprovalWorkflows={approvalWorkflowsEnabled}
                       loadReceipt={props.loadReceipt}
                     />
                   }
@@ -1873,6 +1858,7 @@ function DashboardShell(props: {
                       onDelete={props.onReceiptDelete}
                       onAttachToClaim={props.onAttachReceiptToClaim}
                       loadReceipt={props.loadReceipt}
+                      canUseApprovalWorkflows={approvalWorkflowsEnabled}
                     />
                   }
                 />
@@ -1906,6 +1892,7 @@ function DashboardShell(props: {
                       onDelete={props.onReceiptDelete}
                       onAttachToClaim={props.onAttachReceiptToClaim}
                       loadReceipt={props.loadReceipt}
+                      canUseApprovalWorkflows={approvalWorkflowsEnabled}
                     />
                   }
                 />
@@ -1916,7 +1903,7 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route
                   path="/claims/:id"
-                  element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} loadClaim={props.loadClaim} settings={props.store.settings} />}
+                  element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} loadClaim={props.loadClaim} settings={props.store.settings} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
                 />
               ) : null}
               <Route path="/dropbox" element={<Navigate to="/costs" replace />} />
@@ -3730,6 +3717,7 @@ function DocumentWorkspacePage(props: {
   onDelete: (id: number) => Promise<void>;
   onAttachToClaim: (receiptId: number, claimId: number) => Promise<ReceiptRecord>;
   onReimbursementsExported?: () => Promise<void>;
+  canUseApprovalWorkflows: boolean;
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null; downloadUrl: string | null }>;
 }) {
   const { id } = useParams();
@@ -4261,7 +4249,7 @@ function DocumentWorkspacePage(props: {
         ) : null}
 
         <div className="toolbar">
-          {!isVaultRecord && !reimbursementPaymentLocked ? (
+          {!isVaultRecord && !reimbursementPaymentLocked && props.canUseApprovalWorkflows ? (
             <button
               className={receiptApproved && !receiptPublished ? "secondary-action" : "primary-action"}
               type="button"
@@ -4581,6 +4569,7 @@ function ClaimsPage({
   const [filtersReady, setFiltersReady] = useState(false);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
   const [exportBusy, setExportBusy] = useState(false);
+  const queueExportsEnabled = hasSessionFeature(session, "queue_exports");
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -4681,7 +4670,7 @@ function ClaimsPage({
           </button>
         </div>
       </section>
-      {!employeeMode ? (
+      {!employeeMode && queueExportsEnabled ? (
         <section className="panel settings-panel master-expense-export">
           <div className="panel-heading">
             <div>
@@ -4974,6 +4963,7 @@ function ClaimDetailPage(props: {
   onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
   settings?: OrganisationSettings | null;
   employeeMode?: boolean;
+  canUseApprovalWorkflows?: boolean;
 }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -5057,7 +5047,7 @@ function ClaimDetailPage(props: {
           >
             Export claim CSV
           </button>
-        {!props.employeeMode ? (
+        {!props.employeeMode && props.canUseApprovalWorkflows ? (
           <>
             <button
               className="secondary-action"
@@ -8841,7 +8831,6 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
   const signedInBillingRoute = session && isRouteAllowed(session, "/billing") ? "/billing" : session ? signedInPublicPrimaryRoute(session) : null;
   const selectedStep = pricingSliderSteps[sliderIndex] ?? pricingSliderSteps[0]!;
   const selectedPlan = pricingPlans.find((plan) => plan.id === selectedStep.planId) ?? pricingPlans[0]!;
-  const enterpriseSelected = selectedStep.planId === "enterprise";
   const selectedPrice = priceWithVat(selectedStep.monthlyPrice);
   const selectedCapacity = [
     { label: "documents processed per month", value: selectedStep.documents.toLocaleString() },
@@ -8852,7 +8841,6 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
     { id: "capture", label: "Capture" },
     { id: "control", label: "Control" },
     { id: "operations", label: "Operations" },
-    { id: "enterprise", label: "Enterprise" },
   ];
 
   return (
@@ -8870,11 +8858,11 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
         <div className="pricing-page-main">
           <article className="slider-pricing-card">
             <div className="slider-price-row">
-              <strong>{enterpriseSelected ? "Coming soon" : currency(selectedPrice)}</strong>
-              {enterpriseSelected ? null : <span>Per Month</span>}
+              <strong>{currency(selectedPrice)}</strong>
+              <span>Per Month</span>
             </div>
             <span className="slider-vat-note">
-              {enterpriseSelected ? "Enterprise self-serve rollout is coming soon." : "GBP, includes VAT"}
+              GBP, includes VAT
             </span>
             <div className="slider-capacity-copy">
               <strong>{selectedStep.documents.toLocaleString()}</strong>
@@ -8905,11 +8893,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               ))}
             </div>
             <p className="slider-helper">Drag the slider to increase allowance.</p>
-            {selectedStep.planId === "enterprise" ? (
-              <span className="public-button public-button-disabled" aria-disabled="true">
-                Coming soon
-              </span>
-            ) : signedIn && signedInBillingRoute ? (
+            {signedIn && signedInBillingRoute ? (
               <Link className="public-button" to={signedInBillingRoute}>
                 {signedInBillingRoute === "/billing" ? "Open Billing" : "Back to Workspace"}
               </Link>
@@ -8999,7 +8983,6 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               <strong>Free trial</strong>
               <ul>
                 <li>Capture, Control, and Operations start with a 14-day trial</li>
-                <li>Enterprise can use a longer onboarding window</li>
                 <li>Card details are collected before the trial begins</li>
                 <li>Cancel from Billing before renewal if you do not want the paid subscription to start</li>
               </ul>
@@ -9012,12 +8995,12 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
                 <li>Operations adds rules, vault, and expanded workflow controls</li>
               </ul>
             </article>
-            <article className="workflow-card">
-              <strong>Enterprise rollout</strong>
+          <article className="workflow-card">
+              <strong>Future enterprise rollout</strong>
               <ul>
-                <li>Custom document volume and user capacity</li>
-                <li>Priority rollout support</li>
-                <li>Multi-entity finance teams and tailored onboarding</li>
+                <li>Not currently available for purchase</li>
+                <li>Capacity and multi-entity capability will be announced after validation</li>
+                <li>Contact Exdox for future enterprise enquiries</li>
               </ul>
             </article>
           </div>
@@ -9062,9 +9045,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
                 ))}
               </ul>
               <p className="slider-enterprise-note">
-                {selectedStep.planId === "enterprise"
-                  ? "Enterprise rollout opens next, with tailored onboarding and commercial setup following the self-serve tiers."
-                  : "Route access, users, and document allowance scale with the selected package band."}
+                Route access, users, and document allowance scale with the selected package band.
               </p>
             </article>
           </div>
@@ -9466,7 +9447,7 @@ function BillingUpgradePage(props: { session: SessionState }) {
   const currentIndex = billing
     ? Math.max(0, pricingSliderSteps.findIndex((step) => step.planId === billing.planId && step.documents === billing.monthlyDocumentLimit && step.users === billing.includedUsers))
     : 0;
-  const maxIndex = Math.max(0, pricingSliderSteps.findIndex((step) => step.planId === "enterprise") - 1);
+  const maxIndex = Math.max(0, pricingSliderSteps.length - 1);
   const [sliderIndex, setSliderIndex] = useState(currentIndex);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -10757,6 +10738,13 @@ function sourceLabel(source: ReceiptRecord["receiptSource"]) {
 
 function isBusinessAdmin(session: SessionState) {
   return session.user.role === "Business_Admin";
+}
+
+function hasSessionFeature(session: SessionState, feature: string) {
+  if (session.entitlements?.features) {
+    return session.entitlements.features.includes(feature);
+  }
+  return isBillingStatusActive(session.billing?.status ?? "inactive") && session.billing?.planId !== "capture";
 }
 
 function isRouteAllowed(session: SessionState, pathname: string) {
