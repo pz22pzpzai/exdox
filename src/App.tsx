@@ -4251,7 +4251,7 @@ function DocumentWorkspacePage(props: {
         ) : null}
 
         <div className="toolbar">
-          {!isVaultRecord && !reimbursementPaymentLocked && props.canUseApprovalWorkflows ? (
+          {!isVaultRecord && !reimbursementPaymentLocked ? (
             <button
               className={receiptApproved && !receiptPublished ? "secondary-action" : "primary-action"}
               type="button"
@@ -10746,7 +10746,9 @@ function hasSessionFeature(session: SessionState, feature: string) {
   if (session.entitlements?.features) {
     return session.entitlements.features.includes(feature);
   }
-  return isBillingStatusActive(session.billing?.status ?? "inactive") && session.billing?.planId !== "capture";
+  // Approval is available on every current paid/trial plan. Older sessions may not
+  // include entitlements, so do not hide a valid workflow while they refresh.
+  return isBillingStatusActive(session.billing?.status ?? "inactive");
 }
 
 function isRouteAllowed(session: SessionState, pathname: string) {

@@ -699,7 +699,7 @@ export function buildFallbackSession(token: string, user: SessionUser): SessionS
     entitlements:
       user.role === "Business_Admin"
         ? {
-            features: ["mobile_capture", "web_upload", "cost_review", "sales_review", "vault", "supplier_rules"],
+            features: ["mobile_capture", "web_upload", "cost_review", "sales_review", "vault", "supplier_rules", "approval_workflows"],
             lockedRoutes: [],
           }
         : undefined,
