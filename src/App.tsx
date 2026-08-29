@@ -107,6 +107,7 @@ const navItems = [
   { to: "/overview/integrations", label: "Submission Channels", icon: "integrations" },
   { to: "/overview/workflows", label: "Workflows", icon: "workflow" },
   { to: "/overview/productivity", label: "Productivity", icon: "productivity" },
+  { to: "/overview/reports", label: "Reports", icon: "productivity" },
   { to: "/overview/automation", label: "Automation", icon: "automation" },
   { to: "/costs", label: "Costs Inbox", icon: "costs" },
   { to: "/sales", label: "Sales Inbox", icon: "sales" },
@@ -1785,6 +1786,9 @@ function DashboardShell(props: {
                 <Route path="/overview/productivity" element={<ProductivityPage store={props.store} />} />
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
+                <Route path="/overview/reports" element={<SpendingReportsPage store={props.store} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/automation" element={<AutomationPage store={props.store} />} />
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
@@ -3137,6 +3141,248 @@ function ProductivityPage({ store }: { store: AppStore }) {
       </section>
     </div>
   );
+}
+
+function SpendingReportsPage({ store }: { store: AppStore }) {
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [period, setPeriod] = useState<"all" | "this_month" | "last_3_months" | "last_12_months">("last_12_months");
+  const baseCurrency = store.settings?.baseCurrency || "GBP";
+  const paidCosts = store.costs.filter((record) => record.status === "Paid" && recordMatchesAnalyticsPeriod(record, period));
+  const paidSales = store.sales.filter((record) => record.status === "Paid" && recordMatchesAnalyticsPeriod(record, period));
+  const categoryOptions = Array.from(
+    new Set(["Uncategorised", ...costCategoryOptions, ...paidCosts.map((record) => record.category?.trim()).filter((category): category is string => Boolean(category))]),
+  );
+  const filteredCosts = selectedCategory === "all"
+    ? paidCosts
+    : paidCosts.filter((record) => (record.category?.trim() || "Uncategorised") === selectedCategory);
+  const categoryRows = categoryOptions
+    .map((category) => {
+      const records = paidCosts.filter((record) => (record.category?.trim() || "Uncategorised") === category);
+      return { category, records, total: sumAnalyticsAmount(records) };
+    })
+    .filter((row) => row.total > 0)
+    .sort((left, right) => right.total - left.total);
+  const selectedSpend = sumAnalyticsAmount(filteredCosts);
+  const paidSalesTotal = sumAnalyticsAmount(paidSales);
+  const netCashflow = paidSalesTotal - selectedSpend;
+  const months = buildAnalyticsMonths(6);
+  const monthlySpend = months.map((month) => ({
+    ...month,
+    costs: sumAnalyticsAmount(filteredCosts.filter((record) => analyticsMonthKey(record) === month.key)),
+    sales: sumAnalyticsAmount(paidSales.filter((record) => analyticsMonthKey(record) === month.key)),
+  }));
+  const maxMonthlyValue = Math.max(1, ...monthlySpend.flatMap((month) => [month.costs, month.sales]));
+  const currentMonth = analyticsMonthKey({ updatedAt: new Date().toISOString(), createdAt: new Date().toISOString() } as ReceiptRecord);
+  const currentSpend = monthlySpend.find((month) => month.key === currentMonth)?.costs ?? 0;
+  const completedMonths = monthlySpend.filter((month) => month.key !== currentMonth && month.costs > 0);
+  const averageMonthlySpend = completedMonths.length
+    ? completedMonths.reduce((sum, month) => sum + month.costs, 0) / completedMonths.length
+    : selectedSpend;
+  const today = new Date();
+  const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const projectedSpend = currentSpend > 0
+    ? (currentSpend / Math.max(1, today.getDate())) * daysInCurrentMonth
+    : averageMonthlySpend;
+  const totalCategorySpend = categoryRows.reduce((sum, row) => sum + row.total, 0);
+  const pieStops = categoryRows.length
+    ? categoryRows.reduce<{ offset: number; stops: string[] }>((result, row, index) => {
+        const next = result.offset + (row.total / totalCategorySpend) * 100;
+        result.stops.push(`${analyticsPalette[index % analyticsPalette.length]} ${result.offset.toFixed(2)}% ${next.toFixed(2)}%`);
+        return { offset: next, stops: result.stops };
+      }, { offset: 0, stops: [] }).stops.join(", ")
+    : "#dfe7ef 0 100%";
+
+  const exportCategorySummary = async () => {
+    await downloadCsv(
+      `paid-category-spend-${new Date().toISOString().slice(0, 10)}.csv`,
+      categoryRows.map((row) => ({
+        category: row.category,
+        paid_document_count: String(row.records.length),
+        paid_total: row.total.toFixed(2),
+        currency: baseCurrency,
+        reporting_period: analyticsPeriodLabel(period),
+      })),
+    );
+  };
+
+  const exportPaidExpenses = async () => {
+    await downloadCsv(
+      `paid-expenses-${selectedCategory === "all" ? "all-categories" : analyticsFileSegment(selectedCategory)}-${new Date().toISOString().slice(0, 10)}.csv`,
+      filteredCosts.map((record) => ({
+        category: record.category?.trim() || "Uncategorised",
+        supplier: record.vendorName || "Unknown supplier",
+        receipt_date: receiptDocumentDate(record),
+        paid_date: analyticsRecordDate(record),
+        document_reference: record.invoiceNumber || String(record.id),
+        payment_method: analyticsPaymentMethodLabel(record.paymentMethod),
+        original_total: receiptGrossAmount(record).toFixed(2),
+        original_currency: receiptCurrency(record),
+        paid_total_in_workspace_currency: analyticsAmount(record).toFixed(2),
+        workspace_currency: baseCurrency,
+      })),
+    );
+  };
+
+  return (
+    <div className="stack-page analytics-page">
+      <section className="analytics-hero panel">
+        <div>
+          <p className="section-kicker">PAID EXPENSE REPORTING</p>
+          <h2>Understand where paid money is going</h2>
+          <p>Explore category spending, paid cashflow and spending forecasts. Only records marked <strong>Paid</strong> are included.</p>
+        </div>
+        <div className="analytics-controls">
+          <label>
+            Category
+            <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)}>
+              <option value="all">All categories</option>
+              {categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
+            </select>
+          </label>
+          <label>
+            Reporting period
+            <select value={period} onChange={(event) => setPeriod(event.target.value as typeof period)}>
+              <option value="this_month">This month</option>
+              <option value="last_3_months">Last 3 months</option>
+              <option value="last_12_months">Last 12 months</option>
+              <option value="all">All paid records</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className="metrics-grid analytics-metrics">
+        <MetricCard label="Paid category spend" value={currency(selectedSpend, baseCurrency)} detail={`${filteredCosts.length} paid expense${filteredCosts.length === 1 ? "" : "s"} in ${analyticsPeriodLabel(period).toLowerCase()}`} />
+        <MetricCard label="Projected spend" value={currency(projectedSpend, baseCurrency)} detail="Current-month projection from paid spending" />
+        <MetricCard label="Paid income" value={currency(paidSalesTotal, baseCurrency)} detail="Paid sales records in the selected period" />
+        <MetricCard label="Paid cashflow" value={currency(netCashflow, baseCurrency)} detail="Paid income less selected paid spend" />
+      </section>
+
+      <section className="analytics-layout">
+        <article className="panel analytics-category-panel">
+          <div className="panel-heading">
+            <div><h2>Category spending</h2><span>Paid expenses by category</span></div>
+            <button className="secondary-action" type="button" onClick={() => void exportCategorySummary()} disabled={!categoryRows.length}>Download summary CSV</button>
+          </div>
+          {categoryRows.length ? (
+            <div className="category-chart-layout">
+              <div className="category-donut" style={{ background: `conic-gradient(${pieStops})` }} aria-label="Category spending chart">
+                <div><strong>{currency(totalCategorySpend, baseCurrency)}</strong><span>Total paid</span></div>
+              </div>
+              <ul className="analytics-legend">
+                {categoryRows.map((row, index) => (
+                  <li key={row.category}>
+                    <span className="analytics-legend-swatch" style={{ background: analyticsPalette[index % analyticsPalette.length] }} />
+                    <span>{row.category}</span>
+                    <strong>{currency(row.total, baseCurrency)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : <AnalyticsEmptyState message="There are no paid expense records in this reporting period yet." />}
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading"><div><h2>Forecast</h2><span>Planning view based on paid spend</span></div></div>
+          <div className="forecast-value"><strong>{currency(projectedSpend, baseCurrency)}</strong><span>Projected paid spend for {today.toLocaleDateString("en-GB", { month: "long" })}</span></div>
+          <div className="forecast-comparison">
+            <span>Average paid spend</span><strong>{currency(averageMonthlySpend, baseCurrency)}</strong>
+          </div>
+          <p className="analytics-note">This is a rolling planning forecast using paid records. It is not a statutory budget or accounting statement.</p>
+        </article>
+      </section>
+
+      <section className="analytics-layout analytics-wide-layout">
+        <article className="panel">
+          <div className="panel-heading"><div><h2>Paid spend and income trend</h2><span>Six-month paid cashflow view</span></div></div>
+          <div className="trend-chart" aria-label="Paid spend and income chart">
+            {monthlySpend.map((month) => (
+              <div className="trend-column" key={month.key}>
+                <div className="trend-bars">
+                  <span className="trend-bar spend" style={{ height: `${Math.max(month.costs ? 8 : 0, (month.costs / maxMonthlyValue) * 100)}%` }} title={`Spend ${currency(month.costs, baseCurrency)}`} />
+                  <span className="trend-bar income" style={{ height: `${Math.max(month.sales ? 8 : 0, (month.sales / maxMonthlyValue) * 100)}%` }} title={`Income ${currency(month.sales, baseCurrency)}`} />
+                </div>
+                <small>{month.label}</small>
+              </div>
+            ))}
+          </div>
+          <div className="trend-key"><span><i className="trend-bar spend" /> Paid spend</span><span><i className="trend-bar income" /> Paid income</span></div>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading"><div><h2>Paid cashflow P&amp;L</h2><span>Operational view, not a statutory P&amp;L</span></div></div>
+          <div className="cashflow-rows">
+            <div><span>Paid income</span><strong>{currency(paidSalesTotal, baseCurrency)}</strong></div>
+            <div><span>Paid expenses</span><strong>{currency(selectedSpend, baseCurrency)}</strong></div>
+            <div className={netCashflow >= 0 ? "cashflow-total positive" : "cashflow-total negative"}><span>Net paid cashflow</span><strong>{currency(netCashflow, baseCurrency)}</strong></div>
+          </div>
+          <button className="primary-action" type="button" onClick={() => void exportPaidExpenses()} disabled={!filteredCosts.length}>Download paid expenses CSV</button>
+        </article>
+      </section>
+    </div>
+  );
+}
+
+function AnalyticsEmptyState({ message }: { message: string }) {
+  return <div className="analytics-empty"><strong>No paid data to show</strong><span>{message}</span></div>;
+}
+
+const analyticsPalette = ["#168dcc", "#20a98a", "#f0a642", "#7965c1", "#e56a54", "#4b7798", "#bd7c36", "#61a5a2", "#a76791", "#527c54"];
+
+function analyticsAmount(record: ReceiptRecord) {
+  return record.baseTotalAmount ?? receiptGrossAmount(record);
+}
+
+function sumAnalyticsAmount(records: ReceiptRecord[]) {
+  return records.reduce((sum, record) => sum + analyticsAmount(record), 0);
+}
+
+function analyticsRecordDate(record: Pick<ReceiptRecord, "updatedAt" | "createdAt" | "invoiceDate">) {
+  return record.updatedAt || record.invoiceDate || record.createdAt;
+}
+
+function analyticsMonthKey(record: Pick<ReceiptRecord, "updatedAt" | "createdAt" | "invoiceDate">) {
+  const date = new Date(analyticsRecordDate(record));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function recordMatchesAnalyticsPeriod(record: ReceiptRecord, period: "all" | "this_month" | "last_3_months" | "last_12_months") {
+  if (period === "all") return true;
+  const recordDate = new Date(analyticsRecordDate(record));
+  if (Number.isNaN(recordDate.getTime())) return false;
+  const now = new Date();
+  const startMonthOffset = period === "this_month" ? 0 : period === "last_3_months" ? 2 : 11;
+  const start = new Date(now.getFullYear(), now.getMonth() - startMonthOffset, 1);
+  return recordDate >= start && recordDate <= now;
+}
+
+function buildAnalyticsMonths(count: number) {
+  const now = new Date();
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (count - index - 1), 1);
+    return {
+      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+      label: date.toLocaleDateString("en-GB", { month: "short" }),
+    };
+  });
+}
+
+function analyticsPeriodLabel(period: "all" | "this_month" | "last_3_months" | "last_12_months") {
+  return period === "this_month" ? "This month" : period === "last_3_months" ? "Last 3 months" : period === "last_12_months" ? "Last 12 months" : "All paid records";
+}
+
+function analyticsPaymentMethodLabel(method: ReceiptRecord["paymentMethod"]) {
+  return method === "cash_personal"
+    ? "Personal spend"
+    : method === "business_card"
+      ? "Business card"
+      : method === "bank_transfer"
+        ? "Bank transfer"
+        : "Not applicable";
+}
+
+function analyticsFileSegment(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "category";
 }
 
 function AutomationPage({ store }: { store: AppStore }) {
