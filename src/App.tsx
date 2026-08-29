@@ -3158,6 +3158,9 @@ function SpendingReportsPage({ store }: { store: AppStore }) {
   const filteredCosts = selectedCategory === "all"
     ? paidCosts
     : paidCosts.filter((record) => (record.category?.trim() || "Uncategorised") === selectedCategory);
+  const itemizedPaidCosts = [...filteredCosts].sort(
+    (left, right) => new Date(analyticsRecordDate(right)).getTime() - new Date(analyticsRecordDate(left)).getTime(),
+  );
   const categoryRows = categoryOptions
     .map((category) => {
       const records = paidCosts.filter((record) => (record.category?.trim() || "Uncategorised") === category);
@@ -3328,6 +3331,48 @@ function SpendingReportsPage({ store }: { store: AppStore }) {
           <button className="primary-action" type="button" onClick={() => void exportPaidExpenses()} disabled={!filteredCosts.length}>Download paid expenses CSV</button>
         </article>
       </section>
+
+      <section className="panel analytics-ledger-panel">
+        <div className="panel-heading">
+          <div>
+            <h2>{selectedCategory === "all" ? "Paid expense ledger" : `${selectedCategory} paid expense ledger`}</h2>
+            <span>{itemizedPaidCosts.length} receipt or invoice{itemizedPaidCosts.length === 1 ? "" : "s"} in {analyticsPeriodLabel(period).toLowerCase()}</span>
+          </div>
+          <button className="secondary-action" type="button" onClick={() => void exportPaidExpenses()} disabled={!itemizedPaidCosts.length}>Download detailed CSV</button>
+        </div>
+        {itemizedPaidCosts.length ? (
+          <div className="table-panel analytics-ledger-table">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Supplier</th>
+                  <th>Document</th>
+                  <th>Category</th>
+                  <th>Receipt date</th>
+                  <th>Paid date</th>
+                  <th>Payment method</th>
+                  <th>Total</th>
+                  <th aria-label="Open document" />
+                </tr>
+              </thead>
+              <tbody>
+                {itemizedPaidCosts.map((record) => (
+                  <tr key={record.id}>
+                    <td><strong>{record.vendorName || "Unknown supplier"}</strong></td>
+                    <td>{documentTypeLabel(record.documentType)}{record.invoiceNumber ? ` · ${record.invoiceNumber}` : ""}</td>
+                    <td>{record.category?.trim() || "Uncategorised"}</td>
+                    <td>{formatShortAnalyticsDate(receiptDocumentDate(record))}</td>
+                    <td>{formatShortAnalyticsDate(analyticsRecordDate(record))}</td>
+                    <td>{analyticsPaymentMethodLabel(record.paymentMethod)}</td>
+                    <td><strong>{currency(analyticsAmount(record), baseCurrency)}</strong></td>
+                    <td><Link className="table-action-link" to={`/costs/${record.id}`}>Open</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <AnalyticsEmptyState message="No paid receipts or invoices match this category and reporting period." />}
+      </section>
     </div>
   );
 }
@@ -3392,6 +3437,11 @@ function analyticsPaymentMethodLabel(method: ReceiptRecord["paymentMethod"]) {
 
 function analyticsFileSegment(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "category";
+}
+
+function formatShortAnalyticsDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function AutomationPage({ store }: { store: AppStore }) {

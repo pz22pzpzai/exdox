@@ -2031,6 +2031,35 @@ input {
 
 .analytics-empty strong { color: var(--ink); }
 
+.analytics-ledger-panel {
+  background: linear-gradient(180deg, #ffffff, #f8fbfd);
+}
+
+.analytics-ledger-table td {
+  vertical-align: middle;
+}
+
+.table-action-link {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid #bed7e8;
+  border-radius: 6px;
+  color: #0e6d9d;
+  font-size: 0.84rem;
+  font-weight: 800;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.table-action-link:hover,
+.table-action-link:focus-visible {
+  border-color: #168dcc;
+  background: #eaf6fc;
+  color: #075b89;
+  outline: none;
+}
+
 @media (max-width: 900px) {
   .analytics-hero,
   .analytics-layout,
