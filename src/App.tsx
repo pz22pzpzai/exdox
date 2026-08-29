@@ -184,11 +184,12 @@ const pricingPlans: Array<{
     trialLabel: "14-day trial",
     monthlyPrice: 15,
     annualMonthlyPrice: 12,
-    unlockedWorkspaces: ["Costs", "Claims"],
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
     monthlyDocumentLimit: 250,
     includedUsers: 5,
     features: [
       "Mobile receipt and invoice capture",
+      "Sales inbox",
       "Web upload for finance review",
       "Employee drop box",
       "Expense claims",
@@ -281,8 +282,8 @@ const pricingSliderSteps: Array<{
     planId: "capture",
     accessBand: "Capture",
     tagline: "Receipt capture and review for lean teams",
-    unlockedWorkspaces: ["Costs", "Claims"],
-    lockedWorkspaces: ["Sales", "Vault", "Multi-entity"],
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    lockedWorkspaces: ["Vault", "Multi-entity"],
   },
   {
     label: "10 users",
@@ -294,8 +295,8 @@ const pricingSliderSteps: Array<{
     planId: "capture",
     accessBand: "Capture",
     tagline: "Expanded capture allowance for growing receipt volume",
-    unlockedWorkspaces: ["Costs", "Claims"],
-    lockedWorkspaces: ["Sales", "Vault", "Multi-entity"],
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    lockedWorkspaces: ["Vault", "Multi-entity"],
   },
   {
     label: "15 users",
@@ -307,8 +308,8 @@ const pricingSliderSteps: Array<{
     planId: "capture",
     accessBand: "Capture",
     tagline: "Scaled capture capacity for broader team usage",
-    unlockedWorkspaces: ["Costs", "Claims"],
-    lockedWorkspaces: ["Sales", "Vault", "Multi-entity"],
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    lockedWorkspaces: ["Vault", "Multi-entity"],
   },
   {
     label: "20 users",
@@ -320,8 +321,8 @@ const pricingSliderSteps: Array<{
     planId: "capture",
     accessBand: "Capture",
     tagline: "Higher user allowance inside the capture package band",
-    unlockedWorkspaces: ["Costs", "Claims"],
-    lockedWorkspaces: ["Sales", "Vault", "Multi-entity"],
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    lockedWorkspaces: ["Vault", "Multi-entity"],
   },
   {
     label: "25 users",
@@ -333,8 +334,8 @@ const pricingSliderSteps: Array<{
     planId: "capture",
     accessBand: "Capture",
     tagline: "Top end of the capture package range",
-    unlockedWorkspaces: ["Costs", "Claims"],
-    lockedWorkspaces: ["Sales", "Vault", "Multi-entity"],
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    lockedWorkspaces: ["Vault", "Multi-entity"],
   },
   ...Array.from({ length: 14 }, (_, index) => {
     const users = 30 + index * 5;
@@ -9298,7 +9299,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               <strong>Workflow coverage</strong>
               <ul>
                 <li>Capture focuses on receipt and invoice intake</li>
-                <li>Control adds sales and broader approval workflow coverage</li>
+                <li>All tiers include Sales; Control adds broader approval workflow coverage</li>
                 <li>Operations adds rules, vault, and expanded workflow controls</li>
               </ul>
             </article>
