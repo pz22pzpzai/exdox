@@ -107,7 +107,7 @@ const navItems = [
   { to: "/overview/integrations", label: "Submission Channels", icon: "integrations" },
   { to: "/overview/workflows", label: "Workflows", icon: "workflow" },
   { to: "/overview/productivity", label: "Productivity", icon: "productivity" },
-  { to: "/overview/reports", label: "Reports", icon: "productivity" },
+  { to: "/overview/analytics", label: "Analytics", icon: "analytics" },
   { to: "/overview/automation", label: "Automation", icon: "automation" },
   { to: "/costs", label: "Costs Inbox", icon: "costs" },
   { to: "/sales", label: "Sales Inbox", icon: "sales" },
@@ -1786,7 +1786,10 @@ function DashboardShell(props: {
                 <Route path="/overview/productivity" element={<ProductivityPage store={props.store} />} />
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
-                <Route path="/overview/reports" element={<SpendingReportsPage store={props.store} />} />
+                <>
+                  <Route path="/overview/analytics" element={<SpendingReportsPage store={props.store} />} />
+                  <Route path="/overview/reports" element={<Navigate to="/overview/analytics" replace />} />
+                </>
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/automation" element={<AutomationPage store={props.store} />} />
@@ -3272,9 +3275,15 @@ function SpendingReportsPage({ store }: { store: AppStore }) {
               <ul className="analytics-legend">
                 {categoryRows.map((row, index) => (
                   <li key={row.category}>
-                    <span className="analytics-legend-swatch" style={{ background: analyticsPalette[index % analyticsPalette.length] }} />
-                    <span>{row.category}</span>
-                    <strong>{currency(row.total, baseCurrency)}</strong>
+                    <button
+                      className={`analytics-category-action${selectedCategory === row.category ? " active" : ""}`}
+                      type="button"
+                      onClick={() => setSelectedCategory(row.category)}
+                    >
+                      <span className="analytics-legend-swatch" style={{ background: analyticsPalette[index % analyticsPalette.length] }} />
+                      <span>{row.category}</span>
+                      <strong>{currency(row.total, baseCurrency)}</strong>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -9817,6 +9826,7 @@ function NavIcon({ name }: { name: string }) {
     integrations: <><path d="M7 12h10" /><path d="M12 7v10" /><path d="M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z" /></>,
     workflow: <><path d="M4 6h8v5H4zM12 13h8v5h-8z" /><path d="M12 8h4M16 8v5M8 11v4h4" /></>,
     productivity: <><path d="M5 19h14M7 16V9M12 16V5M17 16v-3" /></>,
+    analytics: <><path d="M12 3v9h9" /><path d="M20.5 15.5A8.5 8.5 0 1 1 8.5 3.5" /><path d="M14.5 5.5A7.5 7.5 0 0 1 20.5 11.5h-6Z" /></>,
     automation: <><path d="M12 3v4M12 17v4M4.9 6.5l2.8 2.8M16.3 14.9l2.8 2.8M3 12h4M17 12h4M4.9 17.5l2.8-2.8M16.3 9.1l2.8-2.8" /><circle cx="12" cy="12" r="3" /></>,
     costs: <><path d="M6 3h12l2 5-2 5H6L4 8l2-5Z" /><path d="M8 17h8M9 21h6" /></>,
     sales: <><path d="M4 6h16v12H4z" /><path d="m4 9 8 5 8-5" /></>,
