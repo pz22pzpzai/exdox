@@ -3234,7 +3234,7 @@ function SpendingReportsPage({ store }: { store: AppStore }) {
       <section className="analytics-hero panel">
         <div>
           <p className="section-kicker">PAID EXPENSE REPORTING</p>
-          <h2>Understand where paid money is going</h2>
+          <h2>Monitor paid expenditure with confidence</h2>
           <p>Explore category spending, paid cashflow and spending forecasts. Only records marked <strong>Paid</strong> are included.</p>
         </div>
         <div className="analytics-controls">
