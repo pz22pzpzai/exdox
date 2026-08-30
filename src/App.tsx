@@ -3149,10 +3149,14 @@ function ProductivityPage({ store }: { store: AppStore }) {
 
 function SpendingReportsPage({ store }: { store: AppStore }) {
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [period, setPeriod] = useState<"all" | "this_month" | "last_3_months" | "last_12_months">("last_12_months");
+  const [period, setPeriod] = useState<AnalyticsPeriod>("last_12_months");
+  const [customStartDate, setCustomStartDate] = useState(() => analyticsDateInputValue(startOfCurrentMonth()));
+  const [customEndDate, setCustomEndDate] = useState(() => analyticsDateInputValue(new Date()));
+  const customDateRange = { start: customStartDate, end: customEndDate };
   const baseCurrency = store.settings?.baseCurrency || "GBP";
-  const paidCosts = store.costs.filter((record) => record.status === "Paid" && recordMatchesAnalyticsPeriod(record, period));
-  const paidSales = store.sales.filter((record) => record.status === "Paid" && recordMatchesAnalyticsPeriod(record, period));
+  const hasValidCustomRange = period !== "custom" || isValidAnalyticsDateRange(customDateRange);
+  const paidCosts = store.costs.filter((record) => record.status === "Paid" && recordMatchesAnalyticsPeriod(record, period, customDateRange));
+  const paidSales = store.sales.filter((record) => record.status === "Paid" && recordMatchesAnalyticsPeriod(record, period, customDateRange));
   const categoryOptions = Array.from(
     new Set(["Uncategorised", ...costCategoryOptions, ...paidCosts.map((record) => record.category?.trim()).filter((category): category is string => Boolean(category))]),
   );
@@ -3172,7 +3176,7 @@ function SpendingReportsPage({ store }: { store: AppStore }) {
   const selectedSpend = sumAnalyticsAmount(filteredCosts);
   const paidSalesTotal = sumAnalyticsAmount(paidSales);
   const netCashflow = paidSalesTotal - selectedSpend;
-  const months = buildAnalyticsMonths(6);
+  const months = buildAnalyticsMonths(period, customDateRange);
   const monthlySpend = months.map((month) => ({
     ...month,
     costs: sumAnalyticsAmount(filteredCosts.filter((record) => analyticsMonthKey(record) === month.key)),
@@ -3207,7 +3211,7 @@ function SpendingReportsPage({ store }: { store: AppStore }) {
         paid_document_count: String(row.records.length),
         paid_total: row.total.toFixed(2),
         currency: baseCurrency,
-        reporting_period: analyticsPeriodLabel(period),
+        reporting_period: analyticsPeriodLabel(period, customDateRange),
       })),
     );
   };
@@ -3248,18 +3252,33 @@ function SpendingReportsPage({ store }: { store: AppStore }) {
           </label>
           <label>
             Reporting period
-            <select value={period} onChange={(event) => setPeriod(event.target.value as typeof period)}>
+            <select value={period} onChange={(event) => setPeriod(event.target.value as AnalyticsPeriod)}>
               <option value="this_month">This month</option>
               <option value="last_3_months">Last 3 months</option>
               <option value="last_12_months">Last 12 months</option>
+              <option value="custom">Custom date range</option>
               <option value="all">All paid records</option>
             </select>
           </label>
+          {period === "custom" ? (
+            <div className="analytics-date-range" aria-label="Custom reporting date range">
+              <label>
+                From
+                <input type="date" value={customStartDate} max={customEndDate || undefined} onChange={(event) => setCustomStartDate(event.target.value)} />
+              </label>
+              <label>
+                To
+                <input type="date" value={customEndDate} min={customStartDate || undefined} onChange={(event) => setCustomEndDate(event.target.value)} />
+              </label>
+            </div>
+          ) : null}
         </div>
       </section>
 
+      {period === "custom" && !hasValidCustomRange ? <p className="analytics-range-warning">Choose a valid start and end date to view this report.</p> : null}
+
       <section className="metrics-grid analytics-metrics">
-        <MetricCard label="Paid category spend" value={currency(selectedSpend, baseCurrency)} detail={`${filteredCosts.length} paid expense${filteredCosts.length === 1 ? "" : "s"} in ${analyticsPeriodLabel(period).toLowerCase()}`} />
+        <MetricCard label="Paid category spend" value={currency(selectedSpend, baseCurrency)} detail={`${filteredCosts.length} paid expense${filteredCosts.length === 1 ? "" : "s"} in ${analyticsPeriodLabel(period, customDateRange).toLowerCase()}`} />
         <MetricCard label="Projected spend" value={currency(projectedSpend, baseCurrency)} detail="Current-month projection from paid spending" />
         <MetricCard label="Paid income" value={currency(paidSalesTotal, baseCurrency)} detail="Paid sales records in the selected period" />
         <MetricCard label="Paid cashflow" value={currency(netCashflow, baseCurrency)} detail="Paid income less selected paid spend" />
@@ -3307,7 +3326,7 @@ function SpendingReportsPage({ store }: { store: AppStore }) {
 
       <section className="analytics-layout analytics-wide-layout">
         <article className="panel">
-          <div className="panel-heading"><div><h2>Paid spend and income trend</h2><span>Six-month paid cashflow view</span></div></div>
+          <div className="panel-heading"><div><h2>Paid spend and income trend</h2><span>Paid cashflow across the selected reporting period</span></div></div>
           <div className="trend-chart" aria-label="Paid spend and income chart">
             {monthlySpend.map((month) => (
               <div className="trend-column" key={month.key}>
@@ -3337,7 +3356,7 @@ function SpendingReportsPage({ store }: { store: AppStore }) {
         <div className="panel-heading">
           <div>
             <h2>{selectedCategory === "all" ? "Paid expense ledger" : `${selectedCategory} paid expense ledger`}</h2>
-            <span>{itemizedPaidCosts.length} receipt or invoice{itemizedPaidCosts.length === 1 ? "" : "s"} in {analyticsPeriodLabel(period).toLowerCase()}</span>
+            <span>{itemizedPaidCosts.length} receipt or invoice{itemizedPaidCosts.length === 1 ? "" : "s"} in {analyticsPeriodLabel(period, customDateRange).toLowerCase()}</span>
           </div>
           <button className="secondary-action" type="button" onClick={() => void exportPaidExpenses()} disabled={!itemizedPaidCosts.length}>Download detailed CSV</button>
         </div>
@@ -3383,6 +3402,8 @@ function AnalyticsEmptyState({ message }: { message: string }) {
 }
 
 const analyticsPalette = ["#168dcc", "#20a98a", "#f0a642", "#7965c1", "#e56a54", "#4b7798", "#bd7c36", "#61a5a2", "#a76791", "#527c54"];
+type AnalyticsPeriod = "all" | "this_month" | "last_3_months" | "last_12_months" | "custom";
+type AnalyticsDateRange = { start: string; end: string };
 
 function analyticsAmount(record: ReceiptRecord) {
   return record.baseTotalAmount ?? receiptGrossAmount(record);
@@ -3401,20 +3422,56 @@ function analyticsMonthKey(record: Pick<ReceiptRecord, "updatedAt" | "createdAt"
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-function recordMatchesAnalyticsPeriod(record: ReceiptRecord, period: "all" | "this_month" | "last_3_months" | "last_12_months") {
+function recordMatchesAnalyticsPeriod(record: ReceiptRecord, period: AnalyticsPeriod, customRange: AnalyticsDateRange) {
   if (period === "all") return true;
   const recordDate = new Date(analyticsRecordDate(record));
   if (Number.isNaN(recordDate.getTime())) return false;
+  if (period === "custom") {
+    if (!isValidAnalyticsDateRange(customRange)) return false;
+    const start = analyticsDateStart(customRange.start);
+    const end = analyticsDateEnd(customRange.end);
+    return recordDate >= start && recordDate <= end;
+  }
   const now = new Date();
   const startMonthOffset = period === "this_month" ? 0 : period === "last_3_months" ? 2 : 11;
   const start = new Date(now.getFullYear(), now.getMonth() - startMonthOffset, 1);
   return recordDate >= start && recordDate <= now;
 }
 
-function buildAnalyticsMonths(count: number) {
+function startOfCurrentMonth() {
   const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+function analyticsDateInputValue(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function analyticsDateStart(value: string) {
+  return new Date(`${value}T00:00:00`);
+}
+
+function analyticsDateEnd(value: string) {
+  return new Date(`${value}T23:59:59.999`);
+}
+
+function isValidAnalyticsDateRange(range: AnalyticsDateRange) {
+  if (!range.start || !range.end) return false;
+  const start = analyticsDateStart(range.start);
+  const end = analyticsDateEnd(range.end);
+  return !Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && start <= end;
+}
+
+function buildAnalyticsMonths(period: AnalyticsPeriod, customRange: AnalyticsDateRange) {
+  const now = new Date();
+  const end = period === "custom" && isValidAnalyticsDateRange(customRange) ? analyticsDateEnd(customRange.end) : now;
+  const monthsToShow = period === "this_month" ? 1 : period === "last_3_months" ? 3 : period === "last_12_months" ? 12 : 6;
+  const start = period === "custom" && isValidAnalyticsDateRange(customRange)
+    ? analyticsDateStart(customRange.start)
+    : new Date(end.getFullYear(), end.getMonth() - (monthsToShow - 1), 1);
+  const count = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth() + 1);
   return Array.from({ length: count }, (_, index) => {
-    const date = new Date(now.getFullYear(), now.getMonth() - (count - index - 1), 1);
+    const date = new Date(start.getFullYear(), start.getMonth() + index, 1);
     return {
       key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
       label: date.toLocaleDateString("en-GB", { month: "short" }),
@@ -3422,8 +3479,16 @@ function buildAnalyticsMonths(count: number) {
   });
 }
 
-function analyticsPeriodLabel(period: "all" | "this_month" | "last_3_months" | "last_12_months") {
-  return period === "this_month" ? "This month" : period === "last_3_months" ? "Last 3 months" : period === "last_12_months" ? "Last 12 months" : "All paid records";
+function analyticsPeriodLabel(period: AnalyticsPeriod, customRange?: AnalyticsDateRange) {
+  if (period === "this_month") return "This month";
+  if (period === "last_3_months") return "Last 3 months";
+  if (period === "last_12_months") return "Last 12 months";
+  if (period === "custom") {
+    return customRange && isValidAnalyticsDateRange(customRange)
+      ? `${formatShortAnalyticsDate(customRange.start)} to ${formatShortAnalyticsDate(customRange.end)}`
+      : "Custom date range";
+  }
+  return "All paid records";
 }
 
 function analyticsPaymentMethodLabel(method: ReceiptRecord["paymentMethod"]) {
