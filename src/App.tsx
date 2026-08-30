@@ -103,10 +103,9 @@ const salesCategoryOptions = [
 
 const navItems = [
   { to: "/overview", label: "Overview", icon: "overview" },
-  { to: "/overview/data-health", label: "Data Health", icon: "health" },
+  { to: "/overview/data-health", label: "Workspace Health", icon: "health" },
   { to: "/overview/integrations", label: "Submission Channels", icon: "integrations" },
   { to: "/overview/workflows", label: "Workflows", icon: "workflow" },
-  { to: "/overview/productivity", label: "Productivity", icon: "productivity" },
   { to: "/overview/analytics", label: "Analytics", icon: "analytics" },
   { to: "/overview/automation", label: "Automation", icon: "automation" },
   { to: "/costs", label: "Costs Inbox", icon: "costs" },
@@ -1784,7 +1783,7 @@ function DashboardShell(props: {
                 <Route path="/overview/workflows" element={<WorkflowPage store={props.store} />} />
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
-                <Route path="/overview/productivity" element={<ProductivityPage store={props.store} />} />
+                <Route path="/overview/productivity" element={<Navigate to="/overview/data-health" replace />} />
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
                 <>
@@ -2051,14 +2050,14 @@ function helpChatReply(message: string) {
   if (includes("overview", "dashboard", "no actions needed", "actions needed", "attention queue")) {
     return "Overview is the workspace summary. The action button totals live work that still needs attention, such as document reviews, Vault processing, or pending claims. Select it to open the Attention queue. 'No actions needed' means there is no current review or payment action in that workspace.";
   }
-  if (includes("data health", "unreadable", "missing supplier", "missing category")) {
-    return "Data Health highlights records that need a practical check: unreadable uploads, processing documents, review work, or missing supplier/category details. It is not an error score. Open the relevant item, complete the missing details, and save the review.";
+  if (includes("workspace health", "data health", "unreadable", "missing supplier", "missing category", "review completion")) {
+    return "Workspace Health brings together record-quality checks and day-to-day workflow progress. It highlights unreadable uploads, processing documents, review work, missing supplier or category details, claims progress, and handoff queues. It is not an error score: open the relevant item, complete the missing details, and save the review.";
   }
   if (includes("submission channels", "mobile capture", "web upload", "how can documents enter")) {
     return "Documents enter Exdox through the mobile app capture flow or the website upload buttons for Costs, Sales, and Vault. Exdox does not currently offer inbound email submission, bank feeds, or accounting-software imports, so those are not routes you need to configure.";
   }
   if (includes("workflow", "workflow page", "productivity", "automation")) {
-    return "Workflows, Productivity, and Automation are operational views of the same workspace. They help a business admin see where documents are waiting, find the next queue, and manage supplier-rule defaults. They do not replace the final human review and approval step.";
+    return "Workflows, Workspace Health, and Automation are operational views of the same workspace. Workspace Health shows where records need attention and how work is progressing; Workflows shows the approval lanes; Automation manages supplier-rule defaults. They do not replace the final human review and approval step.";
   }
   if (includes("reviewed in purchases", "reviewed purchase", "reviewed receipt", "ready for reimbursement", "awaiting reimbursement")) {
     return "A Reviewed purchase has passed document review but has not yet been included in a reimbursement payment batch, so it remains in Purchases. When an admin downloads the Employee reimbursement payment summary, eligible personal expenses move to Payment processing and then appear in the employee's Reports archive.";
@@ -2666,6 +2665,17 @@ function DataHealthPage({ store }: { store: AppStore }) {
   const unreadableCount = allRecords.filter((record) => looksUnreadable(record)).length;
   const processingCount = allRecords.filter((record) => record.status === "Processing").length;
   const reviewCount = allRecords.filter((record) => countsAsManualReview(record)).length;
+  const readyCount = allRecords.filter((record) => record.status === "Ready").length;
+  const publishedCount = allRecords.filter((record) => record.status === "Published").length;
+  const pendingClaims = pendingClaimsNeedingAction(store.claims).length;
+  const completedClaims = store.claims.filter((claim) => claim.status === "approved" || claim.status === "paid").length;
+  const reviewCompletion = allRecords.length ? Math.round(((allRecords.length - reviewCount) / allRecords.length) * 100) : 0;
+  const claimCompletion = store.claims.length ? Math.round((completedClaims / store.claims.length) * 100) : 0;
+  const sourceMix = [
+    { label: "Mobile", count: allRecords.filter((record) => record.receiptSource === "mobile").length, route: firstInboxRouteForSource(store, "mobile") },
+    { label: "Web", count: allRecords.filter((record) => record.receiptSource === "web_upload").length, route: firstInboxRouteForSource(store, "web_upload") },
+    { label: "Email", count: allRecords.filter((record) => record.receiptSource === "email").length, route: firstInboxRouteForSource(store, "email") },
+  ];
 
   return (
     <div className="stack-page">
@@ -2693,6 +2703,24 @@ function DataHealthPage({ store }: { store: AppStore }) {
           value={String(codingGapRecords.length)}
           detail="Documents missing category or supplier"
           onClick={() => navigate(codingGapRecords[0] ? recordRoute(codingGapRecords[0]) : "/costs")}
+        />
+        <MetricCard
+          label="Review completion"
+          value={`${reviewCompletion}%`}
+          detail="Records no longer waiting for manual review"
+          onClick={() => navigate(firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"))}
+        />
+        <MetricCard
+          label="Claims completion"
+          value={`${claimCompletion}%`}
+          detail="Claims approved or fully paid"
+          onClick={() => navigate(firstClaimCompletionRoute(store))}
+        />
+        <MetricCard
+          label="Ready for handoff"
+          value={String(readyCount + publishedCount)}
+          detail="Records ready for export or already published"
+          onClick={() => navigate(readyCount ? firstInboxRouteForStatus(store, "Ready") : firstPublishedOrArchiveRoute(store))}
         />
       </section>
 
@@ -2767,6 +2795,94 @@ function DataHealthPage({ store }: { store: AppStore }) {
           </ul>
         </article>
 
+      </section>
+
+      <section className="overview-panels">
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Operational throughput</h2>
+            <span>Where work is currently waiting</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.status === "Processing", "Processing"))}>
+                <strong>Processing backlog</strong>
+                <span>{processingCount} document{processingCount === 1 ? " is" : "s are"} still settling into the review flow.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => countsAsManualReview(record), "Needs review"))}>
+                <strong>Manual review load</strong>
+                <span>{reviewCount} document{reviewCount === 1 ? " still needs" : "s still need"} review, tax, or publish decisions.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/claims?status=pending")}>
+                <strong>Approval queue</strong>
+                <span>{pendingClaims} claim{pendingClaims === 1 ? " is" : "s are"} waiting on approval.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Workflow controls</h2>
+            <span>Settings that reduce avoidable follow-up</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/rules")}>
+                <strong>Supplier rules</strong>
+                <span>{store.rules.length} rule{store.rules.length === 1 ? " is" : "s are"} available to standardise category, tax, and payment defaults.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/settings")}>
+                <strong>Organisation tax defaults</strong>
+                <span>Company tax settings are available to reduce avoidable review corrections.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Submission mix</h2>
+            <span>Where records are entering the workspace</span>
+          </div>
+          <ul className="summary-list">
+            {sourceMix.map((source) => (
+              <li key={source.label}>
+                <button className="summary-action-row" type="button" onClick={() => navigate(source.route)}>
+                  <strong>{source.label}</strong>
+                  <span>{source.count} document{source.count === 1 ? " currently originates" : "s currently originate"} from this channel.</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Export and archive</h2>
+            <span>Current handoff and evidence routes</span>
+          </div>
+          <ul className="summary-list">
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate(firstExportRoute(store))}>
+                <strong>Open an export-ready queue</strong>
+                <span>Open the first live queue that supports CSV export for costs, sales, vault, or claims.</span>
+              </button>
+            </li>
+            <li>
+              <button className="summary-action-row" type="button" onClick={() => navigate("/vault")}>
+                <strong>Archive retrieval</strong>
+                <span>{store.vault.length} vault file{store.vault.length === 1 ? " is" : "s are"} available as retained reference evidence.</span>
+              </button>
+            </li>
+          </ul>
+        </article>
       </section>
     </div>
   );
@@ -11209,7 +11325,7 @@ function routeTitle(pathname: string) {
     return "Attention";
   }
   if (pathname.startsWith("/overview/data-health")) {
-    return "Data Health";
+    return "Workspace Health";
   }
   if (pathname.startsWith("/overview/integrations")) {
     return "Integrations";
@@ -11218,7 +11334,7 @@ function routeTitle(pathname: string) {
     return "Workflows";
   }
   if (pathname.startsWith("/overview/productivity")) {
-    return "Productivity";
+    return "Workspace Health";
   }
   if (pathname.startsWith("/overview/automation")) {
     return "Automation";
