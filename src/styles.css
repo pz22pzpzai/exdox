@@ -3922,6 +3922,29 @@ input {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.upgrade-change-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid #b7d8ee;
+  border-radius: 0.75rem;
+  background: #f1f8fc;
+  color: #22395d;
+  font-size: 0.94rem;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.upgrade-change-confirmation input {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+  accent-color: #087fbe;
+}
+
 .upgrade-plan-layout > .slider-pricing-card {
   grid-column: 1 / 8;
   grid-row: 1;

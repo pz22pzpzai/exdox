@@ -9824,6 +9824,7 @@ function BillingUpgradePage(props: { session: SessionState }) {
   const [sliderIndex, setSliderIndex] = useState(currentIndex);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmedChange, setConfirmedChange] = useState(false);
   const selectedStep = pricingSliderSteps[Math.min(sliderIndex, maxIndex)] ?? pricingSliderSteps[0]!;
   const currentDocuments = billing?.monthlyDocumentLimit ?? 0;
   const currentUsers = billing?.includedUsers ?? 0;
@@ -9888,17 +9889,32 @@ function BillingUpgradePage(props: { session: SessionState }) {
             max={maxIndex}
             step={1}
             value={Math.min(sliderIndex, maxIndex)}
-            onChange={(event) => setSliderIndex(Number(event.target.value))}
+            onChange={(event) => {
+              setSliderIndex(Number(event.target.value));
+              setConfirmedChange(false);
+            }}
             aria-label="Upgrade allowance slider"
           />
           <div className="slider-bands" aria-hidden="true">
             {["Capture", "Control", "Operations"].map((label) => <span key={label} className={selectedStep.accessBand === label ? "active" : ""}>{label}</span>)}
           </div>
           <p className="slider-helper">Drag the slider to choose your new allowance.</p>
+          {isHigherAllowance ? (
+            <label className="upgrade-change-confirmation">
+              <input
+                type="checkbox"
+                checked={confirmedChange}
+                onChange={(event) => setConfirmedChange(event.target.checked)}
+              />
+              <span>
+                I confirm the subscription will change to {currency(selectedStep.monthlyPrice)} per month. Stripe will calculate and collect any prorated difference for the current billing period. The next full monthly payment will use this new price.
+              </span>
+            </label>
+          ) : null}
           <button
             className="primary-action"
             type="button"
-            disabled={!isHigherAllowance || busy}
+            disabled={!isHigherAllowance || !confirmedChange || busy}
             onClick={async () => {
               setBusy(true);
               setMessage(null);
@@ -9915,7 +9931,7 @@ function BillingUpgradePage(props: { session: SessionState }) {
               }
             }}
           >
-            {busy ? "Updating plan..." : isHigherAllowance ? changeActionLabel : "Choose a higher allowance"}
+            {busy ? "Updating plan..." : !isHigherAllowance ? "Choose a higher allowance" : !confirmedChange ? "Confirm plan change" : changeActionLabel}
           </button>
           {message ? <div className="error-banner">{message}</div> : null}
         </article>
@@ -9937,7 +9953,7 @@ function BillingUpgradePage(props: { session: SessionState }) {
                 {selectedStep.unlockedWorkspaces.map((workspace) => <span key={workspace}>{workspace}</span>)}
               </div>
             </div>
-            <p>Any immediate prorated billing adjustment is handled by Stripe against this same subscription.</p>
+            <p>Stripe applies this change to the existing subscription, calculates any prorated adjustment now, and keeps the current allowance if payment cannot be completed.</p>
           </article>
         </aside>
       </div>
