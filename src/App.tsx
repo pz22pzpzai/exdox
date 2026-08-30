@@ -2206,9 +2206,21 @@ function HelpChatWidget() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [isReplying, setIsReplying] = useState(false);
+  const threadRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<HelpChatMessage[]>([
     { id: 1, sender: "assistant", text: "Hello. I am the Exdox support assistant. How can I help today?" },
   ]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      const thread = threadRef.current;
+      thread?.scrollTo({ top: thread.scrollHeight, behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isReplying, messages.length, open]);
 
   const sendMessage = (rawMessage: string) => {
     const text = rawMessage.trim();
@@ -2241,7 +2253,7 @@ function HelpChatWidget() {
             </button>
           </div>
           <div className="help-chat-body">
-            <div className="help-chat-thread" aria-live="polite">
+            <div ref={threadRef} className="help-chat-thread" aria-live="polite">
               {messages.map((message) => (
                 <div key={message.id} className={`help-chat-message ${message.sender}`}>
                   {message.text}
