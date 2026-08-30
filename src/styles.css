@@ -3922,6 +3922,18 @@ input {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.upgrade-plan-layout > .slider-pricing-card {
+  grid-column: 1 / 8;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.upgrade-plan-layout > .slider-side-stack {
+  grid-column: 8 / -1;
+  grid-row: 1;
+  min-width: 0;
+}
+
 .slider-pricing-card,
 .slider-info-card {
   border: 1px solid var(--line);
@@ -4263,6 +4275,8 @@ input {
 
   .pricing-page-side,
   .pricing-page-main > .slider-pricing-card,
+  .upgrade-plan-layout > .slider-pricing-card,
+  .upgrade-plan-layout > .slider-side-stack,
   .pricing-grid-detailed,
   .pricing-notes-grid,
   .pricing-faq-grid {

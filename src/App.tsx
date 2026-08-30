@@ -9827,7 +9827,17 @@ function BillingUpgradePage(props: { session: SessionState }) {
   const selectedStep = pricingSliderSteps[Math.min(sliderIndex, maxIndex)] ?? pricingSliderSteps[0]!;
   const currentDocuments = billing?.monthlyDocumentLimit ?? 0;
   const currentUsers = billing?.includedUsers ?? 0;
-  const isUpgrade = selectedStep.documents > currentDocuments && selectedStep.users > currentUsers;
+  const isHigherAllowance =
+    (selectedStep.documents > currentDocuments || selectedStep.users > currentUsers) &&
+    selectedStep.documents >= currentDocuments &&
+    selectedStep.users >= currentUsers;
+  const staysOnCurrentPlan = selectedStep.planId === billing?.planId;
+  const changeActionLabel = staysOnCurrentPlan
+    ? "Increase allowance"
+    : `Upgrade to ${selectedStep.accessBand}`;
+  const selectedAccessTitle = staysOnCurrentPlan
+    ? `${selectedStep.accessBand} plan allowance`
+    : `${selectedStep.accessBand} access included`;
 
   if (!billing || !billing.stripeSubscriptionId || !billing.stripeConfigured) {
     return (
@@ -9849,11 +9859,11 @@ function BillingUpgradePage(props: { session: SessionState }) {
         <div className="panel-header">
           <div>
             <p className="section-kicker">Plan change</p>
-            <h2>Upgrade your Exdox plan</h2>
+            <h2>Increase your Exdox allowance</h2>
           </div>
           <button className="secondary-action" type="button" onClick={() => navigate("/billing")}>Back to billing</button>
         </div>
-        <p className="muted-copy">Choose a higher allowance. Exdox updates your existing Stripe subscription and applies the new workspace access and limits immediately. It does not create a second subscription.</p>
+        <p className="muted-copy">Choose more users and documents, or move to a higher workflow package when you need additional features. Exdox updates your existing Stripe subscription and applies the new limits immediately. It does not create a second subscription.</p>
       </div>
 
       <div className="pricing-page-layout upgrade-plan-layout">
@@ -9888,7 +9898,7 @@ function BillingUpgradePage(props: { session: SessionState }) {
           <button
             className="primary-action"
             type="button"
-            disabled={!isUpgrade || busy}
+            disabled={!isHigherAllowance || busy}
             onClick={async () => {
               setBusy(true);
               setMessage(null);
@@ -9905,7 +9915,7 @@ function BillingUpgradePage(props: { session: SessionState }) {
               }
             }}
           >
-            {busy ? "Updating plan..." : isUpgrade ? `Upgrade to ${selectedStep.accessBand}` : "Choose a higher allowance"}
+            {busy ? "Updating plan..." : isHigherAllowance ? changeActionLabel : "Choose a higher allowance"}
           </button>
           {message ? <div className="error-banner">{message}</div> : null}
         </article>
@@ -9919,7 +9929,7 @@ function BillingUpgradePage(props: { session: SessionState }) {
             </ul>
           </article>
           <article className="slider-info-card slider-access-card">
-            <h2>{selectedStep.accessBand} access</h2>
+            <h2>{selectedAccessTitle}</h2>
             <p>{selectedStep.tagline}</p>
             <div className="slider-access-group">
               <strong>Included workspace areas</strong>
