@@ -104,7 +104,6 @@ const salesCategoryOptions = [
 const navItems = [
   { to: "/overview", label: "Overview", icon: "overview" },
   { to: "/overview/data-health", label: "Workspace Health", icon: "health" },
-  { to: "/overview/integrations", label: "Submission Channels", icon: "integrations" },
   { to: "/overview/workflows", label: "Workflows", icon: "workflow" },
   { to: "/overview/analytics", label: "Analytics", icon: "analytics" },
   { to: "/overview/automation", label: "Automation", icon: "automation" },
@@ -1777,7 +1776,7 @@ function DashboardShell(props: {
                 <Route path="/overview/data-health" element={<DataHealthPage store={props.store} />} />
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
-                <Route path="/overview/integrations" element={<IntegrationsPage store={props.store} />} />
+                <Route path="/overview/integrations" element={<Navigate to="/overview/workflows" replace />} />
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/workflows" element={<WorkflowPage store={props.store} />} />
@@ -3003,6 +3002,14 @@ function WorkflowPage({ store }: { store: AppStore }) {
   const pendingClaims = pendingClaimsNeedingAction(store.claims);
   const publishedDocuments = allDocuments.filter((record) => record.status === "Published");
   const processingDocuments = allDocuments.filter((record) => record.status === "Processing");
+  const sourceCounts = {
+    mobile: allDocuments.filter((record) => record.receiptSource === "mobile").length,
+    web_upload: allDocuments.filter((record) => record.receiptSource === "web_upload").length,
+  };
+  const recentUploads = allDocuments
+    .slice()
+    .sort((left, right) => compareIsoDate(right.createdAt, left.createdAt))
+    .slice(0, 8);
   const reviewByWorkspace = [
     { label: "Costs review", route: "/costs?issue=Needs+review", records: store.costs.filter((record) => countsAsManualReview(record)) },
     { label: "Sales review", route: "/sales?issue=Needs+review", records: store.sales.filter((record) => countsAsManualReview(record)) },
@@ -3034,6 +3041,8 @@ function WorkflowPage({ store }: { store: AppStore }) {
         <MetricCard label="Pending claims" value={String(pendingClaims.length)} detail="Expense claims awaiting approval" onClick={() => navigate("/claims?status=pending")} />
         <MetricCard label="Still processing" value={String(processingDocuments.length)} detail="Uploads not yet settled into review" onClick={() => navigate(firstInboxRouteForIssue(store, (record) => record.status === "Processing", "Processing"))} />
         <MetricCard label="Published" value={String(publishedDocuments.length)} detail="Documents already pushed onward" onClick={() => navigate(firstInboxRouteForStatus(store, "Published"))} />
+        <MetricCard label="Mobile capture" value={String(sourceCounts.mobile)} detail="Receipts sent from the app" onClick={() => navigate(firstInboxRouteForSource(store, "mobile"))} />
+        <MetricCard label="Web uploads" value={String(sourceCounts.web_upload)} detail="Files uploaded from the browser" onClick={() => navigate(firstInboxRouteForSource(store, "web_upload"))} />
       </section>
 
       <section className="overview-panels">
@@ -3129,6 +3138,50 @@ function WorkflowPage({ store }: { store: AppStore }) {
                 <span>{store.claims.filter((claim) => claim.status === "paid").length} claim{store.claims.filter((claim) => claim.status === "paid").length === 1 ? " has" : "s have"} fully completed the reimbursement workflow.</span>
               </button>
             </li>
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Submission channels</h2>
+            <span>How records are entering Exdox</span>
+          </div>
+          <ul className="summary-list">
+            {([
+              { source: "mobile", label: "Mobile receipt capture", detail: "Sent from the synced app workflow." },
+              { source: "web_upload", label: "Web drag-and-drop", detail: "Uploaded directly into the website inboxes." },
+            ] as const).map((item) => (
+              <li key={item.source}>
+                <button className="summary-action-row" type="button" onClick={() => navigate(firstInboxRouteForSource(store, item.source))}>
+                  <strong>{item.label}</strong>
+                  <span>{sourceCounts[item.source]} record{sourceCounts[item.source] === 1 ? "" : "s"} | {item.detail}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <h2>Recent activity</h2>
+            <span>Latest records across active submission channels</span>
+          </div>
+          <ul className="summary-list">
+            {recentUploads.length ? (
+              recentUploads.map((record) => (
+                <li key={`${record.workspaceContext}-${record.id}`}>
+                  <button className="summary-action-row" type="button" onClick={() => navigate(recordRoute(record))}>
+                    <strong>{record.vendorName?.trim() || record.sourceFilename}</strong>
+                    <span>{sourceLabel(record.receiptSource)} | {workspaceLabel(record.workspaceContext)} | {record.createdAt.slice(0, 10)}</span>
+                  </button>
+                </li>
+              ))
+            ) : (
+              <li>
+                <strong>No activity yet</strong>
+                <span>Uploads and archived files will appear here once the first records enter the workspace.</span>
+              </li>
+            )}
           </ul>
         </article>
       </section>
@@ -11328,7 +11381,7 @@ function routeTitle(pathname: string) {
     return "Workspace Health";
   }
   if (pathname.startsWith("/overview/integrations")) {
-    return "Integrations";
+    return "Workflows";
   }
   if (pathname.startsWith("/overview/workflows")) {
     return "Workflows";
