@@ -1275,6 +1275,16 @@ button.status-box:focus-visible {
   box-shadow: 0 24px 60px rgba(17, 28, 56, 0.22);
 }
 
+.reimbursement-export-action {
+  display: grid;
+  gap: 10px;
+}
+
+.reimbursement-export-action .error-banner {
+  width: min(100%, 420px);
+  margin: 0;
+}
+
 .compact-table-panel {
   margin-top: 8px;
 }

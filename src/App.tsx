@@ -4316,6 +4316,8 @@ function DocumentWorkspacePage(props: {
   const [selectedClaimId, setSelectedClaimId] = useState("");
   const [imageZoomOpen, setImageZoomOpen] = useState(false);
   const [postApprovePrompt, setPostApprovePrompt] = useState<null | { nextReceiptId: number | null }>(null);
+  const [reimbursementExporting, setReimbursementExporting] = useState(false);
+  const [reimbursementExportError, setReimbursementExportError] = useState<string | null>(null);
   const imageZoomStageRef = useRef<HTMLDivElement | null>(null);
   const imagePanStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
 
@@ -5030,33 +5032,47 @@ function DocumentWorkspacePage(props: {
                   Download {props.mode === "sales" ? "sales" : "expense"} detail CSV
                 </button>
                 {props.mode === "cost" ? (
-                  <button
-                    className="secondary-action"
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const result = await exportEmployeeReimbursements(props.sessionToken);
-                        const downloaded = await downloadCsv(
-                          `employee-reimbursements-${new Date().toISOString().slice(0, 10)}.csv`,
-                          buildEmployeeReimbursementPaymentRows(result.rows),
-                        );
-                        if (!downloaded) {
-                          throw new Error("Could not download the employee reimbursement payment summary.");
+                  <div className="reimbursement-export-action">
+                    {reimbursementExportError ? <div className="error-banner" role="alert">{reimbursementExportError}</div> : null}
+                    <button
+                      className="secondary-action"
+                      type="button"
+                      disabled={reimbursementExporting}
+                      onClick={async () => {
+                        setReimbursementExporting(true);
+                        setReimbursementExportError(null);
+                        setError(null);
+                        setFeedback(null);
+                        try {
+                          const result = await exportEmployeeReimbursements(props.sessionToken);
+                          const downloaded = await downloadCsv(
+                            `employee-reimbursements-${new Date().toISOString().slice(0, 10)}.csv`,
+                            buildEmployeeReimbursementPaymentRows(result.rows),
+                          );
+                          if (!downloaded) {
+                            throw new Error("Your browser did not save the reimbursement payment summary. Allow downloads, then try again.");
+                          }
+                          setFeedback(
+                            result.notifications.failed
+                              ? `Employee reimbursement payment summary downloaded. ${result.notifications.sent} employee notification${result.notifications.sent === 1 ? " was" : "s were"} sent; ${result.notifications.failed} could not be delivered.`
+                              : `Employee reimbursement payment summary downloaded and ${result.notifications.sent} employee notification${result.notifications.sent === 1 ? " was" : "s were"} sent.`,
+                          );
+                          await props.onReimbursementsExported?.();
+                          setPostApprovePrompt(null);
+                        } catch (exportError) {
+                          setReimbursementExportError(
+                            exportError instanceof Error
+                              ? exportError.message
+                              : "Could not prepare the employee reimbursement payment summary.",
+                          );
+                        } finally {
+                          setReimbursementExporting(false);
                         }
-                        setFeedback(
-                          result.notifications.failed
-                            ? `Employee reimbursement payment summary downloaded. ${result.notifications.sent} employee notification${result.notifications.sent === 1 ? " was" : "s were"} sent; ${result.notifications.failed} could not be delivered.`
-                            : `Employee reimbursement payment summary downloaded and ${result.notifications.sent} employee notification${result.notifications.sent === 1 ? " was" : "s were"} sent.`,
-                        );
-                        await props.onReimbursementsExported?.();
-                        setPostApprovePrompt(null);
-                      } catch (exportError) {
-                        setError(exportError instanceof Error ? exportError.message : "Could not prepare the employee reimbursement payment summary.");
-                      }
-                    }}
-                  >
-                    Download reimbursement payment summary
-                  </button>
+                      }}
+                    >
+                      {reimbursementExporting ? "Preparing payment summary..." : "Download reimbursement payment summary"}
+                    </button>
+                  </div>
                 ) : null}
               </>
             )}
