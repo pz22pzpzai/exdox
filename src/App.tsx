@@ -2340,6 +2340,8 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
   const usagePercentage = monthlyDocumentLimit && monthlyDocumentLimit > 0
     ? Math.min(100, Math.round((monthlyDocumentUsage / monthlyDocumentLimit) * 100))
     : 0;
+  const workspaceUserCount = Math.max(1, session.billing?.currentUserCount ?? 1);
+  const includedUserLimit = session.billing?.includedUsers ?? null;
   const recentVaultDocuments = store.vault.slice(0, 4);
   const duplicateInsights = buildDuplicateInsights([...store.costs, ...store.sales]);
   const healthIssues = buildWorkspaceHealthIssues(store);
@@ -2393,6 +2395,8 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
           limit={monthlyDocumentLimit}
           remaining={remainingDocumentAllowance}
           percentage={usagePercentage}
+          userCount={workspaceUserCount}
+          userLimit={includedUserLimit}
         />
         <MetricCard
           label="Duplicate review"
@@ -7464,6 +7468,8 @@ function UsageAllowanceCard(props: {
   limit: number | null;
   remaining: number | null;
   percentage: number;
+  userCount: number;
+  userLimit: number | null;
 }) {
   const lowAllowance = props.remaining !== null && props.limit !== null
     && props.remaining <= Math.max(10, Math.ceil(props.limit * 0.1));
@@ -7473,6 +7479,9 @@ function UsageAllowanceCard(props: {
     : allowanceUsed
       ? `Monthly allowance used: ${props.usage.toLocaleString()} of ${props.limit.toLocaleString()}`
       : `${props.usage.toLocaleString()} of ${props.limit.toLocaleString()} documents used this month`;
+  const userDetail = props.userLimit === null
+    ? `${props.userCount.toLocaleString()} workspace user${props.userCount === 1 ? "" : "s"}`
+    : `${props.userCount.toLocaleString()} of ${props.userLimit.toLocaleString()} users in workspace`;
 
   return (
     <Link
@@ -7483,6 +7492,7 @@ function UsageAllowanceCard(props: {
       <span>Usage allowance left</span>
       <strong>{props.remaining === null ? "Unlimited" : props.remaining.toLocaleString()}</strong>
       <p>{detail}</p>
+      <small className="usage-user-count">{userDetail}</small>
       {props.limit !== null ? (
         <div className="usage-allowance-track" aria-hidden="true">
           <span style={{ width: `${props.percentage}%` }} />

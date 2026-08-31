@@ -2202,6 +2202,11 @@ input {
   font-weight: 700;
 }
 
+.usage-allowance-card .usage-user-count {
+  margin-top: 5px;
+  color: #275d84;
+}
+
 .usage-allowance-low {
   border-color: #e4a52f;
   background: #fff9e9;
