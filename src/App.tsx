@@ -152,7 +152,7 @@ const forgotPasswordPagePath = "/forgot-password";
 const resetPasswordPagePath = "/reset-password";
 const termsPagePath = "/terms";
 const accountDeletionPagePath = "/account-deletion";
-const termsVersion = "2026-07-26";
+const termsVersion = "2026-08-31";
 const cookieConsentStorageKey = "exdox-cookie-consent-v1";
 
 type CookieConsentChoice = "essential_only" | "all_cookies";
@@ -8873,7 +8873,7 @@ function TermsSection() {
   return (
     <PolicyLayout
       title="Exdox Terms and Conditions"
-      updatedOn="26 July 2026"
+      updatedOn="31 August 2026"
       sections={[
         {
           heading: "Who these terms apply to",
@@ -8897,9 +8897,19 @@ function TermsSection() {
           heading: "Billing, renewal, and cancellation",
           body: (
             <>
-              <p>Paid subscriptions renew automatically on the billing cycle shown at checkout unless canceled in time.</p>
+              <p>Paid subscriptions renew automatically on the billing cycle shown at checkout unless cancelled before the next renewal date.</p>
               <p>You can manage or cancel your trial or subscription from the billing area of the Exdox website, including the linked billing portal where available. If you cancel during the trial, the subscription should not renew into a paid billing period.</p>
-              <p>Fees already charged are generally non-refundable except where required by law or where Exdox agrees otherwise in writing.</p>
+              <p>Cancellation stops future renewal charges. Unless we tell you otherwise, access continues until the end of the current trial or paid billing period.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Accidental renewal and refunds",
+          body: (
+            <>
+              <p>If you believe your first paid charge after a free trial was accidental, contact us within 14 calendar days of that charge. We will review the request and will normally provide a refund where the workspace has had no material use after the trial converted.</p>
+              <p>For later renewals or where the service has been materially used, refunds are considered case by case. Cancelling a subscription does not automatically refund charges already taken.</p>
+              <p>Nothing in this policy limits any cancellation or refund right you have under applicable law. If you are signing up as a consumer, your statutory rights apply in addition to these terms.</p>
             </>
           ),
         },
