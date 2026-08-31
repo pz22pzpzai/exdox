@@ -1508,7 +1508,6 @@ function DashboardShell(props: {
   const [confirmationResendBusy, setConfirmationResendBusy] = useState(false);
   const [confirmationResendFeedback, setConfirmationResendFeedback] = useState<string | null>(null);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
-  const [markingPaymentsPaid, setMarkingPaymentsPaid] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
@@ -1656,26 +1655,11 @@ function DashboardShell(props: {
                   <button
                     className="icon-button action-count-button"
                     type="button"
-                    disabled={markingPaymentsPaid}
-                    aria-label={`Mark ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} as paid`}
-                    title={`Mark ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} as paid`}
-                    onClick={async () => {
-                      if (!window.confirm(`Mark ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} as paid? This completes the current payment batch.`)) {
-                        return;
-                      }
-                      setMarkingPaymentsPaid(true);
-                      try {
-                        await props.onReimbursementsMarkedPaid();
-                      } catch (paymentError) {
-                        window.alert(paymentError instanceof Error ? paymentError.message : "Could not mark the reimbursement payment batch as paid.");
-                      } finally {
-                        setMarkingPaymentsPaid(false);
-                      }
-                    }}
+                    aria-label={`Review ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} before marking them paid`}
+                    title={`Review ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} before marking them paid`}
+                    onClick={() => navigate(`/costs?status=${encodeURIComponent("Payment processing")}`)}
                   >
-                    {markingPaymentsPaid
-                      ? "Marking payment..."
-                      : `Mark ${paymentProcessingCount} payment${paymentProcessingCount === 1 ? "" : "s"} paid`}
+                    {`${paymentProcessingCount} payment${paymentProcessingCount === 1 ? "" : "s"} to mark paid`}
                   </button>
                 ) : actionBreakdown.length ? (
                   <button
@@ -4148,7 +4132,9 @@ function InboxPage({
                 }
               }}
             >
-              {markingPaymentsPaid ? "Marking paid..." : `Mark ${paymentProcessingCount} as paid`}
+              {markingPaymentsPaid
+                ? "Marking paid..."
+                : `Mark ${paymentProcessingCount} payment${paymentProcessingCount === 1 ? "" : "s"} as paid`}
             </button>
           ) : null}
         </div>
