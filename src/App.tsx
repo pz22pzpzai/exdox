@@ -1316,14 +1316,20 @@ export function App() {
                 }));
               }}
               onReimbursementsMarkedPaid={async () => {
-                const result = await markEmployeeReimbursementsPaid(session.token);
-                const costs = await listReceipts(session.token, "cost");
-                setStore((current) => ({ ...current, costs }));
+                const [result, costs, claims] = await Promise.all([
+                  markEmployeeReimbursementsPaid(session.token),
+                  listReceipts(session.token, "cost"),
+                  listClaims(session.token),
+                ]);
+                setStore((current) => ({ ...current, costs, claims }));
                 return result.paidCount;
               }}
               onReimbursementsExported={async () => {
-                const costs = await listReceipts(session.token, "cost");
-                setStore((current) => ({ ...current, costs }));
+                const [costs, claims] = await Promise.all([
+                  listReceipts(session.token, "cost"),
+                  listClaims(session.token),
+                ]);
+                setStore((current) => ({ ...current, costs, claims }));
               }}
               onReceiptDelete={async (id) => {
                 await deleteReceipt(session.token, id);
@@ -1502,6 +1508,7 @@ function DashboardShell(props: {
   const [confirmationResendBusy, setConfirmationResendBusy] = useState(false);
   const [confirmationResendFeedback, setConfirmationResendFeedback] = useState<string | null>(null);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const [markingPaymentsPaid, setMarkingPaymentsPaid] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
@@ -1510,6 +1517,12 @@ function DashboardShell(props: {
   const salesReviewCount = props.store.sales.filter((receipt) => countsAsManualReview(receipt)).length;
   const vaultAttentionCount = props.store.vault.filter((receipt) => receipt.needsReview || receipt.status === "Processing").length;
   const pendingClaimCount = pendingClaimsNeedingAction(props.store.claims).length;
+  const paymentProcessingCount = props.store.costs.filter(
+    (receipt) =>
+      receipt.paymentMethod === "cash_personal" &&
+      receipt.status === "Payment processing" &&
+      !receipt.needsReview,
+  ).length;
   const openBankMatchCount = props.store.reconciliation.filter((line) => line.status === "Open").length;
   const actionBreakdown = [
     { count: costReviewCount, label: "cost review" },
@@ -1639,7 +1652,32 @@ function DashboardShell(props: {
                     </option>
                   ))}
                 </select>
-                {actionBreakdown.length ? (
+                {paymentProcessingCount > 0 ? (
+                  <button
+                    className="icon-button action-count-button"
+                    type="button"
+                    disabled={markingPaymentsPaid}
+                    aria-label={`Mark ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} as paid`}
+                    title={`Mark ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} as paid`}
+                    onClick={async () => {
+                      if (!window.confirm(`Mark ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} as paid? This completes the current payment batch.`)) {
+                        return;
+                      }
+                      setMarkingPaymentsPaid(true);
+                      try {
+                        await props.onReimbursementsMarkedPaid();
+                      } catch (paymentError) {
+                        window.alert(paymentError instanceof Error ? paymentError.message : "Could not mark the reimbursement payment batch as paid.");
+                      } finally {
+                        setMarkingPaymentsPaid(false);
+                      }
+                    }}
+                  >
+                    {markingPaymentsPaid
+                      ? "Marking payment..."
+                      : `Mark ${paymentProcessingCount} payment${paymentProcessingCount === 1 ? "" : "s"} paid`}
+                  </button>
+                ) : actionBreakdown.length ? (
                   <button
                     className="icon-button action-count-button"
                     type="button"
