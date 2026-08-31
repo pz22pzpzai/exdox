@@ -1651,17 +1651,7 @@ function DashboardShell(props: {
                     </option>
                   ))}
                 </select>
-                {paymentProcessingCount > 0 ? (
-                  <button
-                    className="icon-button action-count-button"
-                    type="button"
-                    aria-label={`Review ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} before marking them paid`}
-                    title={`Review ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} before marking them paid`}
-                    onClick={() => navigate(`/costs?status=${encodeURIComponent("Payment processing")}`)}
-                  >
-                    {`${paymentProcessingCount} payment${paymentProcessingCount === 1 ? "" : "s"} to mark paid`}
-                  </button>
-                ) : actionBreakdown.length ? (
+                {actionBreakdown.length ? (
                   <button
                     className="icon-button action-count-button"
                     type="button"
@@ -1676,6 +1666,17 @@ function DashboardShell(props: {
                     {actionLabel}
                   </span>
                 )}
+                {paymentProcessingCount > 0 ? (
+                  <button
+                    className="icon-button action-count-button"
+                    type="button"
+                    aria-label={`Review ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} before marking them paid`}
+                    title={`Review ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} before marking them paid`}
+                    onClick={() => navigate(`/costs?status=${encodeURIComponent("Payment processing")}`)}
+                  >
+                    {`${paymentProcessingCount} payment${paymentProcessingCount === 1 ? "" : "s"} to mark paid`}
+                  </button>
+                ) : null}
               </>
             ) : (
               <span className="employee-workspace-label">
@@ -3882,6 +3883,7 @@ function InboxPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [markingPaymentsPaid, setMarkingPaymentsPaid] = useState(false);
   const [filtersReady, setFiltersReady] = useState(false);
+  const hydratedSearchRef = useRef<string | null>(null);
   const deferredQuery = useDeferredValue(query);
   const vatTrackingEnabled = isVatTrackingEnabled(settings);
 
@@ -3928,11 +3930,18 @@ function InboxPage({
         ? nextSort
         : "newest",
     );
+    // Do not immediately overwrite a route filter with the previous local filter state.
+    hydratedSearchRef.current = location.search;
     setFiltersReady(true);
   }, [location.search, showEmployeeFilter]);
 
   useEffect(() => {
     if (!filtersReady) {
+      return;
+    }
+
+    if (hydratedSearchRef.current === location.search) {
+      hydratedSearchRef.current = null;
       return;
     }
 
@@ -4116,7 +4125,7 @@ function InboxPage({
           >
             Export CSV
           </button>
-          {basePath === "/costs" && paymentProcessingCount && onReimbursementsMarkedPaid ? (
+          {basePath === "/costs" && statusFilter === "Payment processing" && paymentProcessingCount && onReimbursementsMarkedPaid ? (
             <button
               className="primary-action"
               type="button"
