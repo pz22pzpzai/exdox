@@ -5155,7 +5155,15 @@ function ClaimsPage({
   }, [filtersReady, location.pathname, location.search, navigate, sortOrder, statusFilter]);
 
   const filteredClaims = claims
-    .filter((claim) => statusFilter === "all" || claim.status === statusFilter)
+    .filter((claim) => {
+      if (statusFilter === "all") {
+        return true;
+      }
+      if (statusFilter === "pending") {
+        return claim.status === "pending" && claim.documentCount > 0;
+      }
+      return claim.status === statusFilter;
+    })
     .sort((left, right) => compareClaimRecords(left, right, sortOrder));
   const exportEmployees = Array.from(
     new Map(
