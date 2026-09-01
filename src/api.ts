@@ -595,7 +595,7 @@ export async function uploadDocuments(
       );
       formData.set(
         "payment_method",
-        workspaceContext === "sales" ? "bank_transfer" : workspaceContext === "vault" ? "not_applicable" : "business_card",
+        workspaceContext === "sales" ? "bank_transfer" : workspaceContext === "vault" ? "not_applicable" : "cash_personal",
       );
       const response = await fetch(`${API_BASE_URL}/api/v1/expenses/process`, {
         method: "POST",

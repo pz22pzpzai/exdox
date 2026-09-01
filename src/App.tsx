@@ -6096,11 +6096,14 @@ function RulesPage(props: {
           <h2>{draft.id ? "Edit rule" : "Create new rule"}</h2>
           <span>Automation layer</span>
         </div>
+        <p className="panel-copy">
+          Company cards: create an active rule with the final four card digits in the match field and set Payment Method to Company card. Exdox checks that reference against the receipt text after OCR and keeps matching purchases out of expense claims.
+        </p>
         {error ? <div className="error-banner">{error}</div> : null}
         {feedback ? <div className="success-banner">{feedback}</div> : null}
         <div className="form-grid">
           <label>
-            IF Supplier Name CONTAINS
+            IF Supplier Name or Company Card Reference CONTAINS
             <input value={draft.supplierMatchText} onChange={(event) => setDraft({ ...draft, supplierMatchText: event.target.value })} />
           </label>
           <label>
@@ -6149,7 +6152,7 @@ function RulesPage(props: {
             disabled={saving}
             onClick={async () => {
               if (!draft.supplierMatchText.trim() || !draft.category.trim()) {
-                setError("Supplier match text and category are required.");
+                setError("Match text and category are required.");
                 setFeedback(null);
                 return;
               }
