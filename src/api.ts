@@ -677,7 +677,7 @@ export function buildFallbackSession(token: string, user: SessionUser): SessionS
     allowedWebRoutes:
       user.role === "Business_Admin"
         ? ["/overview", "/costs", "/sales", "/vault", "/claims", "/rules", "/settings", "/billing"]
-        : ["/dropbox", "/claims"],
+        : ["/dropbox", "/claims", "/employee/sales", "/employee/vault", "/employee/reports"],
     billing:
       user.role === "Business_Admin"
         ? {

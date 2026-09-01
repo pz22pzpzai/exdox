@@ -130,6 +130,7 @@ const privateAppRoutePrefixes = [
   "/requisitions",
   "/billing",
   "/dropbox",
+  "/employee",
   "/bank-callback",
 ];
 
@@ -477,6 +478,15 @@ function workspaceShellKicker(pathname: string, businessAdmin: boolean) {
 }
 
 function employeeRouteTitle(pathname: string) {
+  if (pathname.startsWith("/employee/sales")) {
+    return "My Sales";
+  }
+  if (pathname.startsWith("/employee/vault")) {
+    return "My Vault";
+  }
+  if (pathname.startsWith("/employee/reports")) {
+    return "My Reports";
+  }
   if (pathname.startsWith("/claims")) {
     return "My Claims";
   }
@@ -945,9 +955,9 @@ export function App() {
       throw error;
     });
     const businessAdmin = isBusinessAdmin(nextSession);
-    const canOpenCosts = isRouteAllowed(nextSession, "/costs");
-    const canOpenSales = isRouteAllowed(nextSession, "/sales");
-    const canOpenVault = isRouteAllowed(nextSession, "/vault");
+    const canOpenCosts = isRouteAllowed(nextSession, "/costs") || (!businessAdmin && isRouteAllowed(nextSession, "/dropbox"));
+    const canOpenSales = isRouteAllowed(nextSession, "/sales") || (!businessAdmin && isRouteAllowed(nextSession, "/employee/sales"));
+    const canOpenVault = isRouteAllowed(nextSession, "/vault") || (!businessAdmin && isRouteAllowed(nextSession, "/employee/vault"));
     const canOpenClaims = isRouteAllowed(nextSession, "/claims");
     const canOpenRules = isRouteAllowed(nextSession, "/rules");
     const canOpenReconciliation = isRouteAllowed(nextSession, "/reconciliation");
@@ -955,8 +965,8 @@ export function App() {
     const sessionToken = nextSession.token;
     const [costs, sales, vault, claims, rules, reconciliation, settings] = await Promise.all([
       canOpenCosts ? listReceipts(sessionToken, "cost") : Promise.resolve([]),
-      businessAdmin && canOpenSales ? listReceipts(sessionToken, "sales") : Promise.resolve([]),
-      businessAdmin && canOpenVault ? listReceipts(sessionToken, "vault") : Promise.resolve([]),
+      canOpenSales ? listReceipts(sessionToken, "sales") : Promise.resolve([]),
+      canOpenVault ? listReceipts(sessionToken, "vault") : Promise.resolve([]),
       canOpenClaims ? listClaims(sessionToken).catch(() => []) : Promise.resolve([]),
       businessAdmin && canOpenRules ? listRules(sessionToken).catch(() => []) : Promise.resolve([]),
       businessAdmin && canOpenReconciliation ? listReconciliation(sessionToken).catch(() => []) : Promise.resolve([]),
@@ -1541,8 +1551,11 @@ function DashboardShell(props: {
         locked: !isRouteAllowed(props.session, item.to),
       }))
     : [
-        { to: "/dropbox", label: "My Expenses", icon: "costs" },
+        { to: "/dropbox", label: "My Costs", icon: "costs" },
+        ...(isRouteAllowed(props.session, "/employee/sales") ? [{ to: "/employee/sales", label: "My Sales", icon: "sales" }] : []),
+        ...(isRouteAllowed(props.session, "/employee/vault") ? [{ to: "/employee/vault", label: "My Vault", icon: "claims" }] : []),
         { to: "/claims", label: "My Claims", icon: "claims" },
+        { to: "/employee/reports", label: "My Reports", icon: "analytics" },
         { to: "/contact", label: "Contact", icon: "contact" },
       ];
   const defaultRoute = getDefaultRoute(props.session);
@@ -1731,7 +1744,7 @@ function DashboardShell(props: {
                   }}
                 />
               </>
-            ) : <span className="employee-read-only-badge">Web view only</span>}
+            ) : <span className="employee-read-only-badge">Personal workspace</span>}
           </div>
         </header>
 
@@ -1976,13 +1989,20 @@ function DashboardShell(props: {
             <>
               <Route
                 path="/dropbox"
-                element={
-                  <EmployeeDropboxPage
-                    receipts={props.store.costs}
-                    settings={props.store.settings}
-                  />
-                }
+                element={<EmployeeDocumentsPage title="My costs" description="Upload and view your own receipts. Personal expenses can be added to reimbursement claims after they are approved." records={props.store.costs} workspaceContext="cost" settings={props.store.settings} onUpload={(files) => props.onUpload("cost", files)} uploadBusy={uploadBusy} />}
               />
+              {isRouteAllowed(props.session, "/employee/sales") ? (
+                <Route
+                  path="/employee/sales"
+                  element={<EmployeeDocumentsPage title="My sales" description="Upload and view your own sales documents. Company-wide sales review remains with your finance team." records={props.store.sales} workspaceContext="sales" settings={props.store.settings} onUpload={(files) => props.onUpload("sales", files)} uploadBusy={uploadBusy} />}
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/employee/vault") ? (
+                <Route
+                  path="/employee/vault"
+                  element={<EmployeeDocumentsPage title="My vault" description="Store and retrieve your own supporting documents in the secure company vault." records={props.store.vault} workspaceContext="vault" settings={props.store.settings} onUpload={(files) => props.onUpload("vault", files)} uploadBusy={uploadBusy} />}
+                />
+              ) : null}
               <Route
                 path="/claims"
                 element={<ClaimsPage session={props.session} claims={props.store.claims} onCreateClaim={props.onClaimCreate} employeeMode />}
@@ -1999,7 +2019,10 @@ function DashboardShell(props: {
                 }
               />
               <Route path="/contact" element={<WorkspaceContactPage session={props.session} />} />
-              <Route path="/dropbox/:id" element={<Navigate to="/dropbox" replace />} />
+              <Route path="/employee/reports" element={<EmployeeReportsPage costs={props.store.costs} sales={props.store.sales} vault={props.store.vault} claims={props.store.claims} settings={props.store.settings} />} />
+              <Route path="/dropbox/:id" element={<EmployeeReceiptDetailPage fallbackRecords={[...props.store.costs, ...props.store.sales, ...props.store.vault]} loadReceipt={props.loadReceipt} />} />
+              <Route path="/employee/sales/:id" element={<EmployeeReceiptDetailPage fallbackRecords={[...props.store.costs, ...props.store.sales, ...props.store.vault]} loadReceipt={props.loadReceipt} />} />
+              <Route path="/employee/vault/:id" element={<EmployeeReceiptDetailPage fallbackRecords={[...props.store.costs, ...props.store.sales, ...props.store.vault]} loadReceipt={props.loadReceipt} />} />
               <Route path="*" element={<Navigate to={defaultRoute} replace />} />
             </>
           )}
@@ -5172,6 +5195,8 @@ function ClaimsPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ClaimRecord["status"] | "all">("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
   const [filtersReady, setFiltersReady] = useState(false);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
@@ -5182,6 +5207,8 @@ function ClaimsPage({
     const params = new URLSearchParams(location.search);
     const nextStatus = params.get("status");
     const nextSort = params.get("sort");
+    const nextStart = params.get("from") ?? "";
+    const nextEnd = params.get("to") ?? "";
 
     setStatusFilter(
       nextStatus === "pending" || nextStatus === "approved" || nextStatus === "paid" || nextStatus === "rejected"
@@ -5193,6 +5220,8 @@ function ClaimsPage({
         ? nextSort
         : "newest",
     );
+    setStartDate(nextStart);
+    setEndDate(nextEnd);
     setFiltersReady(true);
   }, [location.search]);
 
@@ -5203,19 +5232,19 @@ function ClaimsPage({
 
     syncPageSearchParams(location.pathname, location.search, navigate, {
       status: statusFilter !== "all" ? statusFilter : null,
+      from: startDate || null,
+      to: endDate || null,
       sort: sortOrder !== "newest" ? sortOrder : null,
     });
-  }, [filtersReady, location.pathname, location.search, navigate, sortOrder, statusFilter]);
+  }, [endDate, filtersReady, location.pathname, location.search, navigate, sortOrder, startDate, statusFilter]);
 
   const filteredClaims = claims
     .filter((claim) => {
-      if (statusFilter === "all") {
-        return true;
-      }
-      if (statusFilter === "pending") {
-        return claim.status === "pending" && claim.documentCount > 0;
-      }
-      return claim.status === statusFilter;
+      const matchesStatus = statusFilter === "all"
+        || (statusFilter === "pending" ? claim.status === "pending" && claim.documentCount > 0 : claim.status === statusFilter);
+      return matchesStatus
+        && (!startDate || claim.createdAt.slice(0, 10) >= startDate)
+        && (!endDate || claim.createdAt.slice(0, 10) <= endDate);
     })
     .sort((left, right) => compareClaimRecords(left, right, sortOrder));
   const exportEmployees = Array.from(
@@ -5266,6 +5295,14 @@ function ClaimsPage({
             <option value="highest_total">Highest total</option>
             <option value="lowest_total">Lowest total</option>
           </select>
+          <label className="compact-date-filter">
+            From
+            <input type="date" value={startDate} max={endDate || undefined} onChange={(event) => setStartDate(event.target.value)} />
+          </label>
+          <label className="compact-date-filter">
+            To
+            <input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} />
+          </label>
           <button
             className="secondary-action"
             type="button"
@@ -5428,14 +5465,21 @@ function ClaimsPage({
   );
 }
 
-function EmployeeDropboxPage(props: {
-  receipts: ReceiptRecord[];
+function EmployeeDocumentsPage(props: {
+  title: string;
+  description: string;
+  records: ReceiptRecord[];
+  workspaceContext: "cost" | "sales" | "vault";
   settings: OrganisationSettings | null;
+  uploadBusy: boolean;
+  onUpload: (files: File[]) => Promise<void>;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
   const [filtersReady, setFiltersReady] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -5447,9 +5491,13 @@ function EmployeeDropboxPage(props: {
     const nextSearch = params.get("search") ?? "";
     const nextStatus = params.get("status");
     const nextSort = params.get("sort");
+    const nextStart = params.get("from") ?? "";
+    const nextEnd = params.get("to") ?? "";
 
     setQuery(nextSearch);
-    setStatusFilter(nextStatus === "Processing" || nextStatus === "Review" || nextStatus === "Ready" || nextStatus === "Published" ? nextStatus : "All");
+    setStatusFilter(nextStatus === "Processing" || nextStatus === "Review" || nextStatus === "Ready" || nextStatus === "Published" || nextStatus === "Payment processing" || nextStatus === "Paid" ? nextStatus : "All");
+    setStartDate(nextStart);
+    setEndDate(nextEnd);
     setSortOrder(
       nextSort === "oldest" || nextSort === "highest_total" || nextSort === "lowest_total"
         ? nextSort
@@ -5466,29 +5514,35 @@ function EmployeeDropboxPage(props: {
     syncPageSearchParams(location.pathname, location.search, navigate, {
       search: query.trim() || null,
       status: statusFilter !== "All" ? statusFilter : null,
+      from: startDate || null,
+      to: endDate || null,
       sort: sortOrder !== "newest" ? sortOrder : null,
     });
-  }, [filtersReady, location.pathname, location.search, navigate, query, sortOrder, statusFilter]);
+  }, [endDate, filtersReady, location.pathname, location.search, navigate, query, sortOrder, startDate, statusFilter]);
 
   const search = deferredQuery.trim().toLowerCase();
-  const filteredReceipts = props.receipts.filter((receipt) => {
+  const filteredReceipts = props.records.filter((receipt) => {
     const matchesSearch =
       !search ||
       `${receipt.vendorName ?? ""} ${receipt.sourceFilename} ${receipt.category ?? ""} ${receipt.rawTextSummary ?? ""}`
         .toLowerCase()
         .includes(search);
     const matchesStatus = statusFilter === "All" || receipt.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const documentDate = receiptDocumentDate(receipt);
+    const matchesStart = !startDate || documentDate >= startDate;
+    const matchesEnd = !endDate || documentDate <= endDate;
+    return matchesSearch && matchesStatus && matchesStart && matchesEnd;
   }).sort((left, right) => compareInboxRecords(left, right, sortOrder === "highest_total" ? "highest_total" : sortOrder === "lowest_total" ? "lowest_total" : sortOrder));
+
+  const documentLabel = props.workspaceContext === "sales" ? "sales documents" : props.workspaceContext === "vault" ? "vault documents" : "expenses";
 
   return (
     <div className="stack-page">
       <section className="page-hero">
         <div>
-          <h2>My expenses</h2>
+          <h2>{props.title}</h2>
           <p>
-            View the expenses you submitted through the Exdox app, follow their review status, and download your personal history.
-            Business settings, approvals, billing, and other employees' records are not available in this view.
+            {props.description} Only you and authorised business admins can access these records.
           </p>
         </div>
         <div className="filter-row">
@@ -5510,7 +5564,17 @@ function EmployeeDropboxPage(props: {
             <option value="Review">Review</option>
             <option value="Ready">Ready</option>
             <option value="Published">Published</option>
+            <option value="Payment processing">Payment processing</option>
+            <option value="Paid">Paid</option>
           </select>
+          <label className="compact-date-filter">
+            From
+            <input type="date" value={startDate} max={endDate || undefined} onChange={(event) => setStartDate(event.target.value)} />
+          </label>
+          <label className="compact-date-filter">
+            To
+            <input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} />
+          </label>
           <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
@@ -5521,18 +5585,23 @@ function EmployeeDropboxPage(props: {
             className="secondary-action"
             type="button"
             disabled={!filteredReceipts.length}
-            title={filteredReceipts.length ? "Download your personal expenses as CSV" : "There are no expenses in the current view to export"}
+            title={filteredReceipts.length ? `Download your personal ${documentLabel} as CSV` : `There are no ${documentLabel} in the current view to export`}
             onClick={async () => {
               if (await downloadCsv(
-                `my-expenses-${new Date().toISOString().slice(0, 10)}.csv`,
+                `my-${props.workspaceContext}-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildInboxExportRows(filteredReceipts, props.settings),
               )) {
-                setFeedback("Your personal expenses CSV was downloaded.");
+                setFeedback(`Your personal ${documentLabel} CSV was downloaded.`);
               }
             }}
           >
-            Export my expenses CSV
+            Export my {documentLabel} CSV
           </button>
+          <UploadButton
+            busy={props.uploadBusy}
+            label={`Upload ${props.workspaceContext === "cost" ? "costs" : props.workspaceContext === "sales" ? "sales" : "vault files"}`}
+            onFiles={props.onUpload}
+          />
         </div>
       </section>
       {feedback ? <div className="success-banner" role="status">{feedback}</div> : null}
@@ -5542,32 +5611,200 @@ function EmployeeDropboxPage(props: {
             <thead>
               <tr>
                 <th>Status</th>
-                <th>Upload Date</th>
+                <th>Document date</th>
                 <th>Supplier</th>
                 {vatTrackingEnabled ? <th>Net</th> : null}
                 {vatTrackingEnabled ? <th>VAT</th> : null}
                 <th>{vatTrackingEnabled ? "Gross" : "Total"}</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {filteredReceipts.map((receipt) => (
                 <tr key={receipt.id}>
                   <td><StatusPill status={receipt.status} /></td>
-                  <td>{receipt.createdAt.slice(0, 10)}</td>
+                  <td>{receiptDocumentDate(receipt) || receipt.createdAt.slice(0, 10)}</td>
                   <td>{receipt.vendorName ?? receipt.sourceFilename}</td>
                   {vatTrackingEnabled ? <td>{currency(receipt.netAmount)}</td> : null}
                   {vatTrackingEnabled ? <td>{currency(receipt.vatAmount)}</td> : null}
                   <td>{currency(receiptGrossAmount(receipt))}</td>
+                  <td><Link className="secondary-action link-action" to={employeeReceiptPath(receipt)}>Open</Link></td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
           <div className="empty-inline-state">
-            <strong>{query.trim() || statusFilter !== "All" ? "No employee receipts match the current filters." : "No employee receipts uploaded yet."}</strong>
-            <p>{query.trim() || statusFilter !== "All" ? "Change the search or status filter to see more receipts." : "Receipts submitted through the Exdox app will appear here."}</p>
+            <strong>{query.trim() || statusFilter !== "All" || startDate || endDate ? `No ${documentLabel} match the current filters.` : `No ${documentLabel} uploaded yet.`}</strong>
+            <p>{query.trim() || statusFilter !== "All" || startDate || endDate ? "Change the search, status, or date range to see more records." : "Files submitted through Exdox will appear here."}</p>
           </div>
         )}
+      </section>
+    </div>
+  );
+}
+
+function employeeReceiptPath(receipt: ReceiptRecord) {
+  if (receipt.workspaceContext === "sales") {
+    return `/employee/sales/${receipt.id}`;
+  }
+  if (receipt.workspaceContext === "vault") {
+    return `/employee/vault/${receipt.id}`;
+  }
+  return `/dropbox/${receipt.id}`;
+}
+
+function EmployeeReceiptDetailPage(props: {
+  fallbackRecords: ReceiptRecord[];
+  loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null; downloadUrl: string | null }>;
+}) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [receipt, setReceipt] = useState<ReceiptRecord | null>(props.fallbackRecords.find((item) => item.id === Number(id)) ?? null);
+  const [assetUrl, setAssetUrl] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    if (!id) {
+      return;
+    }
+    props.loadReceipt(Number(id))
+      .then((payload) => {
+        setReceipt(payload.receipt);
+        setAssetUrl(payload.assetUrl);
+        setDownloadUrl(payload.downloadUrl);
+        setError(null);
+      })
+      .catch((loadError: Error) => {
+        setReceipt(null);
+        setError(loadError.message || "This receipt is not available.");
+      });
+  }, [id, props]);
+
+  if (!receipt) {
+    return (
+      <div className="empty-state">
+        <strong>{error ?? "Loading receipt..."}</strong>
+        <button className="secondary-action" type="button" onClick={() => navigate(-1)}>Back to my records</button>
+      </div>
+    );
+  }
+
+  const previewAsImage = canPreviewReceiptAsImage(receipt);
+  const fields = [
+    ["Status", receipt.status],
+    ["Document type", documentTypeLabel(receipt.documentType)],
+    ["Supplier", receipt.vendorName ?? "Not available"],
+    ["Document date", receiptDocumentDate(receipt) || "Not available"],
+    ["Category", receipt.category ?? "Not available"],
+    ["Reference", receipt.invoiceNumber ?? "Not available"],
+    ["Currency", receiptCurrency(receipt)],
+    ["Total", currency(receiptGrossAmount(receipt), receiptCurrency(receipt))],
+    ["Payment method", analyticsPaymentMethodLabel(receipt.paymentMethod)],
+    ["Claim", receipt.claimId ? `Attached to claim #${receipt.claimId}` : "Not attached to a claim"],
+  ];
+
+  return (
+    <div className="stack-page">
+      <section className="page-hero">
+        <div>
+          <h2>{receipt.vendorName ?? receipt.sourceFilename}</h2>
+          <p>Your personal document detail. This page is read-only; approvals and company controls remain with authorised business admins.</p>
+        </div>
+        <div className="toolbar">
+          <button className="secondary-action" type="button" onClick={() => navigate(-1)}>Back</button>
+          {assetUrl ? <a className="secondary-action link-action" href={assetUrl} target="_blank" rel="noreferrer">Open source file</a> : null}
+          {downloadUrl ? (
+            <button
+              className="secondary-action"
+              type="button"
+              disabled={downloading}
+              onClick={async () => {
+                setDownloading(true);
+                try {
+                  await downloadFileFromUrl(downloadUrl, receipt.sourceFilename);
+                } finally {
+                  setDownloading(false);
+                }
+              }}
+            >
+              {downloading ? "Downloading..." : "Download file"}
+            </button>
+          ) : null}
+        </div>
+      </section>
+      {error ? <div className="error-banner">{error}</div> : null}
+      <div className="workspace-split">
+        <section className="panel viewer-panel">
+          <div className="panel-heading"><h2>Receipt image</h2><span>{receipt.sourceFilename}</span></div>
+          {assetUrl ? (
+            previewAsImage ? <img className="document-image" src={assetUrl} alt={receipt.sourceFilename} /> : <iframe className="document-frame" src={assetUrl} title={receipt.sourceFilename} />
+          ) : (
+            <div className="document-placeholder"><strong>Document preview unavailable</strong><p>The record is available, but its stored file cannot currently be previewed.</p></div>
+          )}
+        </section>
+        <section className="panel editor-panel">
+          <div className="panel-heading"><h2>Item details</h2><span>Personal record</span></div>
+          <dl className="detail-list">
+            {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          </dl>
+          {receipt.description ? <section className="workspace-detail-section"><h2>Description</h2><p>{receipt.description}</p></section> : null}
+          {receipt.rawTextSummary ? <section className="workspace-detail-section"><h2>Extraction notes</h2><p>{receipt.rawTextSummary}</p></section> : null}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function EmployeeReportsPage(props: {
+  costs: ReceiptRecord[];
+  sales: ReceiptRecord[];
+  vault: ReceiptRecord[];
+  claims: ClaimRecord[];
+  settings: OrganisationSettings | null;
+}) {
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [workspaceFilter, setWorkspaceFilter] = useState<"all" | ReceiptRecord["workspaceContext"]>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | InboxStatus>("all");
+  const records = [...props.costs, ...props.sales, ...props.vault].filter((record) => {
+    const documentDate = receiptDocumentDate(record);
+    return (workspaceFilter === "all" || record.workspaceContext === workspaceFilter)
+      && (statusFilter === "all" || record.status === statusFilter)
+      && (!startDate || documentDate >= startDate)
+      && (!endDate || documentDate <= endDate);
+  }).sort((left, right) => compareInboxRecords(left, right, "newest"));
+  const paidClaims = props.claims.filter((claim) => claim.status === "paid");
+
+  return (
+    <div className="stack-page">
+      <section className="page-hero">
+        <div>
+          <h2>My reports</h2>
+          <p>Review your own uploaded documents and reimbursement history. Company reporting and financial analytics are not shown here.</p>
+        </div>
+        <div className="filter-row">
+          <select value={workspaceFilter} onChange={(event) => setWorkspaceFilter(event.target.value as typeof workspaceFilter)}>
+            <option value="all">All document areas</option><option value="cost">Costs</option><option value="sales">Sales</option><option value="vault">Vault</option>
+          </select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}>
+            <option value="all">All statuses</option><option value="Processing">Processing</option><option value="Review">Review</option><option value="Ready">Approved</option><option value="Published">Published</option><option value="Payment processing">Payment processing</option><option value="Paid">Paid</option>
+          </select>
+          <label className="compact-date-filter">From<input type="date" value={startDate} max={endDate || undefined} onChange={(event) => setStartDate(event.target.value)} /></label>
+          <label className="compact-date-filter">To<input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} /></label>
+          <button className="secondary-action" type="button" disabled={!records.length} onClick={() => downloadCsv(`my-reports-${new Date().toISOString().slice(0, 10)}.csv`, buildInboxExportRows(records, props.settings))}>Download CSV</button>
+        </div>
+      </section>
+      <section className="metrics-grid">
+        <article className="metric-card"><span>Documents in view</span><strong>{records.length}</strong></article>
+        <article className="metric-card"><span>Personal spend in view</span><strong>{currency(sumGross(records.filter((record) => record.workspaceContext === "cost" && record.paymentMethod === "cash_personal")))}</strong></article>
+        <article className="metric-card"><span>Paid reimbursement claims</span><strong>{paidClaims.length}</strong></article>
+      </section>
+      <section className="panel table-panel">
+        <div className="panel-heading"><h2>Document history</h2><span>{records.length} records</span></div>
+        {records.length ? <table className="data-table"><thead><tr><th>Area</th><th>Document date</th><th>Supplier</th><th>Status</th><th>Total</th><th>Action</th></tr></thead><tbody>{records.map((record) => <tr key={`${record.workspaceContext}-${record.id}`}><td>{record.workspaceContext === "cost" ? "Costs" : record.workspaceContext === "sales" ? "Sales" : "Vault"}</td><td>{receiptDocumentDate(record) || record.createdAt.slice(0, 10)}</td><td>{record.vendorName ?? record.sourceFilename}</td><td><StatusPill status={record.status} /></td><td>{currency(receiptGrossAmount(record), receiptCurrency(record))}</td><td><Link className="secondary-action link-action" to={employeeReceiptPath(record)}>Open</Link></td></tr>)}</tbody></table> : <div className="empty-inline-state"><strong>No personal documents match this report.</strong><p>Change the document area, status, or date range to see more records.</p></div>}
       </section>
     </div>
   );
@@ -11299,7 +11536,13 @@ function buildPendingReceipts(
     organisationId: session.activeOrganisationId,
     workspaceContext,
     paymentMethod:
-      workspaceContext === "sales" ? "bank_transfer" : workspaceContext === "vault" ? "not_applicable" : "business_card",
+      workspaceContext === "sales"
+        ? "bank_transfer"
+        : workspaceContext === "vault"
+          ? "not_applicable"
+          : session.user.role === "Standard_Employee"
+            ? "cash_personal"
+            : "business_card",
     claimId: null,
     status: "Processing",
     category:
@@ -11418,7 +11661,9 @@ function isRouteAllowed(session: SessionState, pathname: string) {
 
   const allowedRoutes = session.allowedWebRoutes;
   if (!allowedRoutes?.length) {
-    return isBusinessAdmin(session) ? pathname !== "/dropbox" : pathname === "/dropbox" || pathname.startsWith("/claims");
+    return isBusinessAdmin(session)
+      ? pathname !== "/dropbox"
+      : pathname === "/dropbox" || pathname.startsWith("/claims") || pathname.startsWith("/employee/");
   }
 
   return allowedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
