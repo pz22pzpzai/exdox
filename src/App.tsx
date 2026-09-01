@@ -1553,26 +1553,28 @@ function DashboardShell(props: {
     : [
         { to: "/dropbox", label: "My Costs", icon: "costs" },
         ...(isRouteAllowed(props.session, "/employee/sales") ? [{ to: "/employee/sales", label: "My Sales", icon: "sales" }] : []),
-        ...(isRouteAllowed(props.session, "/employee/vault") ? [{ to: "/employee/vault", label: "My Vault", icon: "claims" }] : []),
+        { to: "/employee/vault", label: "My Vault", icon: "claims", locked: !isRouteAllowed(props.session, "/employee/vault") },
         { to: "/claims", label: "My Claims", icon: "claims" },
         { to: "/employee/reports", label: "My Reports", icon: "analytics" },
         { to: "/contact", label: "Contact", icon: "contact" },
       ];
   const defaultRoute = getDefaultRoute(props.session);
-  const dashboardNavigationLinks = (onNavigate?: () => void) => visibleNavItems.map((item) => (
-    <NavLink
-      key={item.to}
-      className={({ isActive }) =>
-        `sidebar-link${isActive ? " active" : ""}${"locked" in item && item.locked ? " locked" : ""}`
-      }
-      to={"locked" in item && item.locked ? `/billing?locked=${encodeURIComponent(item.to)}` : item.to}
-      onClick={onNavigate}
-    >
-      <NavIcon name={item.icon} />
-      {item.label}
-      {"locked" in item && item.locked ? <span className="sidebar-lock-tag">Locked</span> : null}
-    </NavLink>
-  ));
+  const dashboardNavigationLinks = (onNavigate?: () => void) => visibleNavItems.map((item) => {
+    const locked = "locked" in item && item.locked;
+    const destination = locked && businessAdmin ? `/billing?locked=${encodeURIComponent(item.to)}` : item.to;
+    return (
+      <NavLink
+        key={item.to}
+        className={({ isActive }) => `sidebar-link${isActive ? " active" : ""}${locked ? " locked" : ""}`}
+        to={destination}
+        onClick={onNavigate}
+      >
+        <NavIcon name={item.icon} />
+        {item.label}
+        {locked ? <span className="sidebar-lock-tag">Locked</span> : null}
+      </NavLink>
+    );
+  });
 
   return (
     <div className="dashboard-shell">
@@ -1997,12 +1999,12 @@ function DashboardShell(props: {
                   element={<EmployeeDocumentsPage title="My sales" description="Upload and view your own sales documents. Company-wide sales review remains with your finance team." records={props.store.sales} workspaceContext="sales" settings={props.store.settings} onUpload={(files) => props.onUpload("sales", files)} uploadBusy={uploadBusy} />}
                 />
               ) : null}
-              {isRouteAllowed(props.session, "/employee/vault") ? (
-                <Route
-                  path="/employee/vault"
-                  element={<EmployeeDocumentsPage title="My vault" description="Store and retrieve your own supporting documents in the secure company vault." records={props.store.vault} workspaceContext="vault" settings={props.store.settings} onUpload={(files) => props.onUpload("vault", files)} uploadBusy={uploadBusy} />}
-                />
-              ) : null}
+              <Route
+                path="/employee/vault"
+                element={isRouteAllowed(props.session, "/employee/vault")
+                  ? <EmployeeDocumentsPage title="My vault" description="Store and retrieve your own supporting documents in the secure company vault." records={props.store.vault} workspaceContext="vault" settings={props.store.settings} onUpload={(files) => props.onUpload("vault", files)} uploadBusy={uploadBusy} />
+                  : <EmployeeVaultLockedPage />}
+              />
               <Route
                 path="/claims"
                 element={<ClaimsPage session={props.session} claims={props.store.claims} onCreateClaim={props.onClaimCreate} employeeMode />}
@@ -5754,6 +5756,24 @@ function EmployeeReceiptDetailPage(props: {
           {receipt.rawTextSummary ? <section className="workspace-detail-section"><h2>Extraction notes</h2><p>{receipt.rawTextSummary}</p></section> : null}
         </section>
       </div>
+    </div>
+  );
+}
+
+function EmployeeVaultLockedPage() {
+  return (
+    <div className="stack-page">
+      <section className="page-hero">
+        <div>
+          <h2>My vault</h2>
+          <p>Securely store your own supporting documents when your organisation has Vault included in its Exdox plan.</p>
+        </div>
+      </section>
+      <section className="panel empty-inline-state">
+        <strong>Vault is not included in your organisation's current plan.</strong>
+        <p>Ask a business admin if your organisation needs Vault access. Your existing costs, sales, claims, and reports remain available.</p>
+        <Link className="secondary-action link-action" to="/contact">Contact Exdox</Link>
+      </section>
     </div>
   );
 }
