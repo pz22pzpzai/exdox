@@ -14,6 +14,7 @@ import {
   attachReceiptToClaim,
   clearStoredSession,
   completeBankCallback,
+  listCompanyCards,
   confirmEmailWithToken,
   createBillingCheckoutSession,
   createBillingPortalSession,
@@ -44,9 +45,13 @@ import {
   matchReconciliation,
   assignTeamMemberDepartment,
   removeRule,
+  removeCompanyCard,
+  removeCompanyCardException,
   saveStoredSession,
   saveReceipt,
   saveRule,
+  saveCompanyCard,
+  saveCompanyCardException,
   saveSettings,
   sendInvite,
   submitContactForm,
@@ -69,6 +74,8 @@ import type {
   ReconciliationLine,
   SessionState,
   SupplierRule,
+  CompanyCard,
+  CompanyCardEmployeeException,
   TaxRate,
 } from "./types";
 
@@ -112,6 +119,7 @@ const navItems = [
   { to: "/vault", label: "Vault", icon: "claims" },
   { to: "/claims", label: "Expense Claims", icon: "claims" },
   { to: "/rules", label: "Supplier Rules", icon: "rules" },
+  { to: "/company-cards", label: "Company Cards", icon: "rules" },
   { to: "/contact", label: "Contact", icon: "contact" },
   { to: "/settings", label: "Profile/Settings", icon: "settings" },
   { to: "/billing", label: "Billing", icon: "billing" },
@@ -124,6 +132,7 @@ const privateAppRoutePrefixes = [
   "/vault",
   "/claims",
   "/rules",
+  "/company-cards",
   "/reconciliation",
   "/contact",
   "/settings",
@@ -452,6 +461,9 @@ function workspaceShellKicker(pathname: string, businessAdmin: boolean) {
   }
   if (pathname.startsWith("/rules")) {
     return "Supplier automation";
+  }
+  if (pathname.startsWith("/company-cards")) {
+    return "Company card controls";
   }
   if (pathname.startsWith("/settings")) {
     return "Profile and workspace controls";
@@ -1961,6 +1973,9 @@ function DashboardShell(props: {
                     <RulesPage rules={props.store.rules} onSave={props.onRuleSave} onDelete={props.onRuleDelete} />
                   }
                 />
+              ) : null}
+              {isRouteAllowed(props.session, "/company-cards") ? (
+                <Route path="/company-cards" element={<CompanyCardsPage token={props.session.token} />} />
               ) : null}
               {isRouteAllowed(props.session, "/settings") ? (
                 <Route
@@ -6097,13 +6112,13 @@ function RulesPage(props: {
           <span>Automation layer</span>
         </div>
         <p className="panel-copy">
-          Company cards: create an active rule with the final four card digits in the match field and set Payment Method to Company card. Exdox checks that reference against the receipt text after OCR and keeps matching purchases out of expense claims.
+          Supplier Rules standardise supplier category and tax defaults. Manage card last-four matching and employee collision exceptions in Company Cards.
         </p>
         {error ? <div className="error-banner">{error}</div> : null}
         {feedback ? <div className="success-banner">{feedback}</div> : null}
         <div className="form-grid">
           <label>
-            IF Supplier Name or Company Card Reference CONTAINS
+            IF Supplier Name CONTAINS
             <input value={draft.supplierMatchText} onChange={(event) => setDraft({ ...draft, supplierMatchText: event.target.value })} />
           </label>
           <label>
@@ -6315,6 +6330,94 @@ function RulesPage(props: {
             </div>
           )}
         </div>
+      </section>
+    </div>
+  );
+}
+
+function CompanyCardsPage(props: { token: string }) {
+  const [cards, setCards] = useState<CompanyCard[]>([]);
+  const [exceptions, setExceptions] = useState<CompanyCardEmployeeException[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [cardDraft, setCardDraft] = useState({ id: undefined as number | undefined, label: "", cardNetwork: "", cardIssuer: "", lastFour: "", isActive: true });
+  const [exceptionDraft, setExceptionDraft] = useState({ companyCardId: "", employeeUserId: "", isActive: true });
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [cardData, team] = await Promise.all([listCompanyCards(props.token), getTeam(props.token)]);
+      setCards(cardData.cards);
+      setExceptions(cardData.exceptions);
+      setMembers(team.members.filter((member) => member.role === "Standard_Employee"));
+      setError(null);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Could not load company card controls.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, [props.token]);
+
+  const cardName = (cardId: number) => cards.find((card) => card.id === cardId)?.label ?? "Removed card";
+  const employeeName = (employeeId: number) => {
+    const member = members.find((candidate) => candidate.id === employeeId);
+    return member?.fullName || member?.email || "Removed employee";
+  };
+
+  return (
+    <div className="stack-page rules-layout">
+      <section className="panel">
+        <div className="panel-heading">
+          <h2>Company cards</h2>
+          <span>Business-paid purchases</span>
+        </div>
+        <p className="panel-copy">
+          Add every business card that may appear on receipts. Exdox stores only the last four digits and visible card details, never a full card number. A matching owner upload is marked company-paid and stays out of expense claims.
+        </p>
+        {error ? <div className="error-banner">{error}</div> : null}
+        {feedback ? <div className="success-banner">{feedback}</div> : null}
+        <div className="form-grid">
+          <label>Card label<input value={cardDraft.label} placeholder="Operations Visa" onChange={(event) => setCardDraft({ ...cardDraft, label: event.target.value })} /></label>
+          <label>Last four digits<input inputMode="numeric" maxLength={4} value={cardDraft.lastFour} placeholder="1175" onChange={(event) => setCardDraft({ ...cardDraft, lastFour: event.target.value.replace(/\D/g, "") })} /></label>
+          <label>Card network<select value={cardDraft.cardNetwork} onChange={(event) => setCardDraft({ ...cardDraft, cardNetwork: event.target.value })}><option value="">Not specified</option>{["Visa", "Mastercard", "Amex", "Maestro", "Discover", "Diners Club", "JCB", "UnionPay", "Other"].map((network) => <option key={network} value={network}>{network}</option>)}</select></label>
+          <label>Issuer / brand (optional)<input value={cardDraft.cardIssuer} placeholder="Monzo" onChange={(event) => setCardDraft({ ...cardDraft, cardIssuer: event.target.value })} /></label>
+          <label className="toggle-field">Card active<button className={`toggle-button${cardDraft.isActive ? " on" : ""}`} type="button" onClick={() => setCardDraft({ ...cardDraft, isActive: !cardDraft.isActive })}>{cardDraft.isActive ? "Active" : "Inactive"}</button></label>
+        </div>
+        <div className="toolbar">
+          <button className="primary-action" type="button" disabled={saving} onClick={async () => {
+            if (!cardDraft.label.trim() || !/^\d{4}$/.test(cardDraft.lastFour)) { setError("Enter a label and exactly four card digits."); return; }
+            setSaving(true); setError(null); setFeedback(null);
+            try {
+              await saveCompanyCard(props.token, cardDraft);
+              setCardDraft({ id: undefined, label: "", cardNetwork: "", cardIssuer: "", lastFour: "", isActive: true });
+              await load(); setFeedback("Company card saved.");
+            } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save company card."); }
+            finally { setSaving(false); }
+          }}>{saving ? "Saving..." : cardDraft.id ? "Save card" : "Add company card"}</button>
+          {cardDraft.id ? <button className="secondary-action" type="button" onClick={() => setCardDraft({ id: undefined, label: "", cardNetwork: "", cardIssuer: "", lastFour: "", isActive: true })}>Cancel edit</button> : null}
+        </div>
+        <div className="rules-list">
+          {loading ? <p className="panel-copy">Loading company cards...</p> : cards.length ? cards.map((card) => <article className="rule-card" key={card.id}><div><strong>{card.label}</strong><span>{[card.cardNetwork, card.cardIssuer].filter(Boolean).join(" | ") || "Card details not specified"} | ending {card.lastFour}</span><span>{card.isActive ? "Active" : "Inactive"}</span></div><div className="rule-card-actions"><button className="secondary-action" type="button" onClick={() => setCardDraft({ id: card.id, label: card.label, cardNetwork: card.cardNetwork ?? "", cardIssuer: card.cardIssuer ?? "", lastFour: card.lastFour, isActive: card.isActive })}>Edit</button><button className="danger-action" type="button" onClick={async () => { if (!window.confirm(`Remove ${card.label}? Its employee exceptions will also be removed.`)) return; await removeCompanyCard(props.token, card.id); await load(); setFeedback("Company card removed."); }}>Remove</button></div></article>) : <p className="panel-copy">No company cards have been added.</p>}
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-heading"><h2>Employee card exceptions</h2><span>Last-four collision handling</span></div>
+        <p className="panel-copy">Use this only when an employee’s personal card shares the same visible last four digits as a company card. Their matching uploads will remain personal spend instead of being flagged each time.</p>
+        <div className="form-grid">
+          <label>Company card<select value={exceptionDraft.companyCardId} onChange={(event) => setExceptionDraft({ ...exceptionDraft, companyCardId: event.target.value })}><option value="">Choose card</option>{cards.filter((card) => card.isActive).map((card) => <option key={card.id} value={card.id}>{card.label} ending {card.lastFour}</option>)}</select></label>
+          <label>Employee<select value={exceptionDraft.employeeUserId} onChange={(event) => setExceptionDraft({ ...exceptionDraft, employeeUserId: event.target.value })}><option value="">Choose employee</option>{members.map((member) => <option key={member.id} value={member.id}>{member.fullName || member.email}</option>)}</select></label>
+          <label className="toggle-field">Exception active<button className={`toggle-button${exceptionDraft.isActive ? " on" : ""}`} type="button" onClick={() => setExceptionDraft({ ...exceptionDraft, isActive: !exceptionDraft.isActive })}>{exceptionDraft.isActive ? "Active" : "Inactive"}</button></label>
+        </div>
+        <div className="toolbar"><button className="primary-action" type="button" disabled={saving} onClick={async () => { if (!exceptionDraft.companyCardId || !exceptionDraft.employeeUserId) { setError("Choose both a company card and employee."); return; } setSaving(true); try { await saveCompanyCardException(props.token, { companyCardId: Number(exceptionDraft.companyCardId), employeeUserId: Number(exceptionDraft.employeeUserId), isActive: exceptionDraft.isActive }); setExceptionDraft({ companyCardId: "", employeeUserId: "", isActive: true }); await load(); setFeedback("Employee exception saved."); } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save employee exception."); } finally { setSaving(false); } }}>Add employee exception</button></div>
+        <div className="rules-list">{exceptions.length ? exceptions.map((exception) => <article className="rule-card" key={exception.id}><div><strong>{employeeName(exception.employeeUserId)}</strong><span>Personal-card exception for {cardName(exception.companyCardId)}</span><span>{exception.isActive ? "Active" : "Inactive"}</span></div><div className="rule-card-actions"><button className="danger-action" type="button" onClick={async () => { await removeCompanyCardException(props.token, exception.id); await load(); setFeedback("Employee exception removed."); }}>Remove</button></div></article>) : <p className="panel-copy">No employee exceptions have been added.</p>}</div>
       </section>
     </div>
   );

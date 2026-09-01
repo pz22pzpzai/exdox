@@ -127,6 +127,22 @@ export type SupplierRule = {
   isActive: boolean;
 };
 
+export type CompanyCard = {
+  id: number;
+  label: string;
+  cardNetwork: string | null;
+  cardIssuer: string | null;
+  lastFour: string;
+  isActive: boolean;
+};
+
+export type CompanyCardEmployeeException = {
+  id: number;
+  companyCardId: number;
+  employeeUserId: number;
+  isActive: boolean;
+};
+
 export type ReconciliationCandidate = {
   id: number;
   vendorName: string | null;

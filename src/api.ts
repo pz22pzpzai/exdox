@@ -16,6 +16,8 @@ import type {
   SessionUser,
   SessionState,
   SupplierRule,
+  CompanyCard,
+  CompanyCardEmployeeException,
 } from "./types";
 
 const API_BASE_URL =
@@ -470,6 +472,28 @@ export async function removeRule(token: string, id: number): Promise<void> {
   await apiFetch(`/rules/${id}`, token, {
     method: "DELETE",
   });
+}
+
+export async function listCompanyCards(token: string): Promise<{ cards: CompanyCard[]; exceptions: CompanyCardEmployeeException[] }> {
+  return apiFetch('/company-cards', token);
+}
+
+export async function saveCompanyCard(token: string, payload: Partial<CompanyCard> & Pick<CompanyCard, 'label' | 'lastFour' | 'isActive'>): Promise<CompanyCard> {
+  const response = await apiFetch<{ card: CompanyCard }>('/company-cards', token, { method: 'POST', body: JSON.stringify(payload) });
+  return response.card;
+}
+
+export async function removeCompanyCard(token: string, id: number): Promise<void> {
+  await apiFetch(`/company-cards/${id}`, token, { method: 'DELETE' });
+}
+
+export async function saveCompanyCardException(token: string, payload: Partial<CompanyCardEmployeeException> & Pick<CompanyCardEmployeeException, 'companyCardId' | 'employeeUserId' | 'isActive'>): Promise<CompanyCardEmployeeException> {
+  const response = await apiFetch<{ exception: CompanyCardEmployeeException }>('/company-card-exceptions', token, { method: 'POST', body: JSON.stringify(payload) });
+  return response.exception;
+}
+
+export async function removeCompanyCardException(token: string, id: number): Promise<void> {
+  await apiFetch(`/company-card-exceptions/${id}`, token, { method: 'DELETE' });
 }
 
 export async function listReconciliation(token: string): Promise<ReconciliationLine[]> {
