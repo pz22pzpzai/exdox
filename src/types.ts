@@ -91,6 +91,12 @@ export type ClaimRecord = {
   status: "pending" | "approved" | "paid" | "rejected";
   totalAmount: number;
   documentCount: number;
+  claimType?: "standard" | "mileage";
+  mileageStartPostcode?: string | null;
+  mileageEndPostcode?: string | null;
+  mileageTotalMiles?: number | null;
+  mileageRate?: number | null;
+  mileageTotalAmount?: number | null;
   claimantName?: string | null;
   claimantEmail?: string | null;
   createdAt: string;

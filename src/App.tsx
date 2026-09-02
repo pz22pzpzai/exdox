@@ -5258,7 +5258,7 @@ function ClaimsPage({
   const filteredClaims = claims
     .filter((claim) => {
       const matchesStatus = statusFilter === "all"
-        || (statusFilter === "pending" ? claim.status === "pending" && claim.documentCount > 0 : claim.status === statusFilter);
+        || (statusFilter === "pending" ? claim.status === "pending" && (claim.documentCount > 0 || claim.claimType === "mileage") : claim.status === statusFilter);
       return matchesStatus
         && (!startDate || claim.createdAt.slice(0, 10) >= startDate)
         && (!endDate || claim.createdAt.slice(0, 10) <= endDate);
@@ -5467,7 +5467,7 @@ function ClaimsPage({
               <span>Claiming employee: {claimEmployeeLabel(claim)}</span>
               <span>Submission date: {claim.createdAt.slice(0, 10)}</span>
               <span>Approval status: {claimStatusSummary(claim)}</span>
-              <span>{claim.documentCount} receipt lines</span>
+              <span>{claim.claimType === "mileage" ? `${Number(claim.mileageTotalMiles ?? 0).toFixed(1)} miles` : `${claim.documentCount} receipt lines`}</span>
               <StatusPill status={claimStatusToPill(claim.status)} />
             </Link>
           ))
@@ -5968,12 +5968,27 @@ function ClaimDetailPage(props: {
       {feedback ? <div className="success-banner">{feedback}</div> : null}
 
       <section className="metrics-grid">
-        <MetricCard label="Claim total" value={currency(claim.totalAmount)} detail={`${receipts.length} linked receipts`} />
+        <MetricCard
+          label={claim.claimType === "mileage" ? "Mileage claim total" : "Claim total"}
+          value={currency(claim.totalAmount)}
+          detail={claim.claimType === "mileage" ? `${Number(claim.mileageTotalMiles ?? 0).toFixed(1)} miles at ${currency(Number(claim.mileageRate ?? 0))} per mile` : `${receipts.length} linked receipts`}
+        />
         <MetricCard label="Claiming employee" value={claimEmployeeLabel(claim)} detail="Claim owner" />
         <MetricCard label="Approval status" value={claimStatusLabel(claim.status)} detail="Current review state" />
         <MetricCard label="Submitted" value={claim.createdAt.slice(0, 10)} detail="Folder submission date" />
       </section>
 
+      {claim.claimType === "mileage" ? (
+        <section className="panel table-panel">
+          <h2>Mileage journey</h2>
+          <div className="metrics-grid">
+            <MetricCard label="Start postcode" value={claim.mileageStartPostcode ?? "Not provided"} detail="Journey start" />
+            <MetricCard label="End postcode" value={claim.mileageEndPostcode ?? "Not provided"} detail="Journey end" />
+            <MetricCard label="Total miles" value={Number(claim.mileageTotalMiles ?? 0).toFixed(1)} detail="Submitted distance" />
+            <MetricCard label="Mileage rate" value={`${currency(Number(claim.mileageRate ?? 0))} per mile`} detail="Current business rate" />
+          </div>
+        </section>
+      ) : (
       <section className="panel table-panel">
         <div className="filter-row">
           <input
@@ -6039,6 +6054,7 @@ function ClaimDetailPage(props: {
           </div>
         )}
       </section>
+      )}
     </div>
   );
 }
@@ -11730,10 +11746,13 @@ function customerFacingClaimName(name: string | null | undefined) {
 }
 
 function pendingClaimsNeedingAction(claims: ClaimRecord[]) {
-  return claims.filter((claim) => claim.status === "pending" && claim.documentCount > 0);
+  return claims.filter((claim) => claim.status === "pending" && (claim.documentCount > 0 || claim.claimType === "mileage"));
 }
 
 function claimStatusSummary(claim: ClaimRecord) {
+  if (claim.status === "pending" && claim.claimType === "mileage") {
+    return "Pending mileage claim";
+  }
   return claim.status === "pending" && claim.documentCount === 0
     ? "Draft - no receipts attached"
     : claimStatusLabel(claim.status);
