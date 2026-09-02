@@ -105,6 +105,15 @@ export type ClaimRecord = {
   organisationId?: number;
 };
 
+export type ClaimEvidence = {
+  id: string;
+  organisationId: number;
+  claimId: number;
+  sourceFilename: string;
+  sourceMimeType: string;
+  createdAt: string;
+};
+
 export type MasterExpenseExportRow = {
   employeeId: number;
   employeeName: string;

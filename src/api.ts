@@ -4,6 +4,7 @@ import type {
   BillingPlanId,
   BillingSummary,
   BankRequisition,
+  ClaimEvidence,
   ClaimRecord,
   EmployeeReimbursementPaymentRow,
   Department,
@@ -393,8 +394,24 @@ export async function createClaim(
   return response.claim;
 }
 
-export async function getClaim(token: string, id: number): Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }> {
+export async function getClaim(token: string, id: number): Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[]; evidence: ClaimEvidence[] }> {
   return apiFetch(`/claims/${id}`, token);
+}
+
+export async function uploadClaimEvidence(token: string, id: number, file: File): Promise<ClaimEvidence> {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+    throw new Error('Choose a JPG, PNG, or WebP image that is 5 MB or smaller.');
+  }
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read the proof image.'));
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.readAsDataURL(file);
+  });
+  const response = await apiFetch<{ evidence: ClaimEvidence }>(`/claims/${id}/evidence`, token, {
+    method: 'POST', body: JSON.stringify({ filename: file.name, mimeType: file.type, base64 }),
+  });
+  return response.evidence;
 }
 
 export async function updateClaimStatus(

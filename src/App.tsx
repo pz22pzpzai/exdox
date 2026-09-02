@@ -56,6 +56,7 @@ import {
   sendInvite,
   submitContactForm,
   updateClaimStatus,
+  uploadClaimEvidence,
   upgradeBillingPlan,
   uploadDocuments,
 } from "./api";
@@ -1483,6 +1484,7 @@ export function App() {
                 };
               }}
               loadClaim={async (id) => getClaim(session.token, id)}
+              uploadClaimEvidence={async (id, file) => uploadClaimEvidence(session.token, id, file)}
             />
           }
         />
@@ -1525,7 +1527,8 @@ function DashboardShell(props: {
   onActiveOrganisationChange: (organisationId: number) => Promise<void>;
   onSignOut: () => void;
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null; downloadUrl: string | null }>;
-  loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
+  loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[]; evidence?: import("./types").ClaimEvidence[] }>;
+  uploadClaimEvidence: (id: number, file: File) => Promise<import("./types").ClaimEvidence>;
 }) {
   const [uploadBusy, setUploadBusy] = useState(false);
   const [confirmationResendBusy, setConfirmationResendBusy] = useState(false);
@@ -1962,7 +1965,7 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route
                   path="/claims/:id"
-                  element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} loadClaim={props.loadClaim} settings={props.store.settings} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
+                element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} loadClaim={props.loadClaim} uploadClaimEvidence={props.uploadClaimEvidence} settings={props.store.settings} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
                 />
               ) : null}
               <Route path="/dropbox" element={<Navigate to="/costs" replace />} />
@@ -2031,6 +2034,7 @@ function DashboardShell(props: {
                   <ClaimDetailPage
                     onStatusChange={props.onClaimStatusChange}
                     loadClaim={props.loadClaim}
+                    uploadClaimEvidence={props.uploadClaimEvidence}
                     settings={props.store.settings}
                     employeeMode
                   />
@@ -5474,20 +5478,22 @@ function ClaimsPage({
           </button>
         </div>
       </section>
-      <section className="card-grid">
+      <section className="panel table-panel">
         {filteredClaims.length ? (
-          filteredClaims.map((claim) => (
-            <Link className="claim-card" key={claim.id} to={`/claims/${claim.id}`}>
-              <strong>{formatClaimHeading(claim)}</strong>
-              <span>Reference: {formatClaimReference(claim)}</span>
-              <span>Total value: {currency(claim.totalAmount)}</span>
-              <span>Claiming employee: {claimEmployeeLabel(claim)}</span>
-              <span>Submission date: {claim.createdAt.slice(0, 10)}</span>
-              <span>Approval status: {claimStatusSummary(claim)}</span>
-              <span>{claim.claimType === "mileage" ? `${Number(claim.mileageTotalMiles ?? 0).toFixed(1)} miles` : `${claim.documentCount} receipt lines`}</span>
-              <StatusPill status={claimStatusToPill(claim.status)} />
-            </Link>
-          ))
+          <table className="data-table">
+            <thead><tr><th>Claim</th><th>Employee</th><th>Submitted</th><th>Type</th><th>Total</th><th>Status</th><th /></tr></thead>
+            <tbody>{filteredClaims.map((claim) => (
+              <tr key={claim.id}>
+                <td><strong>{formatClaimHeading(claim)}</strong><small>{formatClaimReference(claim)}</small></td>
+                <td>{claimEmployeeLabel(claim)}</td>
+                <td>{claim.createdAt.slice(0, 10)}</td>
+                <td>{claim.claimType === "mileage" ? `${Number(claim.mileageTotalMiles ?? 0).toFixed(1)} miles` : `${claim.documentCount} receipt lines`}</td>
+                <td>{currency(claim.totalAmount)}</td>
+                <td><StatusPill status={claimStatusToPill(claim.status)} /><small>{claimStatusSummary(claim)}</small></td>
+                <td><Link className="secondary-action" to={`/claims/${claim.id}`}>Open</Link></td>
+              </tr>
+            ))}</tbody>
+          </table>
         ) : (
           <div className="empty-inline-state card-span-2">
             <strong>{statusFilter === "all" ? employeeMode ? "No claims created yet." : "No expense claims in this organisation yet." : "No claims match the current status filter."}</strong>
@@ -5863,7 +5869,8 @@ function EmployeeReportsPage(props: {
 }
 
 function ClaimDetailPage(props: {
-  loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[] }>;
+  loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[]; evidence?: import("./types").ClaimEvidence[] }>;
+  uploadClaimEvidence: (id: number, file: File) => Promise<import("./types").ClaimEvidence>;
   onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
   settings?: OrganisationSettings | null;
   employeeMode?: boolean;
@@ -5873,6 +5880,8 @@ function ClaimDetailPage(props: {
   const navigate = useNavigate();
   const [claim, setClaim] = useState<ClaimRecord | null>(null);
   const [receipts, setReceipts] = useState<ReceiptRecord[]>([]);
+  const [evidence, setEvidence] = useState<import("./types").ClaimEvidence[]>([]);
+  const [loading, setLoading] = useState(true);
   const [savingStatus, setSavingStatus] = useState<ClaimRecord["status"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -5885,19 +5894,22 @@ function ClaimDetailPage(props: {
       return;
     }
 
+    setLoading(true);
     props.loadClaim(Number(id))
       .then((payload) => {
         setClaim(payload.claim);
         setReceipts(payload.receipts);
+        setEvidence(payload.evidence ?? []);
         setError(null);
       })
       .catch((loadError: Error) => {
         setError(loadError.message || "Could not load this claim.");
-      });
-  }, [id, props]);
+      })
+      .finally(() => setLoading(false));
+  }, [id, props.loadClaim]);
 
   if (!claim) {
-    return <div className="empty-state">{error ?? "Claim detail unavailable."}</div>;
+    return <div className="empty-state">{error ?? (loading ? "Loading claim..." : "Claim detail unavailable.")}</div>;
   }
 
   const search = deferredQuery.trim().toLowerCase();
@@ -5996,13 +6008,30 @@ function ClaimDetailPage(props: {
       </section>
 
       {claim.claimType === "mileage" ? (
-        <section className="panel table-panel">
-          <h2>Mileage journey</h2>
-          <div className="metrics-grid">
-            <MetricCard label="Start postcode" value={claim.mileageStartPostcode ?? "Not provided"} detail="Journey start" />
-            <MetricCard label="End postcode" value={claim.mileageEndPostcode ?? "Not provided"} detail="Journey end" />
-            <MetricCard label="Total miles" value={Number(claim.mileageTotalMiles ?? 0).toFixed(1)} detail="Submitted distance" />
-            <MetricCard label="Mileage rate" value={`${currency(Number(claim.mileageRate ?? 0))} per mile`} detail="Current business rate" />
+        <section className="panel table-panel claim-detail-layout">
+          <div className="claim-detail-evidence">
+            <div className="claim-evidence-placeholder">Mileage<br />claim</div>
+            <strong>Journey evidence</strong>
+            <span>Proof images do not create receipts or change this claim total.</span>
+            {claim.status === "pending" ? <label className="secondary-action claim-evidence-upload">Add proof image<input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              try { const saved = await props.uploadClaimEvidence(claim.id, file); setEvidence((items) => [...items, saved]); setFeedback("Journey proof image added."); }
+              catch (uploadError) { setError(uploadError instanceof Error ? uploadError.message : "Could not add journey proof."); }
+              finally { event.currentTarget.value = ""; }
+            }} /></label> : null}
+            {evidence.length ? <ul className="claim-evidence-list">{evidence.map((item) => <li key={item.id}>{item.sourceFilename}</li>)}</ul> : <span>No proof images attached.</span>}
+          </div>
+          <div className="claim-detail-fields">
+            <h2>Mileage journey</h2>
+            <dl className="claim-summary-list">
+              <div><dt>Start postcode</dt><dd>{claim.mileageStartPostcode ?? "Not provided"}</dd></div>
+              <div><dt>End postcode</dt><dd>{claim.mileageEndPostcode ?? "Not provided"}</dd></div>
+              <div><dt>Total miles</dt><dd>{Number(claim.mileageTotalMiles ?? 0).toFixed(1)}</dd></div>
+              <div><dt>Mileage rate</dt><dd>{`${currency(Number(claim.mileageRate ?? 0))} per mile`}</dd></div>
+              <div><dt>Claim total</dt><dd>{currency(claim.totalAmount)}</dd></div>
+              <div><dt>Approval status</dt><dd>{claimStatusLabel(claim.status)}</dd></div>
+            </dl>
           </div>
         </section>
       ) : (

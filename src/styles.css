@@ -791,6 +791,51 @@ button.status-box:focus-visible {
   overflow: auto;
 }
 
+.claim-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.4fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.claim-detail-evidence {
+  display: grid;
+  gap: 12px;
+  color: var(--muted-text);
+}
+.claim-evidence-upload { width: fit-content; cursor: pointer; }
+.claim-evidence-list { margin: 0; padding-left: 20px; }
+
+.claim-evidence-placeholder {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  border: 1px solid #cbd8e8;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #f5f9fe, #e6f0fa);
+  color: var(--navy);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.claim-detail-fields h2 { margin-top: 0; }
+
+.claim-summary-list { margin: 0; }
+.claim-summary-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e3ebf4;
+}
+.claim-summary-list dt { color: var(--muted-text); }
+.claim-summary-list dd { margin: 0; font-weight: 700; text-align: right; }
+
+@media (max-width: 760px) {
+  .claim-detail-layout { grid-template-columns: 1fr; }
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
