@@ -384,7 +384,7 @@ export async function listClaims(token: string): Promise<ClaimRecord[]> {
 
 export async function createClaim(
   token: string,
-  payload: { name?: string; description?: string; currency?: string },
+  payload: { name?: string; description?: string; currency?: string; claimType?: 'standard' | 'mileage'; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number },
 ): Promise<ClaimRecord> {
   const response = await apiFetch<{ claim: ClaimRecord }>("/claims", token, {
     method: "POST",

@@ -441,6 +441,7 @@ function buildFallbackOrganisationSettings(session: SessionState): OrganisationS
     baseCurrency: "GBP",
     isVatRegistered: true,
     defaultTaxRate: "20% Standard",
+    mileageRate: 0.45,
   };
 }
 
@@ -1500,7 +1501,7 @@ function DashboardShell(props: {
   onReimbursementsExported: () => Promise<void>;
   onReceiptDelete: (id: number) => Promise<void>;
   onAttachReceiptToClaim: (receiptId: number, claimId: number) => Promise<ReceiptRecord>;
-  onClaimCreate: (payload: { name?: string; description?: string; currency?: string }) => Promise<ClaimRecord>;
+  onClaimCreate: (payload: { name?: string; description?: string; currency?: string; claimType?: 'standard' | 'mileage'; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
   onClaimStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
   onRuleSave: (
     payload: Partial<SupplierRule> &
@@ -5198,7 +5199,7 @@ function ClaimsPage({
 }: {
   session: SessionState;
   claims: ClaimRecord[];
-  onCreateClaim: (payload: { name?: string; description?: string; currency?: string }) => Promise<ClaimRecord>;
+  onCreateClaim: (payload: { name?: string; description?: string; currency?: string; claimType?: 'standard' | 'mileage'; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
   employeeMode?: boolean;
 }) {
   const location = useLocation();
@@ -5208,6 +5209,7 @@ function ClaimsPage({
     description: "",
     currency: "GBP",
   });
+  const [mileageDraft, setMileageDraft] = useState({ startPostcode: "", endPostcode: "", totalMiles: "", mileageRate: "0.45" });
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -5338,6 +5340,21 @@ function ClaimsPage({
             Export claims CSV
           </button>
         </div>
+      </section>
+      <section className="panel settings-panel">
+        <div className="panel-heading"><h2>Create mileage claim</h2><span>Enter your requested rate. Your business admin approves the claim and its rate.</span></div>
+        <div className="form-grid">
+          <label>Start postcode<input value={mileageDraft.startPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, startPostcode: event.target.value })} /></label>
+          <label>End postcode<input value={mileageDraft.endPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, endPostcode: event.target.value })} /></label>
+          <label>Total miles<input type="number" min="0.1" step="0.1" value={mileageDraft.totalMiles} onChange={(event) => setMileageDraft({ ...mileageDraft, totalMiles: event.target.value })} /></label>
+          <label>Rate per mile<input type="number" min="0.01" step="0.01" value={mileageDraft.mileageRate} onChange={(event) => setMileageDraft({ ...mileageDraft, mileageRate: event.target.value })} /></label>
+        </div>
+        <div className="toolbar"><button className="primary-action" type="button" disabled={busy} onClick={async () => {
+          const miles = Number(mileageDraft.totalMiles); const rate = Number(mileageDraft.mileageRate);
+          if (!mileageDraft.startPostcode.trim() || !mileageDraft.endPostcode.trim() || !Number.isFinite(miles) || miles <= 0 || !Number.isFinite(rate) || rate <= 0) { setError("Enter both postcodes, total miles, and a positive rate per mile."); return; }
+          setBusy(true); setError(null); setFeedback(null);
+          try { const claim = await onCreateClaim({ name: `Mileage claim ${new Date().toLocaleDateString("en-GB")}`, description: `${mileageDraft.startPostcode.trim()} to ${mileageDraft.endPostcode.trim()}`, currency: "GBP", claimType: "mileage", startPostcode: mileageDraft.startPostcode.trim(), endPostcode: mileageDraft.endPostcode.trim(), totalMiles: miles, mileageRate: rate }); setMileageDraft({ startPostcode: "", endPostcode: "", totalMiles: "", mileageRate: "0.45" }); navigate(`/claims/${claim.id}`); } catch (createError) { setError(createError instanceof Error ? createError.message : "Could not create this mileage claim."); } finally { setBusy(false); }
+        }}>{busy ? "Creating..." : "Submit mileage claim"}</button></div>
       </section>
       {!employeeMode && queueExportsEnabled ? (
         <section className="panel settings-panel master-expense-export">
@@ -6904,7 +6921,7 @@ function BankCallbackPage(props: {
 function SettingsPage(props: {
   session: SessionState;
   settings: OrganisationSettings | null;
-  onSave: (payload: Pick<OrganisationSettings, "baseCurrency" | "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
+  onSave: (payload: Pick<OrganisationSettings, "baseCurrency" | "isVatRegistered" | "defaultTaxRate" | "mileageRate">) => Promise<void>;
   onInviteEmployee: (payload: {
     email: string;
     fullName?: string;
@@ -7177,6 +7194,7 @@ function SettingsPage(props: {
           <strong>Default fallback tax</strong>
           <span>{draft.defaultTaxRate}</span>
         </div>
+        <div><strong>Approved mileage rate</strong><span>{currency(draft.mileageRate)} per mile</span></div>
         <div>
           <strong>Parity impact</strong>
           <span>Saved changes feed both the desktop dashboard and the mobile extraction workflow.</span>
@@ -7215,6 +7233,7 @@ function SettingsPage(props: {
             ))}
           </select>
         </label>
+        <label>Approved mileage rate per mile<input type="number" min="0.01" step="0.01" value={draft.mileageRate} disabled={saving} onChange={(event) => setDraft({ ...draft, mileageRate: Number(event.target.value) })} /></label>
       </div>
       <p>
         This is the reporting currency for the whole workspace. New and existing workspaces use GBP unless a business admin changes it here. Receipt OCR preserves an uploaded document's original currency and records its equivalent in the workspace currency.
@@ -7237,6 +7256,7 @@ function SettingsPage(props: {
                 baseCurrency: draft.baseCurrency,
                 isVatRegistered: draft.isVatRegistered,
                 defaultTaxRate: draft.defaultTaxRate,
+                mileageRate: draft.mileageRate,
               });
               setFeedback("Organisation settings saved.");
             } catch (saveError) {
