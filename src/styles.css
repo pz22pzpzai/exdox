@@ -2262,6 +2262,33 @@ input {
   text-align: right;
 }
 
+.claim-list-row {
+  cursor: pointer;
+}
+
+.claim-list-row:hover td,
+.claim-list-row:focus-visible td {
+  background: #edf8fd;
+}
+
+.claim-list-row:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+
+.claim-table-link {
+  display: block;
+  color: inherit;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.claim-table-link:hover,
+.claim-table-link:focus-visible {
+  color: var(--blue);
+  text-decoration: underline;
+}
+
 @media (max-width: 620px) {
   .compact-date-filter {
     width: 100%;

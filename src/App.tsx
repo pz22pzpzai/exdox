@@ -5483,14 +5483,27 @@ function ClaimsPage({
           <table className="data-table">
             <thead><tr><th>Claim</th><th>Employee</th><th>Submitted</th><th>Type</th><th>Total</th><th>Status</th><th /></tr></thead>
             <tbody>{filteredClaims.map((claim) => (
-              <tr key={claim.id}>
-                <td><strong>{formatClaimHeading(claim)}</strong><small>{formatClaimReference(claim)}</small></td>
+              <tr
+                className="claim-list-row"
+                key={claim.id}
+                role="link"
+                tabIndex={0}
+                aria-label={`Open ${formatClaimHeading(claim)}`}
+                onClick={() => navigate(`/claims/${claim.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    navigate(`/claims/${claim.id}`);
+                  }
+                }}
+              >
+                <td><Link className="claim-table-link" to={`/claims/${claim.id}`}>{formatClaimHeading(claim)}</Link><small>{formatClaimReference(claim)}</small></td>
                 <td>{claimEmployeeLabel(claim)}</td>
                 <td>{claim.createdAt.slice(0, 10)}</td>
                 <td>{claim.claimType === "mileage" ? `${Number(claim.mileageTotalMiles ?? 0).toFixed(1)} miles` : `${claim.documentCount} receipt lines`}</td>
                 <td>{currency(claim.totalAmount)}</td>
                 <td><StatusPill status={claimStatusToPill(claim.status)} /><small>{claimStatusSummary(claim)}</small></td>
-                <td><Link className="secondary-action" to={`/claims/${claim.id}`}>Open</Link></td>
+                <td><Link className="secondary-action" to={`/claims/${claim.id}`} onClick={(event) => event.stopPropagation()}>Open claim</Link></td>
               </tr>
             ))}</tbody>
           </table>
@@ -5661,7 +5674,20 @@ function EmployeeDocumentsPage(props: {
             </thead>
             <tbody>
               {filteredReceipts.map((receipt) => (
-                <tr key={receipt.id}>
+                <tr
+                  className="claim-list-row"
+                  key={receipt.id}
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Open receipt ${receipt.sourceFilename}`}
+                  onClick={() => navigate(employeeReceiptPath(receipt))}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(employeeReceiptPath(receipt));
+                    }
+                  }}
+                >
                   <td><StatusPill status={receipt.status} /></td>
                   <td>{receiptDocumentDate(receipt) || receipt.createdAt.slice(0, 10)}</td>
                   <td>{receipt.vendorName ?? receipt.sourceFilename}</td>
@@ -6071,7 +6097,20 @@ function ClaimDetailPage(props: {
             </thead>
             <tbody>
               {filteredReceipts.map((receipt) => (
-                <tr key={receipt.id}>
+                <tr
+                  className="claim-list-row"
+                  key={receipt.id}
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Open receipt ${receipt.sourceFilename}`}
+                  onClick={() => navigate(props.employeeMode ? `/dropbox/${receipt.id}` : `/costs/${receipt.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(props.employeeMode ? `/dropbox/${receipt.id}` : `/costs/${receipt.id}`);
+                    }
+                  }}
+                >
                   <td>{receipt.sourceFilename}</td>
                   <td>{receipt.vendorName ?? "Unknown supplier"}</td>
                   <td>{receiptDocumentDate(receipt)}</td>
@@ -6083,7 +6122,10 @@ function ClaimDetailPage(props: {
                       <button
                         className="secondary-action"
                         type="button"
-                        onClick={() => navigate(props.employeeMode ? `/dropbox/${receipt.id}` : `/costs/${receipt.id}`)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(props.employeeMode ? `/dropbox/${receipt.id}` : `/costs/${receipt.id}`);
+                        }}
                       >
                         Open receipt
                       </button>
