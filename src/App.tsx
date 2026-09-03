@@ -3915,6 +3915,7 @@ function InboxPage({
   const [statusFilter, setStatusFilter] = useState<InboxStatus | "All">("All");
   const [issueFilter, setIssueFilter] = useState<"All" | "Needs review" | "Unreadable" | "Possible duplicates" | "Low confidence" | "Processing">("All");
   const [sourceFilter, setSourceFilter] = useState<ReceiptRecord["receiptSource"] | "All">("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
   const [documentTypeFilter, setDocumentTypeFilter] = useState<ReceiptRecord["documentType"] | "All">("All");
   const [employeeFilter, setEmployeeFilter] = useState("All");
   const [departmentFilter, setDepartmentFilter] = useState("All");
@@ -3932,6 +3933,7 @@ function InboxPage({
     const nextStatus = params.get("status");
     const nextIssue = params.get("issue");
     const nextSource = params.get("source");
+    const nextCategory = params.get("category");
     const nextDocumentType = params.get("documentType");
     const nextEmployee = params.get("employee");
     const nextDepartment = params.get("department");
@@ -3958,6 +3960,7 @@ function InboxPage({
         : "All",
     );
     setSourceFilter(nextSource === "mobile" || nextSource === "web_upload" || nextSource === "email" || nextSource === "bank_import" ? nextSource : "All");
+    setCategoryFilter(nextCategory?.trim() || "All");
     setDocumentTypeFilter(nextDocumentType === "receipt" || nextDocumentType === "invoice" || nextDocumentType === "unknown" ? nextDocumentType : "All");
     setEmployeeFilter(showEmployeeFilter && nextEmployee ? nextEmployee : "All");
     setDepartmentFilter(basePath === "/costs" && nextDepartment ? nextDepartment : "All");
@@ -3989,12 +3992,13 @@ function InboxPage({
       status: statusFilter !== "All" ? statusFilter : null,
       issue: issueFilter !== "All" ? issueFilter : null,
       source: sourceFilter !== "All" ? sourceFilter : null,
+      category: categoryFilter !== "All" ? categoryFilter : null,
       documentType: documentTypeFilter !== "All" ? documentTypeFilter : null,
       employee: showEmployeeFilter && employeeFilter !== "All" ? employeeFilter : null,
       department: basePath === "/costs" && departmentFilter !== "All" ? departmentFilter : null,
       sort: sortOrder !== "newest" ? sortOrder : null,
     });
-  }, [basePath, departmentFilter, documentTypeFilter, employeeFilter, filtersReady, issueFilter, location.pathname, location.search, navigate, query, showEmployeeFilter, sortOrder, sourceFilter, statusFilter]);
+  }, [basePath, categoryFilter, departmentFilter, documentTypeFilter, employeeFilter, filtersReady, issueFilter, location.pathname, location.search, navigate, query, showEmployeeFilter, sortOrder, sourceFilter, statusFilter]);
 
   const search = deferredQuery.trim().toLowerCase();
   const isVaultInbox = basePath === "/vault";
@@ -4040,10 +4044,11 @@ function InboxPage({
           record.uploadedByDepartmentId as number,
           { id: record.uploadedByDepartmentId as number, label: record.uploadedByDepartmentName as string },
         ]),
-    ).values(),
+  ).values(),
   ).sort((left, right) => left.label.localeCompare(right.label));
+  const categoryOptions = Array.from(new Set(records.map((record) => record.category?.trim()).filter((category): category is string => Boolean(category)))).sort((left, right) => left.localeCompare(right));
   const hasActiveFilters = Boolean(
-    search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || documentTypeFilter !== "All" || employeeFilter !== "All" || departmentFilter !== "All",
+    search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || categoryFilter !== "All" || documentTypeFilter !== "All" || employeeFilter !== "All" || departmentFilter !== "All",
   );
   const filtered = records.filter((record) => {
     const matchesSearch =
@@ -4053,6 +4058,7 @@ function InboxPage({
         .includes(search);
     const matchesStatus = statusFilter === "All" || record.status === statusFilter;
     const matchesSource = sourceFilter === "All" || record.receiptSource === sourceFilter;
+    const matchesCategory = categoryFilter === "All" || record.category === categoryFilter;
     const matchesDocumentType = documentTypeFilter === "All" || (record.documentType ?? "unknown") === documentTypeFilter;
     const matchesEmployee = employeeFilter === "All" || String(record.uploadedByUserId) === employeeFilter;
     const matchesDepartment = departmentFilter === "All" || String(record.uploadedByDepartmentId) === departmentFilter;
@@ -4068,7 +4074,7 @@ function InboxPage({
               : issueFilter === "Low confidence"
                 ? isLowConfidence(record)
               : record.status === "Processing";
-    return matchesSearch && matchesStatus && matchesSource && matchesDocumentType && matchesEmployee && matchesDepartment && matchesIssue;
+    return matchesSearch && matchesStatus && matchesSource && matchesCategory && matchesDocumentType && matchesEmployee && matchesDepartment && matchesIssue;
   }).sort((left, right) => compareInboxRecords(left, right, sortOrder));
 
   return (
@@ -4119,6 +4125,12 @@ function InboxPage({
             <option value="email">Email</option>
             <option value="bank_import">Bank</option>
           </select>
+          {basePath !== "/vault" ? (
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter by category">
+              <option value="All">All categories</option>
+              {categoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
+            </select>
+          ) : null}
           <select value={documentTypeFilter} onChange={(event) => setDocumentTypeFilter(event.target.value as typeof documentTypeFilter)}>
             <option value="All">All document types</option>
             <option value="receipt">Receipt</option>
@@ -4214,7 +4226,7 @@ function InboxPage({
 
       <section className="panel table-panel">
         {filtered.length ? (
-          <table className="data-table">
+          <table className="data-table inbox-table">
             <thead>
               {isVaultInbox ? (
                 <tr>
@@ -5157,6 +5169,7 @@ function ClaimsPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ClaimRecord["status"] | "all">("all");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "mileage" | "receipt">("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total">("newest");
@@ -5168,6 +5181,7 @@ function ClaimsPage({
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const nextStatus = params.get("status");
+    const nextCategory = params.get("category");
     const nextSort = params.get("sort");
     const nextStart = params.get("from") ?? "";
     const nextEnd = params.get("to") ?? "";
@@ -5177,6 +5191,7 @@ function ClaimsPage({
         ? nextStatus
         : "all",
     );
+    setCategoryFilter(nextCategory === "mileage" || nextCategory === "receipt" ? nextCategory : "all");
     setSortOrder(
       nextSort === "oldest" || nextSort === "highest_total" || nextSort === "lowest_total"
         ? nextSort
@@ -5194,17 +5209,19 @@ function ClaimsPage({
 
     syncPageSearchParams(location.pathname, location.search, navigate, {
       status: statusFilter !== "all" ? statusFilter : null,
+      category: categoryFilter !== "all" ? categoryFilter : null,
       from: startDate || null,
       to: endDate || null,
       sort: sortOrder !== "newest" ? sortOrder : null,
     });
-  }, [endDate, filtersReady, location.pathname, location.search, navigate, sortOrder, startDate, statusFilter]);
+  }, [categoryFilter, endDate, filtersReady, location.pathname, location.search, navigate, sortOrder, startDate, statusFilter]);
 
   const filteredClaims = claims
     .filter((claim) => {
       const matchesStatus = statusFilter === "all"
         || (statusFilter === "pending" ? claim.status === "pending" && (claim.documentCount > 0 || claim.claimType === "mileage") : claim.status === statusFilter);
       return matchesStatus
+        && (categoryFilter === "all" || (categoryFilter === "mileage" ? claim.claimType === "mileage" : claim.claimType !== "mileage"))
         && (!startDate || claim.createdAt.slice(0, 10) >= startDate)
         && (!endDate || claim.createdAt.slice(0, 10) <= endDate);
     })
@@ -5250,6 +5267,11 @@ function ClaimsPage({
             <option value="approved">Approved</option>
             <option value="paid">Paid</option>
             <option value="rejected">Rejected</option>
+          </select>
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as typeof categoryFilter)}>
+            <option value="all">All categories</option>
+            <option value="mileage">Mileage</option>
+            <option value="receipt">Receipt claim</option>
           </select>
           <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
             <option value="newest">Newest first</option>

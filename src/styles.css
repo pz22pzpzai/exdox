@@ -887,8 +887,15 @@ button.status-box:focus-visible {
 }
 
 .status-payment-processing {
+  min-width: 142px;
+  white-space: nowrap;
   background: rgba(198, 138, 58, 0.16);
   color: #9a651f;
+}
+
+.inbox-table th:first-child,
+.inbox-table td:first-child {
+  min-width: 166px;
 }
 
 .status-processing,
