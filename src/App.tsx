@@ -6065,7 +6065,13 @@ function ClaimDetailPage(props: {
               <label>Approval status<input value={claimStatusLabel(claim.status)} readOnly /></label>
               <label className="form-span-2">Description<textarea value={claim.description ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, description: event.target.value })} /></label>
             </div>
-            <div className="action-row">
+            <div className="toolbar">
+              {!props.employeeMode && props.canUseApprovalWorkflows ? <button className="primary-action" type="button" disabled={savingStatus !== null} onClick={() => void updateStatus("approved")}>Approve claim</button> : null}
+              {!props.employeeMode ? <button className="secondary-action" type="button" disabled={savingDetails || claim.status !== "pending"} onClick={() => void saveMileageDetails()}>{savingDetails ? "Saving..." : "Save changes"}</button> : null}
+              {!props.employeeMode && props.canUseApprovalWorkflows ? <>
+                <button className="secondary-action" type="button" disabled={savingStatus !== null} onClick={() => void updateStatus("paid")}>Mark paid</button>
+                <button className="danger-action" type="button" disabled={savingStatus !== null} onClick={() => void updateStatus("rejected")}>Reject claim</button>
+              </> : null}
               <button
                 className="secondary-action"
                 type="button"
@@ -6083,12 +6089,6 @@ function ClaimDetailPage(props: {
               >
                 Export claim CSV
               </button>
-              {!props.employeeMode ? <button className="primary-action" type="button" disabled={savingDetails || claim.status !== "pending"} onClick={() => void saveMileageDetails()}>{savingDetails ? "Saving..." : "Save changes"}</button> : null}
-              {!props.employeeMode && props.canUseApprovalWorkflows ? <>
-                <button className="primary-action" type="button" disabled={savingStatus !== null} onClick={() => void updateStatus("approved")}>Approve claim</button>
-                <button className="secondary-action" type="button" disabled={savingStatus !== null} onClick={() => void updateStatus("paid")}>Mark paid</button>
-                <button className="danger-action" type="button" disabled={savingStatus !== null} onClick={() => void updateStatus("rejected")}>Reject claim</button>
-              </> : null}
               {!props.employeeMode && claim.status !== "pending" ? <span className="field-hint">Approved, paid, and rejected claims are locked.</span> : null}
             </div>
           </section>
