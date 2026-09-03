@@ -11,7 +11,6 @@ import {
 } from "react-router-dom";
 
 import {
-  attachReceiptToClaim,
   clearStoredSession,
   completeBankCallback,
   listCompanyCards,
@@ -1368,19 +1367,6 @@ export function App() {
                   claims: refreshedClaims,
                 }));
               }}
-              onAttachReceiptToClaim={async (receiptId, claimId) => {
-                const savedReceipt = await attachReceiptToClaim(session.token, { receiptId, claimId });
-                const [claims, costs] = await Promise.all([
-                  listClaims(session.token),
-                  listReceipts(session.token, "cost"),
-                ]);
-                setStore((current) => ({
-                  ...current,
-                  claims,
-                  costs: costs.map((item) => (item.id === savedReceipt.id ? savedReceipt : item)),
-                }));
-                return savedReceipt;
-              }}
               onClaimCreate={async (payload) => {
                 const claim = await createClaim(session.token, payload);
                 const refreshedClaims = await listClaims(session.token);
@@ -1513,7 +1499,6 @@ function DashboardShell(props: {
   onReimbursementsMarkedPaid: () => Promise<number>;
   onReimbursementsExported: () => Promise<void>;
   onReceiptDelete: (id: number) => Promise<void>;
-  onAttachReceiptToClaim: (receiptId: number, claimId: number) => Promise<ReceiptRecord>;
   onClaimCreate: (payload: { name?: string; description?: string; currency?: string; claimType?: 'standard' | 'mileage'; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
   onClaimStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
   onClaimSave: (id: number, payload: { name?: string; description?: string | null; currency?: string; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
@@ -1892,11 +1877,9 @@ function DashboardShell(props: {
                       mode="cost"
                       sessionToken={props.session.token}
                       fallbackRecords={props.store.costs}
-                      claims={props.store.claims}
                       settings={props.store.settings}
                       onSave={props.onReceiptSave}
                       onDelete={props.onReceiptDelete}
-                      onAttachToClaim={props.onAttachReceiptToClaim}
                       onReimbursementsExported={props.onReimbursementsExported}
                       canUseApprovalWorkflows={approvalWorkflowsEnabled}
                       loadReceipt={props.loadReceipt}
@@ -1927,11 +1910,9 @@ function DashboardShell(props: {
                       mode="sales"
                       sessionToken={props.session.token}
                       fallbackRecords={props.store.sales}
-                      claims={props.store.claims}
                       settings={props.store.settings}
                       onSave={props.onReceiptSave}
                       onDelete={props.onReceiptDelete}
-                      onAttachToClaim={props.onAttachReceiptToClaim}
                       loadReceipt={props.loadReceipt}
                       canUseApprovalWorkflows={approvalWorkflowsEnabled}
                     />
@@ -1961,11 +1942,9 @@ function DashboardShell(props: {
                       mode="vault"
                       sessionToken={props.session.token}
                       fallbackRecords={props.store.vault}
-                      claims={props.store.claims}
                       settings={props.store.settings}
                       onSave={props.onReceiptSave}
                       onDelete={props.onReceiptDelete}
-                      onAttachToClaim={props.onAttachReceiptToClaim}
                       loadReceipt={props.loadReceipt}
                       canUseApprovalWorkflows={approvalWorkflowsEnabled}
                     />
@@ -4362,11 +4341,9 @@ function DocumentWorkspacePage(props: {
   mode: "cost" | "sales" | "vault";
   sessionToken: string;
   fallbackRecords: ReceiptRecord[];
-  claims: ClaimRecord[];
   settings?: OrganisationSettings | null;
   onSave: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
-  onAttachToClaim: (receiptId: number, claimId: number) => Promise<ReceiptRecord>;
   onReimbursementsExported?: () => Promise<void>;
   canUseApprovalWorkflows: boolean;
   loadReceipt: (id: number) => Promise<{ receipt: ReceiptRecord; assetUrl: string | null; downloadUrl: string | null }>;
@@ -4382,7 +4359,6 @@ function DocumentWorkspacePage(props: {
   const [downloadingSourceFile, setDownloadingSourceFile] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedClaimId, setSelectedClaimId] = useState("");
   const [imageZoomOpen, setImageZoomOpen] = useState(false);
   const [postApprovePrompt, setPostApprovePrompt] = useState<null | { nextReceiptId: number | null }>(null);
   const [reimbursementExporting, setReimbursementExporting] = useState(false);
@@ -4400,7 +4376,6 @@ function DocumentWorkspacePage(props: {
         setReceipt(payload.receipt);
         setAssetUrl(payload.assetUrl);
         setDownloadUrl(payload.downloadUrl);
-        setSelectedClaimId(payload.receipt.claimId ? String(payload.receipt.claimId) : "");
         setError(null);
       })
       .catch((loadError: Error) => {
@@ -4434,7 +4409,6 @@ function DocumentWorkspacePage(props: {
   const duplicateGroup = duplicateInsights.byReceiptId.get(receipt.id) ?? null;
   const categoryOptions =
     props.mode === "sales" ? salesCategoryOptions : props.mode === "vault" ? [] : costCategoryOptions;
-  const eligibleClaims = props.claims.filter((claim) => claim.status === "pending" || claim.status === "approved");
   const lineItems = receipt.lineItems ?? [];
   const taxBreakdown = receipt.taxBreakdown ?? [];
   const notes = receipt.notes ?? [];
@@ -4451,7 +4425,6 @@ function DocumentWorkspacePage(props: {
     ? null
     : props.fallbackRecords.find((record) => record.id !== receipt.id && countsAsManualReview(record));
   const reviewItemLabel = props.mode === "sales" ? "sales document" : "expense";
-  const claimAttachmentAllowed = receipt.paymentMethod === "cash_personal";
   const previewAsImage = canPreviewReceiptAsImage(receipt);
   const reviewedRecordsForExport = [
     ...props.fallbackRecords.filter((record) => record.id !== receipt.id),
@@ -4737,20 +4710,6 @@ function DocumentWorkspacePage(props: {
               onChange={(event) => setReceipt({ ...receipt, rawTextSummary: event.target.value })}
             />
           </label>
-          {props.mode === "cost" ? (
-            <label className="form-span-2">
-              Expense claim and employee
-              <select value={selectedClaimId} onChange={(event) => setSelectedClaimId(event.target.value)}>
-                <option value="">Select employee claim</option>
-                {eligibleClaims.map((claim) => (
-                  <option key={claim.id} value={claim.id}>
-                    {formatClaimOptionLabel(claim)}
-                  </option>
-                ))}
-              </select>
-              <span className="field-hint">Attach personal spend to the employee's claim before approving it for the master export.</span>
-            </label>
-          ) : null}
           {reimbursementPaymentLocked ? (
             <span className="field-hint">
               {receipt.status === "Paid"
@@ -5019,41 +4978,6 @@ function DocumentWorkspacePage(props: {
             >
               {receiptPublished ? "Already Published" : "Mark as Published"}
             </button>
-          ) : null}
-          {props.mode === "cost" ? (
-            <>
-              <button
-                className="secondary-action"
-                type="button"
-                disabled={saving || !selectedClaimId || !claimAttachmentAllowed}
-                title={claimAttachmentAllowed ? "Attach this receipt to the selected claim" : "Only personal spend receipts can be attached to an expense claim"}
-                onClick={async () => {
-                  if (!claimAttachmentAllowed) {
-                    setError("Only personal spend receipts can be attached to an expense claim.");
-                    setFeedback(null);
-                    return;
-                  }
-                  setSaving(true);
-                  setFeedback(null);
-                  setError(null);
-                  try {
-                    const updatedReceipt = await props.onAttachToClaim(receipt.id, Number(selectedClaimId));
-                    setReceipt(updatedReceipt);
-                    setSelectedClaimId(updatedReceipt.claimId ? String(updatedReceipt.claimId) : selectedClaimId);
-                    setFeedback("Receipt attached to the selected claim.");
-                  } catch (attachError) {
-                    setError(attachError instanceof Error ? attachError.message : "Could not attach this receipt to a claim.");
-                  } finally {
-                    setSaving(false);
-                  }
-                }}
-              >
-                Attach to Claim
-              </button>
-              {!claimAttachmentAllowed ? (
-                <span className="field-hint">Only personal spend receipts can be attached to expense claims.</span>
-              ) : null}
-            </>
           ) : null}
         </div>
       </section>
