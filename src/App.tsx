@@ -5966,7 +5966,7 @@ function ClaimDetailPage(props: {
           <h2>{formatClaimHeading(claim)}</h2>
           <p>{claim.description ?? "Employee reimbursement folder"}</p>
         </div>
-        <div className="filter-row">
+        {claim.claimType !== "mileage" ? <div className="filter-row">
           <button
             className="secondary-action"
             type="button"
@@ -6012,7 +6012,7 @@ function ClaimDetailPage(props: {
             </button>
           </>
         ) : null}
-        </div>
+        </div> : null}
       </section>
       {error ? <div className="error-banner">{error}</div> : null}
       {feedback ? <div className="success-banner">{feedback}</div> : null}
@@ -6065,7 +6065,32 @@ function ClaimDetailPage(props: {
               <label>Approval status<input value={claimStatusLabel(claim.status)} readOnly /></label>
               <label className="form-span-2">Description<textarea value={claim.description ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, description: event.target.value })} /></label>
             </div>
-            {!props.employeeMode ? <div className="action-row"><button className="primary-action" type="button" disabled={savingDetails || claim.status !== "pending"} onClick={() => void saveMileageDetails()}>{savingDetails ? "Saving..." : "Save changes"}</button>{claim.status !== "pending" ? <span className="field-hint">Approved, paid, and rejected claims are locked.</span> : null}</div> : null}
+            <div className="action-row">
+              <button
+                className="secondary-action"
+                type="button"
+                disabled={!filteredReceipts.length}
+                title={filteredReceipts.length ? "Download the current claim receipt view as CSV" : "This claim has no receipts in the current view yet"}
+                onClick={async () => {
+                  if (await downloadCsv(
+                    `claim-${claim.id}-${new Date().toISOString().slice(0, 10)}.csv`,
+                    buildClaimExportRows(claim, filteredReceipts, props.settings ?? null),
+                  )) {
+                    setFeedback("Claim CSV downloaded.");
+                  }
+                  setError(null);
+                }}
+              >
+                Export claim CSV
+              </button>
+              {!props.employeeMode ? <button className="primary-action" type="button" disabled={savingDetails || claim.status !== "pending"} onClick={() => void saveMileageDetails()}>{savingDetails ? "Saving..." : "Save changes"}</button> : null}
+              {!props.employeeMode && props.canUseApprovalWorkflows ? <>
+                <button className="primary-action" type="button" disabled={savingStatus !== null} onClick={() => void updateStatus("approved")}>Approve claim</button>
+                <button className="secondary-action" type="button" disabled={savingStatus !== null} onClick={() => void updateStatus("paid")}>Mark paid</button>
+                <button className="danger-action" type="button" disabled={savingStatus !== null} onClick={() => void updateStatus("rejected")}>Reject claim</button>
+              </> : null}
+              {!props.employeeMode && claim.status !== "pending" ? <span className="field-hint">Approved, paid, and rejected claims are locked.</span> : null}
+            </div>
           </section>
         </div>
       ) : (
