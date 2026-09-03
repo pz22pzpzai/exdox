@@ -1871,6 +1871,12 @@ function DashboardShell(props: {
               ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
+                  path="/costs/mileage/:id"
+                  element={<MileageCostReviewPage loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} onStatusChange={props.onClaimStatusChange} onSave={props.onClaimSave} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/costs") ? (
+                <Route
                   path="/costs/:id"
                   element={
                     <DocumentWorkspacePage
@@ -1952,7 +1958,7 @@ function DashboardShell(props: {
                 />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
-                <Route path="/claims" element={<ClaimsPage session={props.session} claims={props.store.claims} onCreateClaim={props.onClaimCreate} />} />
+                <Route path="/claims" element={<ClaimsPage session={props.session} claims={props.store.claims.filter((claim) => claim.claimType !== "mileage")} onCreateClaim={props.onClaimCreate} />} />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route
@@ -4109,6 +4115,7 @@ function InboxPage({
             <option value="Published">Published</option>
             {basePath === "/costs" ? <option value="Payment processing">Payment processing</option> : null}
             {basePath === "/costs" ? <option value="Paid">Paid</option> : null}
+            {basePath === "/costs" ? <option value="Rejected">Rejected</option> : null}
           </select>
           <select value={issueFilter} onChange={(event) => setIssueFilter(event.target.value as typeof issueFilter)}>
             <option value="All">All issues</option>
@@ -4255,11 +4262,11 @@ function InboxPage({
               {filtered.map((record) => (
                 <tr
                   key={record.id}
-                  onClick={() => navigate(`${basePath}/${record.id}`)}
+                  onClick={() => navigate(recordRoute(record))}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      navigate(`${basePath}/${record.id}`);
+                      navigate(recordRoute(record));
                     }
                   }}
                   tabIndex={0}
@@ -4284,7 +4291,7 @@ function InboxPage({
                           type="button"
                           onClick={(event) => {
                             event.stopPropagation();
-                            navigate(`${basePath}/${record.id}`);
+                            navigate(recordRoute(record));
                           }}
                         >
                           Open
@@ -4320,7 +4327,7 @@ function InboxPage({
                           type="button"
                           onClick={(event) => {
                             event.stopPropagation();
-                            navigate(`${basePath}/${record.id}`);
+                            navigate(recordRoute(record));
                           }}
                         >
                           Open
@@ -4347,6 +4354,109 @@ function InboxPage({
       </section>
     </div>
   );
+}
+
+function MileageCostReviewPage(props: {
+  loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[]; evidence?: import("./types").ClaimEvidence[] }>;
+  loadClaimEvidenceAsset: (claimId: number, evidenceId: string) => Promise<string>;
+  onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
+  onSave: (id: number, payload: { name?: string; description?: string | null; currency?: string; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
+  canUseApprovalWorkflows: boolean;
+}) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [claim, setClaim] = useState<ClaimRecord | null>(null);
+  const [evidence, setEvidence] = useState<import("./types").ClaimEvidence[]>([]);
+  const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    const claimId = Number(id);
+    if (!Number.isFinite(claimId)) return;
+    setLoading(true);
+    props.loadClaim(claimId)
+      .then(async (payload) => {
+        if (payload.claim.claimType !== "mileage") throw new Error("This cost is not a mileage record.");
+        setClaim(payload.claim);
+        const proof = payload.evidence ?? [];
+        setEvidence(proof);
+        const urls = await Promise.all(proof.map((item) => props.loadClaimEvidenceAsset(payload.claim.id, item.id).catch(() => "")));
+        setEvidenceUrls(urls.filter(Boolean));
+        setError(null);
+      })
+      .catch((loadError: Error) => setError(loadError.message || "Could not load this mileage cost."))
+      .finally(() => setLoading(false));
+  }, [id, props]);
+
+  if (!claim) return <div className="empty-state">{error ?? (loading ? "Loading mileage cost..." : "Mileage cost unavailable.")}</div>;
+
+  const total = Number((Number(claim.mileageTotalMiles ?? 0) * Number(claim.mileageRate ?? 0)).toFixed(2));
+  const save = async () => {
+    if (claim.status !== "pending") {
+      setError("Approved, paid, and returned mileage costs are locked.");
+      return;
+    }
+    if (!claim.mileageStartPostcode?.trim() || !claim.mileageEndPostcode?.trim() || !Number.isFinite(Number(claim.mileageTotalMiles)) || Number(claim.mileageTotalMiles) <= 0 || !Number.isFinite(Number(claim.mileageRate)) || Number(claim.mileageRate) < 0) {
+      setError("Enter both journey postcodes, a mileage total, and a valid rate before saving.");
+      return;
+    }
+    setSaving(true); setError(null); setFeedback(null);
+    try {
+      const saved = await props.onSave(claim.id, {
+        name: claim.name,
+        description: claim.description,
+        currency: claim.currency,
+        startPostcode: claim.mileageStartPostcode,
+        endPostcode: claim.mileageEndPostcode,
+        totalMiles: Number(claim.mileageTotalMiles),
+        mileageRate: Number(claim.mileageRate),
+      });
+      setClaim(saved); setFeedback("Mileage cost changes saved.");
+    } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save this mileage cost."); }
+    finally { setSaving(false); }
+  };
+  const setStatus = async (status: ClaimRecord["status"]) => {
+    setSaving(true); setError(null); setFeedback(null);
+    try {
+      await props.onStatusChange(claim.id, status);
+      setClaim((current) => current ? { ...current, status } : current);
+      setFeedback(status === "approved" ? "Mileage cost approved and moved out of review." : status === "paid" ? "Mileage cost marked as paid." : "Mileage cost returned for correction.");
+    } catch (statusError) { setError(statusError instanceof Error ? statusError.message : "Could not update this mileage cost."); }
+    finally { setSaving(false); }
+  };
+
+  return <div className="workspace-split">
+    <section className="panel viewer-panel">
+      <div className="panel-heading"><h2>Journey proof</h2><span>{evidence.length ? `${evidence.length} proof image${evidence.length === 1 ? "" : "s"}` : "No proof image added"}</span></div>
+      {evidenceUrls.length ? <div className="claim-evidence-gallery">{evidenceUrls.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer"><img src={url} alt={evidence[index]?.sourceFilename ?? "Mileage journey proof"} /></a>)}</div> : <div className="document-placeholder"><img className="placeholder-logo" src={brandMarkSrc} alt="Exdox mileage evidence placeholder" /><strong>Journey evidence</strong><p>Mileage proof stays separate from receipts and can be reviewed here when supplied.</p></div>}
+    </section>
+    <section className="panel editor-panel">
+      <div className="panel-heading"><h2>Cost review</h2><span>Mileage expense</span></div>
+      {error ? <div className="error-banner">{error}</div> : null}
+      {feedback ? <div className="success-banner">{feedback}</div> : null}
+      <div className="form-grid">
+        <label>Cost name<input value={claim.name} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, name: event.target.value })} /></label>
+        <label>Claimant<input value={claim.claimantName || claim.claimantEmail || "Workspace user"} readOnly /></label>
+        <label>Start postcode<input value={claim.mileageStartPostcode ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageStartPostcode: event.target.value })} /></label>
+        <label>End postcode<input value={claim.mileageEndPostcode ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageEndPostcode: event.target.value })} /></label>
+        <label>Total miles<input type="number" min="0" step="0.1" value={claim.mileageTotalMiles ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageTotalMiles: Number(event.target.value) })} /></label>
+        <label>Rate per mile<input type="number" min="0" step="0.0001" value={claim.mileageRate ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageRate: Number(event.target.value) })} /></label>
+        <label>Calculated total<input value={currency(total, claim.currency)} readOnly /></label>
+        <label>Status<input value={claimStatusLabel(claim.status)} readOnly /></label>
+        <label className="form-span-2">Description<textarea rows={3} value={claim.description ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, description: event.target.value })} /></label>
+      </div>
+      <div className="toolbar">
+        {claim.status === "pending" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Save Changes"}</button> : null}
+        {props.canUseApprovalWorkflows && claim.status === "pending" ? <button className="primary-action" type="button" disabled={saving} onClick={() => void setStatus("approved")}>Approve Expense</button> : null}
+        {props.canUseApprovalWorkflows && claim.status === "pending" ? <button className="danger-action" type="button" disabled={saving} onClick={() => void setStatus("rejected")}>Return for correction</button> : null}
+        {props.canUseApprovalWorkflows && claim.status === "approved" ? <button className="primary-action" type="button" disabled={saving} onClick={() => void setStatus("paid")}>Mark as Paid</button> : null}
+        <button className="secondary-action" type="button" onClick={() => navigate("/costs")}>Back to Costs</button>
+      </div>
+    </section>
+  </div>;
 }
 
 function DocumentWorkspacePage(props: {
@@ -5888,6 +5998,10 @@ function ClaimDetailPage(props: {
     setLoading(true);
     props.loadClaim(Number(id))
       .then((payload) => {
+        if (payload.claim.claimType === "mileage" && !props.employeeMode) {
+          navigate(`/costs/mileage/${payload.claim.id}`, { replace: true });
+          return;
+        }
         setClaim(payload.claim);
         setReceipts(payload.receipts);
         setEvidence(payload.evidence ?? []);
@@ -5897,7 +6011,7 @@ function ClaimDetailPage(props: {
         setError(loadError.message || "Could not load this claim.");
       })
       .finally(() => setLoading(false));
-  }, [id, props.loadClaim]);
+  }, [id, navigate, props.employeeMode, props.loadClaim]);
 
   useEffect(() => {
     if (!claim || !evidence[0]) {
@@ -8067,9 +8181,9 @@ function normalizeInboxStatusLabel(status: "pending" | "approved" | "paid" | "re
     return "Published";
   }
   if (trimmed === "rejected") {
-    return "Processing";
+    return "Rejected";
   }
-  if (trimmed === "Processing" || trimmed === "Ready" || trimmed === "Review" || trimmed === "Published" || trimmed === "Payment processing" || trimmed === "Paid") {
+  if (trimmed === "Processing" || trimmed === "Ready" || trimmed === "Review" || trimmed === "Published" || trimmed === "Payment processing" || trimmed === "Paid" || trimmed === "Rejected") {
     return trimmed;
   }
   return "Review";
@@ -11021,6 +11135,9 @@ function needsCodingAttention(record: ReceiptRecord) {
 }
 
 function recordRoute(record: ReceiptRecord) {
+  if (record.workspaceContext === "cost" && record.mileageClaimId) {
+    return `/costs/mileage/${record.mileageClaimId}`;
+  }
   return `${workspaceRoute(record.workspaceContext)}/${record.id}`;
 }
 
@@ -11892,7 +12009,7 @@ function customerFacingClaimName(name: string | null | undefined) {
 }
 
 function pendingClaimsNeedingAction(claims: ClaimRecord[]) {
-  return claims.filter((claim) => claim.status === "pending" && (claim.documentCount > 0 || claim.claimType === "mileage"));
+  return claims.filter((claim) => claim.status === "pending" && claim.claimType !== "mileage" && claim.documentCount > 0);
 }
 
 function claimStatusSummary(claim: ClaimRecord) {

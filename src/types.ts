@@ -1,4 +1,4 @@
-export type InboxStatus = "Processing" | "Ready" | "Review" | "Published" | "Payment processing" | "Paid";
+export type InboxStatus = "Processing" | "Ready" | "Review" | "Published" | "Payment processing" | "Paid" | "Rejected";
 export type PaymentMethod =
   | "business_card"
   | "cash_personal"
@@ -22,6 +22,7 @@ export type ReceiptRecord = {
   workspaceContext: "cost" | "sales" | "vault";
   paymentMethod: PaymentMethod;
   claimId: number | null;
+  mileageClaimId?: number | null;
   status: InboxStatus;
   category: string | null;
   description: string | null;

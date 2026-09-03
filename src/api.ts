@@ -321,7 +321,7 @@ export async function listReceipts(
   workspaceContext: "cost" | "sales" | "vault",
 ): Promise<ReceiptRecord[]> {
   const response = await apiFetch<{ receipts: ReceiptRecord[] }>(
-    `/receipts?workspace_context=${workspaceContext}&limit=200`,
+    `/receipts?workspace_context=${workspaceContext}&include_mileage_costs=${workspaceContext === "cost"}&limit=200`,
     token,
   );
   return response.receipts.map(normalizeVaultReceiptRecord);
