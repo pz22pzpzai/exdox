@@ -414,6 +414,31 @@ export async function uploadClaimEvidence(token: string, id: number, file: File)
   return response.evidence;
 }
 
+export async function getClaimEvidenceAssetUrl(token: string, claimId: number, evidenceId: string): Promise<string> {
+  const response = await apiFetch<{ asset: { previewUrl: string } }>(`/claims/${claimId}/evidence/${evidenceId}/asset-url`, token);
+  return response.asset.previewUrl;
+}
+
+export async function updateClaim(
+  token: string,
+  id: number,
+  payload: {
+    name?: string;
+    description?: string | null;
+    currency?: string;
+    startPostcode?: string;
+    endPostcode?: string;
+    totalMiles?: number;
+    mileageRate?: number;
+  },
+): Promise<ClaimRecord> {
+  const response = await apiFetch<{ claim: ClaimRecord }>(`/claims/${id}`, token, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  return response.claim;
+}
+
 export async function updateClaimStatus(
   token: string,
   id: number,
