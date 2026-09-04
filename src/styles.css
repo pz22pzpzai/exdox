@@ -1471,14 +1471,6 @@ body {
   background: var(--bg);
 }
 
-@media (min-width: 981px) and (pointer: fine) and (min-resolution: 1.2dppx) {
-  html.platform-windows .dashboard-shell {
-    width: 125%;
-    min-height: 125vh;
-    zoom: 0.8;
-  }
-}
-
 .sidebar {
   position: sticky;
   top: 0;
