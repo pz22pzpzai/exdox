@@ -24,7 +24,9 @@ import {
   markEmployeeReimbursementsPaid,
   createRequisition,
   deleteAccount,
+  deleteClaim,
   deleteReceipt,
+  listRecycleBin,
   fetchSession,
   getClaim,
   getClaimEvidenceAssetUrl,
@@ -40,6 +42,7 @@ import {
   loadStoredSession,
   requestPasswordReset,
   resetPasswordWithToken,
+  restoreRecycleBinItem,
   resendConfirmationEmail,
   registerWithEmail,
   matchReconciliation,
@@ -73,6 +76,7 @@ import type {
   MasterExpenseExportRow,
   OrganisationSettings,
   ReceiptRecord,
+  RecycleBinItem,
   ReconciliationLine,
   SessionState,
   SupplierRule,
@@ -125,6 +129,7 @@ const navItems = [
   { to: "/contact", label: "Contact", icon: "contact" },
   { to: "/settings", label: "Profile/Settings", icon: "settings" },
   { to: "/billing", label: "Billing", icon: "billing" },
+  { to: "/recycle-bin", label: "Recycle Bin", icon: "recycle" },
 ];
 
 const privateAppRoutePrefixes = [
@@ -135,6 +140,7 @@ const privateAppRoutePrefixes = [
   "/claims",
   "/rules",
   "/company-cards",
+  "/recycle-bin",
   "/reconciliation",
   "/contact",
   "/settings",
@@ -467,6 +473,9 @@ function workspaceShellKicker(pathname: string, businessAdmin: boolean) {
   }
   if (pathname.startsWith("/company-cards")) {
     return "Company card controls";
+  }
+  if (pathname.startsWith("/recycle-bin")) {
+    return "Recover deleted workspace items";
   }
   if (pathname.startsWith("/settings")) {
     return "Profile and workspace controls";
@@ -1367,6 +1376,15 @@ export function App() {
                   claims: refreshedClaims,
                 }));
               }}
+              onRecycleBinRestore={async () => {
+                const [costs, sales, vault, claims] = await Promise.all([
+                  listReceipts(session.token, "cost"),
+                  listReceipts(session.token, "sales"),
+                  listReceipts(session.token, "vault"),
+                  listClaims(session.token),
+                ]);
+                setStore((current) => ({ ...current, costs, sales, vault, claims }));
+              }}
               onClaimCreate={async (payload) => {
                 const claim = await createClaim(session.token, payload);
                 const refreshedClaims = await listClaims(session.token);
@@ -1380,10 +1398,20 @@ export function App() {
               }}
               onClaimStatusChange={async (id, status) => {
                 const saved = await updateClaimStatus(session.token, id, status);
+                const costs = await listReceipts(session.token, "cost");
                 setStore((current) => ({
                   ...current,
+                  costs,
                   claims: current.claims.map((item) => (item.id === id ? saved : item)),
                 }));
+              }}
+              onClaimDelete={async (id) => {
+                await deleteClaim(session.token, id);
+                const [costs, claims] = await Promise.all([
+                  listReceipts(session.token, "cost"),
+                  listClaims(session.token),
+                ]);
+                setStore((current) => ({ ...current, costs, claims }));
               }}
               onClaimSave={async (id, payload) => {
                 const saved = await updateClaim(session.token, id, payload);
@@ -1499,8 +1527,10 @@ function DashboardShell(props: {
   onReimbursementsMarkedPaid: () => Promise<number>;
   onReimbursementsExported: () => Promise<void>;
   onReceiptDelete: (id: number) => Promise<void>;
+  onRecycleBinRestore: () => Promise<void>;
   onClaimCreate: (payload: { name?: string; description?: string; currency?: string; claimType?: 'standard' | 'mileage'; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
   onClaimStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
+  onClaimDelete: (id: number) => Promise<void>;
   onClaimSave: (id: number, payload: { name?: string; description?: string | null; currency?: string; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
   onRuleSave: (
     payload: Partial<SupplierRule> &
@@ -1852,6 +1882,12 @@ function DashboardShell(props: {
                 <Route path="/pricing" element={<PricingSection session={props.session} />} />
               ) : null}
               <Route path="/contact" element={<WorkspaceContactPage session={props.session} />} />
+              {isRouteAllowed(props.session, "/recycle-bin") ? (
+                <Route
+                  path="/recycle-bin"
+                  element={<RecycleBinPage sessionToken={props.session.token} onRestore={props.onRecycleBinRestore} />}
+                />
+              ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
                   path="/costs"
@@ -1872,7 +1908,7 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
                   path="/costs/mileage/:id"
-                  element={<MileageCostReviewPage loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} onStatusChange={props.onClaimStatusChange} onSave={props.onClaimSave} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
+                  element={<MileageCostReviewPage loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} onStatusChange={props.onClaimStatusChange} onSave={props.onClaimSave} onDelete={props.onClaimDelete} records={props.store.costs} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
                 />
               ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
@@ -4356,11 +4392,63 @@ function InboxPage({
   );
 }
 
+function RecycleBinPage({ sessionToken, onRestore }: { sessionToken: string; onRestore: () => Promise<void> }) {
+  const [items, setItems] = useState<RecycleBinItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyItem, setBusyItem] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      setItems(await listRecycleBin(sessionToken));
+      setError(null);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Could not load the recycle bin.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void refresh(); }, [sessionToken]);
+
+  return <div className="stack-page">
+    <section className="panel">
+      <div className="panel-heading">
+        <div><h2>Recycle Bin</h2><span>Deleted items are kept for three days before permanent removal.</span></div>
+        <button className="secondary-action" type="button" onClick={() => void refresh()} disabled={loading}>Refresh</button>
+      </div>
+      {error ? <div className="error-banner">{error}</div> : null}
+      {loading ? <div className="empty-state">Loading deleted items...</div> : !items.length ? <div className="empty-state">The recycle bin is empty.</div> : (
+        <div className="table-panel">
+          <table className="data-table">
+            <thead><tr><th>Item</th><th>Type</th><th>Deleted</th><th>Permanent removal</th><th>Action</th></tr></thead>
+            <tbody>{items.map((item) => <tr key={item.id}>
+              <td>{item.title}</td>
+              <td>{item.itemType === "claim" ? "Expense claim" : item.workspaceContext === "sales" ? "Sales document" : item.workspaceContext === "vault" ? "Vault document" : "Cost document"}</td>
+              <td>{formatLongDate(item.deletedAt)}</td>
+              <td>{formatLongDate(item.purgeAfter)}</td>
+              <td><button className="primary-action" type="button" disabled={busyItem === item.id} onClick={async () => {
+                setBusyItem(item.id); setError(null);
+                try { await restoreRecycleBinItem(sessionToken, item.itemType, item.itemId); await onRestore(); await refresh(); }
+                catch (restoreError) { setError(restoreError instanceof Error ? restoreError.message : "Could not restore this item."); }
+                finally { setBusyItem(null); }
+              }}>{busyItem === item.id ? "Restoring..." : "Restore"}</button></td>
+            </tr>)}</tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  </div>;
+}
+
 function MileageCostReviewPage(props: {
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[]; evidence?: import("./types").ClaimEvidence[] }>;
   loadClaimEvidenceAsset: (claimId: number, evidenceId: string) => Promise<string>;
   onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
   onSave: (id: number, payload: { name?: string; description?: string | null; currency?: string; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
+  onDelete: (id: number) => Promise<void>;
+  records: ReceiptRecord[];
   canUseApprovalWorkflows: boolean;
 }) {
   const { id } = useParams();
@@ -4372,6 +4460,7 @@ function MileageCostReviewPage(props: {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [postApprovePrompt, setPostApprovePrompt] = useState<null | { nextRecord: ReceiptRecord | null }>(null);
 
   useEffect(() => {
     const claimId = Number(id);
@@ -4423,12 +4512,16 @@ function MileageCostReviewPage(props: {
     try {
       await props.onStatusChange(claim.id, status);
       setClaim((current) => current ? { ...current, status } : current);
-      setFeedback(status === "approved" ? "Mileage cost approved and moved out of review." : status === "paid" ? "Mileage cost marked as paid." : "Mileage cost returned for correction.");
+      setFeedback(status === "approved" ? "Mileage cost approved and moved out of review." : status === "payment_processing" ? "Mileage cost added to payment processing." : status === "paid" ? "Mileage cost marked as paid and added to Reports." : "Mileage cost returned for correction.");
+      if (status === "approved") {
+        setPostApprovePrompt({ nextRecord: props.records.find((record) => record.id !== -claim.id && countsAsManualReview(record)) ?? null });
+      }
     } catch (statusError) { setError(statusError instanceof Error ? statusError.message : "Could not update this mileage cost."); }
     finally { setSaving(false); }
   };
 
-  return <div className="workspace-split">
+  return <>
+    <div className="workspace-split">
     <section className="panel viewer-panel">
       <div className="panel-heading"><h2>Journey proof</h2><span>{evidence.length ? `${evidence.length} proof image${evidence.length === 1 ? "" : "s"}` : "No proof image added"}</span></div>
       {evidenceUrls.length ? <div className="claim-evidence-gallery">{evidenceUrls.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer"><img src={url} alt={evidence[index]?.sourceFilename ?? "Mileage journey proof"} /></a>)}</div> : <div className="document-placeholder"><img className="placeholder-logo" src={brandMarkSrc} alt="Exdox mileage evidence placeholder" /><strong>Journey evidence</strong><p>Mileage proof stays separate from receipts and can be reviewed here when supplied.</p></div>}
@@ -4451,12 +4544,32 @@ function MileageCostReviewPage(props: {
       <div className="toolbar">
         {claim.status === "pending" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Save Changes"}</button> : null}
         {props.canUseApprovalWorkflows && claim.status === "pending" ? <button className="primary-action" type="button" disabled={saving} onClick={() => void setStatus("approved")}>Approve Expense</button> : null}
-        {props.canUseApprovalWorkflows && claim.status === "pending" ? <button className="danger-action" type="button" disabled={saving} onClick={() => void setStatus("rejected")}>Return for correction</button> : null}
-        {props.canUseApprovalWorkflows && claim.status === "approved" ? <button className="primary-action" type="button" disabled={saving} onClick={() => void setStatus("paid")}>Mark as Paid</button> : null}
+        {props.canUseApprovalWorkflows && claim.status === "approved" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("pending")}>Undo Approval</button> : null}
+        <button className="danger-action" type="button" disabled={saving} onClick={async () => {
+          if (!window.confirm("Move this mileage expense to the Recycle Bin? It can be restored for three days.")) return;
+          setSaving(true); setError(null); setFeedback(null);
+          try { await props.onDelete(claim.id); navigate("/costs"); }
+          catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Could not delete this mileage expense."); }
+          finally { setSaving(false); }
+        }}>Delete Document</button>
         <button className="secondary-action" type="button" onClick={() => navigate("/costs")}>Back to Costs</button>
       </div>
     </section>
-  </div>;
+    </div>
+  {postApprovePrompt ? <div className="review-next-overlay" role="dialog" aria-modal="true" aria-label="Mileage review prompt">
+    <button className="review-next-backdrop" type="button" aria-label="Close mileage review prompt" onClick={() => setPostApprovePrompt(null)} />
+    <div className="review-next-panel">
+      <div className="panel-heading"><h2>{postApprovePrompt.nextRecord ? "Review the next expense" : "All caught up"}</h2><span>{postApprovePrompt.nextRecord ? "This expense is approved. Move straight into the next one." : "There are no more expenses waiting for review right now."}</span></div>
+      <div className="toolbar">
+        {postApprovePrompt.nextRecord ? <button className="primary-action" type="button" onClick={() => {
+          const next = postApprovePrompt.nextRecord!; setPostApprovePrompt(null);
+          navigate(next.mileageClaimId ? `/costs/mileage/${next.mileageClaimId}` : `/costs/${next.id}`);
+        }}>Review the next expense</button> : null}
+        <button className="secondary-action" type="button" onClick={() => setPostApprovePrompt(null)}>Close</button>
+      </div>
+    </div>
+    </div> : null}
+  </>;
 }
 
 function DocumentWorkspacePage(props: {
@@ -10870,6 +10983,7 @@ function NavIcon({ name }: { name: string }) {
     costs: <><path d="M6 3h12l2 5-2 5H6L4 8l2-5Z" /><path d="M8 17h8M9 21h6" /></>,
     sales: <><path d="M4 6h16v12H4z" /><path d="m4 9 8 5 8-5" /></>,
     claims: <><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 13h6M10 17h6" /></>,
+    recycle: <><path d="M8 5h8l2 3" /><path d="m18 8-3 1 1-3" /><path d="M18 11v5l-3 3" /><path d="m15 19 1-3 2 2" /><path d="M13 19H8l-2-3" /><path d="m6 16 3-1-1 3" /><path d="M6 13V8l2-3" /><path d="m8 5-1 3-2-2" /></>,
     rules: <><circle cx="8" cy="8" r="3" /><circle cx="16" cy="16" r="3" /><path d="M10.5 10.5 13.5 13.5M16 3v4M3 16h4" /></>,
     bank: <><path d="m3 9 9-6 9 6M5 10h14M6 10v8M10 10v8M14 10v8M18 10v8M4 21h16" /></>,
     contact: <><path d="M4 6h16v12H4z" /><path d="m4 8 8 6 8-6" /></>,
@@ -12026,6 +12140,8 @@ function claimStatusLabel(status: ClaimRecord["status"]) {
     ? "Pending"
     : status === "approved"
       ? "Approved"
+      : status === "payment_processing"
+        ? "Payment processing"
       : status === "paid"
         ? "Paid"
         : "Rejected";
@@ -12036,6 +12152,8 @@ function claimStatusToPill(status: ClaimRecord["status"]): "Review" | "Ready" | 
     ? "Review"
     : status === "approved"
       ? "Ready"
+      : status === "payment_processing"
+        ? "Processing"
       : status === "rejected"
         ? "Processing"
         : "Published";
@@ -12151,6 +12269,9 @@ function routeTitle(pathname: string) {
   }
   if (pathname.startsWith("/billing")) {
     return "Billing";
+  }
+  if (pathname.startsWith("/recycle-bin")) {
+    return "Recycle Bin";
   }
   if (pathname.startsWith("/settings")) {
     return "Profile/Settings";

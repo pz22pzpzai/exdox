@@ -13,6 +13,7 @@ import type {
   TeamMember,
   OrganisationSettings,
   ReceiptRecord,
+  RecycleBinItem,
   ReconciliationLine,
   SessionUser,
   SessionState,
@@ -358,6 +359,15 @@ export async function deleteReceipt(token: string, id: number): Promise<void> {
   });
 }
 
+export async function listRecycleBin(token: string): Promise<RecycleBinItem[]> {
+  const response = await apiFetch<{ items: RecycleBinItem[] }>("/recycle-bin", token);
+  return response.items;
+}
+
+export async function restoreRecycleBinItem(token: string, type: RecycleBinItem["itemType"], id: number): Promise<void> {
+  await apiFetch(`/recycle-bin/${type}/${id}/restore`, token, { method: "POST" });
+}
+
 function normalizeVaultReceiptRecord(receipt: ReceiptRecord): ReceiptRecord {
   if (receipt.workspaceContext !== "vault") {
     return receipt;
@@ -449,6 +459,10 @@ export async function updateClaimStatus(
     body: JSON.stringify({ status }),
   });
   return response.claim;
+}
+
+export async function deleteClaim(token: string, id: number): Promise<void> {
+  await apiFetch(`/claims/${id}`, token, { method: "DELETE" });
 }
 
 export async function attachReceiptToClaim(
@@ -742,7 +756,7 @@ export function buildFallbackSession(token: string, user: SessionUser): SessionS
     activeOrganisationId: user.organisationId,
     allowedWebRoutes:
       user.role === "Business_Admin"
-        ? ["/overview", "/costs", "/sales", "/vault", "/claims", "/rules", "/settings", "/billing"]
+        ? ["/overview", "/costs", "/sales", "/vault", "/claims", "/rules", "/recycle-bin", "/settings", "/billing"]
         : ["/dropbox", "/claims", "/employee/sales", "/employee/vault", "/employee/reports"],
     billing:
       user.role === "Business_Admin"

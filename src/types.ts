@@ -89,7 +89,7 @@ export type ClaimRecord = {
   name: string;
   description: string | null;
   currency: string;
-  status: "pending" | "approved" | "paid" | "rejected";
+  status: "pending" | "approved" | "payment_processing" | "paid" | "rejected";
   totalAmount: number;
   documentCount: number;
   claimType?: "standard" | "mileage";
@@ -104,6 +104,17 @@ export type ClaimRecord = {
   updatedAt: string;
   createdByUserId?: number;
   organisationId?: number;
+};
+
+export type RecycleBinItem = {
+  id: string;
+  itemType: "receipt" | "claim";
+  itemId: number;
+  title: string;
+  workspaceContext: "cost" | "sales" | "vault" | null;
+  deletedByUserId: number;
+  deletedAt: string;
+  purgeAfter: string;
 };
 
 export type ClaimEvidence = {
