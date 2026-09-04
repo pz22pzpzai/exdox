@@ -2280,6 +2280,88 @@ input {
   min-height: 42px;
 }
 
+.claims-page-hero {
+  align-items: flex-start;
+}
+
+.claims-filter-panel {
+  display: grid;
+  gap: 18px;
+  padding: 22px 24px;
+}
+
+.claims-filter-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.claims-filter-heading h2,
+.claims-filter-heading p {
+  margin: 0;
+}
+
+.claims-filter-heading p,
+.claims-filter-heading > span {
+  color: var(--muted);
+}
+
+.claims-filter-heading p {
+  margin-top: 4px;
+}
+
+.claims-filter-heading > span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #edf7fc;
+  color: #176e9f;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.claims-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.claims-filter-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: #31435a;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.claims-filter-grid select,
+.claims-filter-grid input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  margin: 0;
+}
+
+.claims-filter-actions,
+.claim-create-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.claim-create-panel {
+  max-width: 980px;
+}
+
+@media (max-width: 1180px) {
+  .claims-filter-grid {
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+  }
+}
+
 .detail-list {
   display: grid;
   margin: 0;
@@ -2331,6 +2413,29 @@ input {
 }
 
 @media (max-width: 620px) {
+  .claims-filter-panel {
+    padding: 18px;
+  }
+
+  .claims-filter-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .claims-filter-heading > span {
+    align-self: flex-start;
+  }
+
+  .claims-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .claims-filter-actions > *,
+  .claim-create-actions > * {
+    width: 100%;
+  }
+
   .compact-date-filter {
     width: 100%;
   }

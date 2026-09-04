@@ -524,6 +524,12 @@ function employeeRouteTitle(pathname: string) {
   if (pathname.startsWith("/employee/reports")) {
     return "My Reports";
   }
+  if (pathname.startsWith("/claims/new/mileage")) {
+    return "Create Mileage Claim";
+  }
+  if (pathname.startsWith("/claims/new")) {
+    return "Create Claim";
+  }
   if (pathname.startsWith("/claims")) {
     return "My Claims";
   }
@@ -1611,6 +1617,7 @@ function DashboardShell(props: {
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
+  const inClaimsWorkspace = location.pathname.startsWith("/claims");
   const approvalWorkflowsEnabled = hasSessionFeature(props.session, "approval_workflows");
   const costReviewCount = props.store.costs.filter((receipt) => countsAsManualReview(receipt)).length;
   const salesReviewCount = props.store.sales.filter((receipt) => countsAsManualReview(receipt)).length;
@@ -1797,6 +1804,12 @@ function DashboardShell(props: {
             <button className="secondary-action" type="button" onClick={props.onSignOut}>
               Sign out
             </button>
+            {inClaimsWorkspace && isRouteAllowed(props.session, "/claims") ? (
+              <>
+                <button className="primary-action" type="button" onClick={() => navigate("/claims/new")}>Create claim</button>
+                <button className="primary-action" type="button" onClick={() => navigate("/claims/new/mileage")}>Create mileage claim</button>
+              </>
+            ) : null}
             {businessAdmin ? (
               <>
                 <UploadButton
@@ -2040,7 +2053,13 @@ function DashboardShell(props: {
                 />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
-                <Route path="/claims" element={<ClaimsPage session={props.session} claims={props.store.claims.filter((claim) => claim.claimType !== "mileage")} onCreateClaim={props.onClaimCreate} />} />
+                <Route path="/claims" element={<ClaimsPage session={props.session} claims={props.store.claims.filter((claim) => claim.claimType !== "mileage")} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/claims") ? (
+                <Route path="/claims/new" element={<CreateClaimPage onCreateClaim={props.onClaimCreate} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/claims") ? (
+                <Route path="/claims/new/mileage" element={<CreateClaimPage onCreateClaim={props.onClaimCreate} claimType="mileage" />} />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route
@@ -2106,7 +2125,15 @@ function DashboardShell(props: {
               />
               <Route
                 path="/claims"
-                element={<ClaimsPage session={props.session} claims={props.store.claims} onCreateClaim={props.onClaimCreate} employeeMode />}
+                element={<ClaimsPage session={props.session} claims={props.store.claims} employeeMode />}
+              />
+              <Route
+                path="/claims/new"
+                element={<CreateClaimPage onCreateClaim={props.onClaimCreate} employeeMode />}
+              />
+              <Route
+                path="/claims/new/mileage"
+                element={<CreateClaimPage onCreateClaim={props.onClaimCreate} claimType="mileage" employeeMode />}
               />
               <Route
                 path="/claims/:id"
@@ -5460,23 +5487,14 @@ function DocumentWorkspacePage(props: {
 function ClaimsPage({
   session,
   claims,
-  onCreateClaim,
   employeeMode,
 }: {
   session: SessionState;
   claims: ClaimRecord[];
-  onCreateClaim: (payload: { name?: string; description?: string; currency?: string; claimType?: 'standard' | 'mileage'; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
   employeeMode?: boolean;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [draft, setDraft] = useState({
-    name: "",
-    description: "",
-    currency: "GBP",
-  });
-  const [mileageDraft, setMileageDraft] = useState({ startPostcode: "", endPostcode: "", totalMiles: "", mileageRate: "0.45" });
-  const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ClaimRecord["status"] | "all">("all");
@@ -5561,8 +5579,8 @@ function ClaimsPage({
   }, [claims]);
 
   return (
-    <div className="stack-page">
-      <section className="page-hero">
+    <div className="stack-page claims-page">
+      <section className="page-hero claims-page-hero">
         <div>
           <h2>{employeeMode ? "My expense claims" : "Expense claims"}</h2>
           <p>
@@ -5571,34 +5589,54 @@ function ClaimsPage({
               : "Claim folders stay separate from purchase invoices and keep reimbursement approval in its own workflow."}
           </p>
         </div>
-        <div className="filter-row">
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ClaimRecord["status"] | "all")}>
-            <option value="all">All claim statuses</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="published">Published</option>
-            <option value="paid">Paid</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as typeof categoryFilter)}>
-            <option value="all">All categories</option>
-            <option value="mileage">Mileage</option>
-            <option value="receipt">Receipt claim</option>
-          </select>
-          <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="highest_total">Highest total</option>
-            <option value="lowest_total">Lowest total</option>
-          </select>
-          <label className="compact-date-filter">
-            From
+      </section>
+      <section className="panel claims-filter-panel" aria-label="Filter expense claims">
+        <div className="claims-filter-heading">
+          <div>
+            <h2>Filter claims</h2>
+            <p>Narrow the claim list by status, type, date, or total.</p>
+          </div>
+          <span>{filteredClaims.length} result{filteredClaims.length === 1 ? "" : "s"}</span>
+        </div>
+        <div className="claims-filter-grid">
+          <label>
+            Status
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ClaimRecord["status"] | "all")}>
+              <option value="all">All claim statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="published">Published</option>
+              <option value="paid">Paid</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </label>
+          <label>
+            Claim type
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as typeof categoryFilter)}>
+              <option value="all">All claim types</option>
+              <option value="mileage">Mileage</option>
+              <option value="receipt">Receipt claim</option>
+            </select>
+          </label>
+          <label>
+            Sort by
+            <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="highest_total">Highest total</option>
+              <option value="lowest_total">Lowest total</option>
+            </select>
+          </label>
+          <label>
+            Start date
             <input type="date" value={startDate} max={endDate || undefined} onChange={(event) => setStartDate(event.target.value)} />
           </label>
-          <label className="compact-date-filter">
-            To
+          <label>
+            End date
             <input type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} />
           </label>
+        </div>
+        <div className="claims-filter-actions">
           <button
             className="secondary-action"
             type="button"
@@ -5616,23 +5654,24 @@ function ClaimsPage({
           >
             Export claims CSV
           </button>
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={statusFilter === "all" && categoryFilter === "all" && sortOrder === "newest" && !startDate && !endDate}
+            onClick={() => {
+              setStatusFilter("all");
+              setCategoryFilter("all");
+              setSortOrder("newest");
+              setStartDate("");
+              setEndDate("");
+            }}
+          >
+            Clear filters
+          </button>
         </div>
       </section>
-      <section className="panel settings-panel">
-        <div className="panel-heading"><h2>Create mileage claim</h2><span>Enter your requested rate. Your business admin approves the claim and its rate.</span></div>
-        <div className="form-grid">
-          <label>Start postcode<input value={mileageDraft.startPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, startPostcode: event.target.value })} /></label>
-          <label>End postcode<input value={mileageDraft.endPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, endPostcode: event.target.value })} /></label>
-          <label>Total miles<input type="number" min="0.1" step="0.1" value={mileageDraft.totalMiles} onChange={(event) => setMileageDraft({ ...mileageDraft, totalMiles: event.target.value })} /></label>
-          <label>Rate per mile<input type="number" min="0.01" step="0.01" value={mileageDraft.mileageRate} onChange={(event) => setMileageDraft({ ...mileageDraft, mileageRate: event.target.value })} /></label>
-        </div>
-        <div className="toolbar"><button className="primary-action" type="button" disabled={busy} onClick={async () => {
-          const miles = Number(mileageDraft.totalMiles); const rate = Number(mileageDraft.mileageRate);
-          if (!mileageDraft.startPostcode.trim() || !mileageDraft.endPostcode.trim() || !Number.isFinite(miles) || miles <= 0 || !Number.isFinite(rate) || rate <= 0) { setError("Enter both postcodes, total miles, and a positive rate per mile."); return; }
-          setBusy(true); setError(null); setFeedback(null);
-          try { const claim = await onCreateClaim({ name: `Mileage claim ${new Date().toLocaleDateString("en-GB")}`, description: `${mileageDraft.startPostcode.trim()} to ${mileageDraft.endPostcode.trim()}`, currency: "GBP", claimType: "mileage", startPostcode: mileageDraft.startPostcode.trim(), endPostcode: mileageDraft.endPostcode.trim(), totalMiles: miles, mileageRate: rate }); setMileageDraft({ startPostcode: "", endPostcode: "", totalMiles: "", mileageRate: "0.45" }); navigate(`/claims/${claim.id}`); } catch (createError) { setError(createError instanceof Error ? createError.message : "Could not create this mileage claim."); } finally { setBusy(false); }
-        }}>{busy ? "Creating..." : "Submit mileage claim"}</button></div>
-      </section>
+      {error ? <div className="error-banner">{error}</div> : null}
+      {feedback ? <div className="success-banner">{feedback}</div> : null}
       {!employeeMode && queueExportsEnabled ? (
         <section className="panel settings-panel master-expense-export">
           <div className="panel-heading">
@@ -5696,61 +5735,6 @@ function ClaimsPage({
           </div>
         </section>
       ) : null}
-      <section className="panel settings-panel">
-        <div className="panel-heading">
-          <h2>Create claim</h2>
-          <span>Reimbursement workflow</span>
-        </div>
-        {error ? <div className="error-banner">{error}</div> : null}
-        {feedback ? <div className="success-banner">{feedback}</div> : null}
-        <div className="form-grid">
-          <label>
-            Claim name
-            <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-          </label>
-          <label>
-            Currency
-            <input value={draft.currency} onChange={(event) => setDraft({ ...draft, currency: event.target.value.toUpperCase() })} maxLength={3} />
-          </label>
-          <label className="form-span-2">
-            Description
-            <textarea rows={3} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} />
-          </label>
-        </div>
-        <div className="toolbar">
-          <button
-            className="primary-action"
-            type="button"
-            disabled={busy}
-            onClick={async () => {
-              if (!draft.name.trim()) {
-                setError("Enter a claim name before creating the claim.");
-                setFeedback(null);
-                return;
-              }
-              setBusy(true);
-              setError(null);
-              setFeedback(null);
-              try {
-                const claim = await onCreateClaim({
-                  name: draft.name.trim() || undefined,
-                  description: draft.description.trim() || undefined,
-                  currency: draft.currency.trim() || "GBP",
-                });
-                setDraft({ name: "", description: "", currency: "GBP" });
-                setFeedback("Expense claim created.");
-                navigate(`/claims/${claim.id}`);
-              } catch (createError) {
-                setError(createError instanceof Error ? createError.message : "Could not create this claim.");
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            {busy ? "Creating..." : "Create claim"}
-          </button>
-        </div>
-      </section>
       <section className="panel table-panel">
         {filteredClaims.length ? (
           <table className="data-table">
@@ -5786,6 +5770,110 @@ function ClaimsPage({
             <p>{statusFilter === "all" ? employeeMode ? "Create your first claim above and attach personal-spend receipts from the review workspace." : "Create a claim above to start the reimbursement approval workflow." : "Change the claim-status filter or create a new claim."}</p>
           </div>
         )}
+      </section>
+    </div>
+  );
+}
+
+function CreateClaimPage({
+  onCreateClaim,
+  claimType = "standard",
+  employeeMode,
+}: {
+  onCreateClaim: (payload: { name?: string; description?: string; currency?: string; claimType?: 'standard' | 'mileage'; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
+  claimType?: "standard" | "mileage";
+  employeeMode?: boolean;
+}) {
+  const navigate = useNavigate();
+  const [draft, setDraft] = useState({ name: "", description: "", currency: "GBP" });
+  const [mileageDraft, setMileageDraft] = useState({ startPostcode: "", endPostcode: "", totalMiles: "", mileageRate: "0.45" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const isMileage = claimType === "mileage";
+
+  const submit = async () => {
+    setError(null);
+    if (isMileage) {
+      const miles = Number(mileageDraft.totalMiles);
+      const rate = Number(mileageDraft.mileageRate);
+      if (!mileageDraft.startPostcode.trim() || !mileageDraft.endPostcode.trim() || !Number.isFinite(miles) || miles <= 0 || !Number.isFinite(rate) || rate <= 0) {
+        setError("Enter both postcodes, total miles, and a positive rate per mile.");
+        return;
+      }
+      setBusy(true);
+      try {
+        const claim = await onCreateClaim({
+          name: `Mileage claim ${new Date().toLocaleDateString("en-GB")}`,
+          description: `${mileageDraft.startPostcode.trim()} to ${mileageDraft.endPostcode.trim()}`,
+          currency: "GBP",
+          claimType: "mileage",
+          startPostcode: mileageDraft.startPostcode.trim(),
+          endPostcode: mileageDraft.endPostcode.trim(),
+          totalMiles: miles,
+          mileageRate: rate,
+        });
+        navigate(employeeMode ? `/claims/${claim.id}` : `/costs/mileage/${claim.id}`);
+      } catch (createError) {
+        setError(createError instanceof Error ? createError.message : "Could not create this mileage claim.");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    if (!draft.name.trim()) {
+      setError("Enter a claim name before creating the claim.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const claim = await onCreateClaim({
+        name: draft.name.trim(),
+        description: draft.description.trim() || undefined,
+        currency: draft.currency.trim() || "GBP",
+      });
+      navigate(`/claims/${claim.id}`);
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : "Could not create this claim.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="stack-page claim-create-page">
+      <section className="page-hero claim-create-hero">
+        <div>
+          <p className="section-kicker">{isMileage ? "MILEAGE REIMBURSEMENT" : "REIMBURSEMENT CLAIM"}</p>
+          <h2>{isMileage ? "Create mileage claim" : "Create expense claim"}</h2>
+          <p>{isMileage ? "Enter the journey and requested mileage rate for review." : "Create a claim folder for your reimbursable personal-spend receipts."}</p>
+        </div>
+        <button className="secondary-action" type="button" onClick={() => navigate("/claims")}>Back to expense claims</button>
+      </section>
+      <section className="panel settings-panel claim-create-panel">
+        {error ? <div className="error-banner" role="alert">{error}</div> : null}
+        <div className="form-grid">
+          {isMileage ? (
+            <>
+              <label>Start postcode<input autoFocus value={mileageDraft.startPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, startPostcode: event.target.value })} /></label>
+              <label>End postcode<input value={mileageDraft.endPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, endPostcode: event.target.value })} /></label>
+              <label>Total miles<input type="number" min="0.1" step="0.1" value={mileageDraft.totalMiles} onChange={(event) => setMileageDraft({ ...mileageDraft, totalMiles: event.target.value })} /></label>
+              <label>Rate per mile<input type="number" min="0.01" step="0.01" value={mileageDraft.mileageRate} onChange={(event) => setMileageDraft({ ...mileageDraft, mileageRate: event.target.value })} /></label>
+            </>
+          ) : (
+            <>
+              <label>Claim name<input autoFocus value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label>
+              <label>Currency<input value={draft.currency} onChange={(event) => setDraft({ ...draft, currency: event.target.value.toUpperCase() })} maxLength={3} /></label>
+              <label className="form-span-2">Description<textarea rows={5} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label>
+            </>
+          )}
+        </div>
+        <div className="toolbar claim-create-actions">
+          <button className="primary-action" type="button" disabled={busy} onClick={() => void submit()}>
+            {busy ? "Submitting..." : isMileage ? "Submit mileage claim" : "Create claim"}
+          </button>
+          <button className="secondary-action" type="button" disabled={busy} onClick={() => navigate("/claims")}>Cancel</button>
+        </div>
       </section>
     </div>
   );
@@ -12371,6 +12459,12 @@ function routeTitle(pathname: string) {
   }
   if (pathname.startsWith("/sales/")) {
     return "Sales Workspace";
+  }
+  if (pathname.startsWith("/claims/new/mileage")) {
+    return "Create Mileage Claim";
+  }
+  if (pathname.startsWith("/claims/new")) {
+    return "Create Claim";
   }
   if (pathname.startsWith("/claims/")) {
     return "Claim Review";
