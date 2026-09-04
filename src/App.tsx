@@ -1999,7 +1999,7 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route
                   path="/claims/:id"
-                element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} onSave={props.onClaimSave} loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} uploadClaimEvidence={props.uploadClaimEvidence} settings={props.store.settings} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
+                element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} onDelete={props.onClaimDelete} onSave={props.onClaimSave} loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} uploadClaimEvidence={props.uploadClaimEvidence} settings={props.store.settings} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
                 />
               ) : null}
               <Route path="/dropbox" element={<Navigate to="/costs" replace />} />
@@ -2067,6 +2067,7 @@ function DashboardShell(props: {
                 element={
                   <ClaimDetailPage
                     onStatusChange={props.onClaimStatusChange}
+                    onDelete={props.onClaimDelete}
                     onSave={props.onClaimSave}
                     loadClaim={props.loadClaim}
                     loadClaimEvidenceAsset={props.loadClaimEvidenceAsset}
@@ -6083,6 +6084,7 @@ function ClaimDetailPage(props: {
   loadClaimEvidenceAsset: (claimId: number, evidenceId: string) => Promise<string>;
   uploadClaimEvidence: (id: number, file: File) => Promise<import("./types").ClaimEvidence>;
   onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
   onSave: (id: number, payload: { name?: string; description?: string | null; currency?: string; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
   settings?: OrganisationSettings | null;
   employeeMode?: boolean;
@@ -6096,6 +6098,7 @@ function ClaimDetailPage(props: {
   const [loading, setLoading] = useState(true);
   const [savingStatus, setSavingStatus] = useState<ClaimRecord["status"] | null>(null);
   const [savingDetails, setSavingDetails] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [evidencePreviewUrl, setEvidencePreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -6258,6 +6261,25 @@ function ClaimDetailPage(props: {
               onClick={() => void updateStatus("rejected")}
             >
               Reject claim
+            </button>
+            <button
+              className="danger-action"
+              type="button"
+              disabled={savingStatus !== null || deleting}
+              onClick={async () => {
+                if (!window.confirm("Move this expense claim to the Recycle Bin? It can be restored for three days.")) return;
+                setDeleting(true);
+                try {
+                  await props.onDelete(claim.id);
+                  navigate("/claims");
+                } catch (deleteError) {
+                  setError(deleteError instanceof Error ? deleteError.message : "Could not delete this claim.");
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting ? "Deleting..." : "Delete claim"}
             </button>
           </>
         ) : null}
