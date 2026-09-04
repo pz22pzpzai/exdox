@@ -4456,12 +4456,16 @@ function MileageCostReviewPage(props: {
   const navigate = useNavigate();
   const [claim, setClaim] = useState<ClaimRecord | null>(null);
   const [evidence, setEvidence] = useState<import("./types").ClaimEvidence[]>([]);
-  const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
+  const [evidenceAssets, setEvidenceAssets] = useState<Array<{ evidence: import("./types").ClaimEvidence; url: string }>>([]);
+  const [selectedEvidenceIndex, setSelectedEvidenceIndex] = useState(0);
+  const [imageZoomOpen, setImageZoomOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [postApprovePrompt, setPostApprovePrompt] = useState<null | { nextRecord: ReceiptRecord | null }>(null);
+  const imageZoomStageRef = useRef<HTMLDivElement | null>(null);
+  const imagePanStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
 
   useEffect(() => {
     const claimId = Number(id);
@@ -4473,8 +4477,12 @@ function MileageCostReviewPage(props: {
         setClaim(payload.claim);
         const proof = payload.evidence ?? [];
         setEvidence(proof);
-        const urls = await Promise.all(proof.map((item) => props.loadClaimEvidenceAsset(payload.claim.id, item.id).catch(() => "")));
-        setEvidenceUrls(urls.filter(Boolean));
+        const assets = await Promise.all(proof.map(async (item) => {
+          const url = await props.loadClaimEvidenceAsset(payload.claim.id, item.id).catch(() => "");
+          return url ? { evidence: item, url } : null;
+        }));
+        setEvidenceAssets(assets.filter((item): item is { evidence: import("./types").ClaimEvidence; url: string } => item !== null));
+        setSelectedEvidenceIndex(0);
         setError(null);
       })
       .catch((loadError: Error) => setError(loadError.message || "Could not load this mileage cost."))
@@ -4484,6 +4492,7 @@ function MileageCostReviewPage(props: {
   if (!claim) return <div className="empty-state">{error ?? (loading ? "Loading mileage cost..." : "Mileage cost unavailable.")}</div>;
 
   const total = Number((Number(claim.mileageTotalMiles ?? 0) * Number(claim.mileageRate ?? 0)).toFixed(2));
+  const selectedEvidence = evidenceAssets[selectedEvidenceIndex] ?? evidenceAssets[0] ?? null;
   const save = async () => {
     if (claim.status !== "pending") {
       setError("Approved, paid, and returned mileage costs are locked.");
@@ -4524,8 +4533,11 @@ function MileageCostReviewPage(props: {
   return <>
     <div className="workspace-split">
     <section className="panel viewer-panel">
-      <div className="panel-heading"><h2>Journey proof</h2><span>{evidence.length ? `${evidence.length} proof image${evidence.length === 1 ? "" : "s"}` : "No proof image added"}</span></div>
-      {evidenceUrls.length ? <div className="claim-evidence-gallery">{evidenceUrls.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer"><img src={url} alt={evidence[index]?.sourceFilename ?? "Mileage journey proof"} /></a>)}</div> : <div className="document-placeholder"><img className="placeholder-logo" src={brandMarkSrc} alt="Exdox mileage evidence placeholder" /><strong>Journey evidence</strong><p>Mileage proof stays separate from receipts and can be reviewed here when supplied.</p></div>}
+      <div className="panel-heading"><h2>Journey proof</h2><div className="toolbar"><span>{evidence.length ? `${evidence.length} proof image${evidence.length === 1 ? "" : "s"}` : "No proof image added"}</span>{selectedEvidence ? <button className="secondary-action" type="button" onClick={() => setImageZoomOpen(true)}>Zoom image</button> : null}</div></div>
+      {selectedEvidence ? <>
+        <button className="document-image-frame" type="button" onClick={() => setImageZoomOpen(true)} aria-label={`Open larger preview for ${selectedEvidence.evidence.sourceFilename}`}><img className="document-image" src={selectedEvidence.url} alt={selectedEvidence.evidence.sourceFilename} /></button>
+        {evidenceAssets.length > 1 ? <div className="toolbar claim-evidence-picker">{evidenceAssets.map((asset, index) => <button key={asset.evidence.id} className={index === selectedEvidenceIndex ? "primary-action" : "secondary-action"} type="button" onClick={() => setSelectedEvidenceIndex(index)}>Proof {index + 1}</button>)}</div> : null}
+      </> : <div className="document-placeholder"><img className="placeholder-logo" src={brandMarkSrc} alt="Exdox mileage evidence placeholder" /><strong>Journey evidence</strong><p>Mileage proof stays separate from receipts and can be reviewed here when supplied.</p></div>}
     </section>
     <section className="panel editor-panel">
       <div className="panel-heading"><h2>Cost review</h2><span>Mileage expense</span></div>
@@ -4557,6 +4569,29 @@ function MileageCostReviewPage(props: {
       </div>
     </section>
     </div>
+  {selectedEvidence && imageZoomOpen ? <div className="image-zoom-overlay" role="dialog" aria-modal="true" aria-label="Mileage proof image preview">
+    <button className="image-zoom-backdrop" type="button" aria-label="Close image preview" onClick={() => setImageZoomOpen(false)} />
+    <div className="image-zoom-panel">
+      <div className="toolbar"><strong>{selectedEvidence.evidence.sourceFilename}</strong><button className="secondary-action" type="button" onClick={() => setImageZoomOpen(false)}>Close</button></div>
+      <div ref={imageZoomStageRef} className="image-zoom-stage" onPointerDown={(event) => {
+        if (!imageZoomStageRef.current) return;
+        event.preventDefault();
+        imagePanStartRef.current = { x: event.clientX, y: event.clientY, left: imageZoomStageRef.current.scrollLeft, top: imageZoomStageRef.current.scrollTop };
+        imageZoomStageRef.current.setPointerCapture(event.pointerId);
+      }} onPointerMove={(event) => {
+        if (!imageZoomStageRef.current || !imagePanStartRef.current) return;
+        event.preventDefault();
+        imageZoomStageRef.current.scrollLeft = imagePanStartRef.current.left - (event.clientX - imagePanStartRef.current.x);
+        imageZoomStageRef.current.scrollTop = imagePanStartRef.current.top - (event.clientY - imagePanStartRef.current.y);
+      }} onPointerUp={(event) => {
+        if (imageZoomStageRef.current?.hasPointerCapture(event.pointerId)) imageZoomStageRef.current.releasePointerCapture(event.pointerId);
+        imagePanStartRef.current = null;
+      }} onPointerCancel={(event) => {
+        if (imageZoomStageRef.current?.hasPointerCapture(event.pointerId)) imageZoomStageRef.current.releasePointerCapture(event.pointerId);
+        imagePanStartRef.current = null;
+      }}><img className="image-zoom-image" src={selectedEvidence.url} alt={selectedEvidence.evidence.sourceFilename} /></div>
+    </div>
+  </div> : null}
   {postApprovePrompt ? <div className="review-next-overlay" role="dialog" aria-modal="true" aria-label="Mileage review prompt">
     <button className="review-next-backdrop" type="button" aria-label="Close mileage review prompt" onClick={() => setPostApprovePrompt(null)} />
     <div className="review-next-panel">
