@@ -977,6 +977,23 @@ export function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const workspaceFreshRef = useRef(false);
 
+  const refreshActionQueues = async (token: string, activeSession: SessionState) => {
+    const businessAdmin = isBusinessAdmin(activeSession);
+    const canOpenCosts = isRouteAllowed(activeSession, "/costs") || (!businessAdmin && isRouteAllowed(activeSession, "/dropbox"));
+    const canOpenSales = isRouteAllowed(activeSession, "/sales") || (!businessAdmin && isRouteAllowed(activeSession, "/employee/sales"));
+    const canOpenVault = isRouteAllowed(activeSession, "/vault") || (!businessAdmin && isRouteAllowed(activeSession, "/employee/vault"));
+    const canOpenClaims = isRouteAllowed(activeSession, "/claims");
+    const canOpenReconciliation = businessAdmin && isRouteAllowed(activeSession, "/reconciliation");
+    const [costs, sales, vault, claims, reconciliation] = await Promise.all([
+      canOpenCosts ? listReceipts(token, "cost") : Promise.resolve([]),
+      canOpenSales ? listReceipts(token, "sales") : Promise.resolve([]),
+      canOpenVault ? listReceipts(token, "vault") : Promise.resolve([]),
+      canOpenClaims ? listClaims(token).catch(() => []) : Promise.resolve([]),
+      canOpenReconciliation ? listReconciliation(token).catch(() => []) : Promise.resolve([]),
+    ]);
+    setStore((current) => ({ ...current, costs, sales, vault, claims, reconciliation }));
+  };
+
   const loadWorkspace = async (token: string, fallbackSession?: SessionState | null) => {
     const nextSession = await fetchSession(token).catch((error) => {
       if (fallbackSession) {
@@ -1369,10 +1386,12 @@ export function App() {
                 const saved = await saveReceipt(session.token, id, payload);
                 setStore((current) => ({
                   ...current,
-                  costs: current.costs.map((item) => (item.id === id ? saved : item)),
-                  sales: current.sales.map((item) => (item.id === id ? saved : item)),
-                  vault: current.vault.map((item) => (item.id === id ? saved : item)),
+                  costs: current.costs.map((item) => (String(item.id) === String(id) ? saved : item)),
+                  sales: current.sales.map((item) => (String(item.id) === String(id) ? saved : item)),
+                  vault: current.vault.map((item) => (String(item.id) === String(id) ? saved : item)),
                 }));
+                // Keep the shared header action counts in sync with every completed review.
+                void refreshActionQueues(session.token, session).catch(() => undefined);
               }}
               onReimbursementsMarkedPaid={async () => {
                 const [result, costs, claims] = await Promise.all([
@@ -1429,6 +1448,7 @@ export function App() {
                   costs,
                   claims: current.claims.map((item) => (item.id === id ? saved : item)),
                 }));
+                void refreshActionQueues(session.token, session).catch(() => undefined);
               }}
               onClaimDelete={async (id) => {
                 await deleteClaim(session.token, id);
