@@ -64,6 +64,7 @@ import {
   upgradeBillingPlan,
   uploadDocuments,
 } from "./api";
+import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
 import type {
   BillingCycle,
   BillingPlanId,
@@ -437,6 +438,18 @@ type AppStore = {
   reconciliation: ReconciliationLine[];
   settings: OrganisationSettings | null;
 };
+
+function emptyAppStore(): AppStore {
+  return {
+    costs: [],
+    sales: [],
+    vault: [],
+    claims: [],
+    rules: [],
+    reconciliation: [],
+    settings: null,
+  };
+}
 
 function buildFallbackOrganisationSettings(session: SessionState): OrganisationSettings {
   const activeOrganisation =
@@ -957,19 +970,12 @@ export function App() {
   const navigate = useNavigate();
   const initialStoredSession = useMemo(() => loadStoredSession(), []);
   const [session, setSession] = useState<SessionState | null>(initialStoredSession);
-  const [store, setStore] = useState<AppStore>({
-    costs: [],
-    sales: [],
-    vault: [],
-    claims: [],
-    rules: [],
-    reconciliation: [],
-    settings: null,
-  });
+  const [store, setStore] = useState<AppStore>(emptyAppStore);
   const [loading, setLoading] = useState(Boolean(initialStoredSession));
   const [error, setError] = useState<string | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const workspaceFreshRef = useRef(false);
 
   const loadWorkspace = async (token: string, fallbackSession?: SessionState | null) => {
     const nextSession = await fetchSession(token).catch((error) => {
@@ -999,6 +1005,7 @@ export function App() {
 
     saveStoredSession(nextSession);
     setSession(nextSession);
+    workspaceFreshRef.current = true;
     setStore({
       costs,
       sales,
@@ -1037,6 +1044,14 @@ export function App() {
       return;
     }
 
+    let active = true;
+    workspaceFreshRef.current = false;
+    void readWorkspaceCache<AppStore>(workspaceCacheScope(initialStoredSession)).then((cachedStore) => {
+      if (active && cachedStore && !workspaceFreshRef.current) {
+        setStore(cachedStore);
+      }
+    }).catch(() => undefined);
+
     loadWorkspace(initialStoredSession.token, initialStoredSession)
       .catch((nextError: Error) => {
         clearStoredSession();
@@ -1046,7 +1061,17 @@ export function App() {
       .finally(() => {
         setLoading(false);
       });
+    return () => {
+      active = false;
+    };
   }, [initialStoredSession]);
+
+  useEffect(() => {
+    if (!session || !workspaceFreshRef.current) {
+      return;
+    }
+    void writeWorkspaceCache(workspaceCacheScope(session), store).catch(() => undefined);
+  }, [session, store]);
 
   if (loading && !session) {
     return (
@@ -1467,6 +1492,8 @@ export function App() {
                         activeOrganisationId: organisationId,
                       };
 
+                workspaceFreshRef.current = false;
+                setStore(emptyAppStore());
                 setSession((current) => {
                   if (!current || current.activeOrganisationId === organisationId) {
                     return current;
@@ -1479,20 +1506,19 @@ export function App() {
                   saveStoredSession(updatedSession);
                   return updatedSession;
                 });
+                void readWorkspaceCache<AppStore>(workspaceCacheScope(nextSession)).then((cachedStore) => {
+                  if (cachedStore && !workspaceFreshRef.current) {
+                    setStore(cachedStore);
+                  }
+                }).catch(() => undefined);
                 await loadWorkspace(session.token, nextSession);
               }}
               onSignOut={() => {
+                void clearWorkspaceCachesForUser(session.user.id).catch(() => undefined);
                 clearStoredSession();
                 setSession(null);
-                setStore({
-                  costs: [],
-                  sales: [],
-                  vault: [],
-                  claims: [],
-                  rules: [],
-                  reconciliation: [],
-                  settings: null,
-                });
+                workspaceFreshRef.current = false;
+                setStore(emptyAppStore());
                 setError(null);
                 setAuthError(null);
               }}
