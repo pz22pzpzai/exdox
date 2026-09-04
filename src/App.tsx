@@ -1617,7 +1617,6 @@ function DashboardShell(props: {
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
-  const inClaimsWorkspace = location.pathname.startsWith("/claims");
   const approvalWorkflowsEnabled = hasSessionFeature(props.session, "approval_workflows");
   const costReviewCount = props.store.costs.filter((receipt) => countsAsManualReview(receipt)).length;
   const salesReviewCount = props.store.sales.filter((receipt) => countsAsManualReview(receipt)).length;
@@ -1804,7 +1803,7 @@ function DashboardShell(props: {
             <button className="secondary-action" type="button" onClick={props.onSignOut}>
               Sign out
             </button>
-            {inClaimsWorkspace && isRouteAllowed(props.session, "/claims") ? (
+            {isRouteAllowed(props.session, "/claims") ? (
               <>
                 <button className="primary-action" type="button" onClick={() => navigate("/claims/new")}>Create claim</button>
                 <button className="primary-action" type="button" onClick={() => navigate("/claims/new/mileage")}>Create mileage claim</button>
