@@ -4513,7 +4513,7 @@ function MileageCostReviewPage(props: {
     try {
       await props.onStatusChange(claim.id, status);
       setClaim((current) => current ? { ...current, status } : current);
-      setFeedback(status === "approved" ? "Mileage cost approved and moved out of review." : status === "payment_processing" ? "Mileage cost added to payment processing." : status === "paid" ? "Mileage cost marked as paid and added to Reports." : "Mileage cost returned for correction.");
+      setFeedback(status === "approved" ? "Mileage cost approved and moved out of review." : status === "published" ? "Mileage cost marked as published in Exdox." : status === "payment_processing" ? "Mileage cost added to payment processing." : status === "paid" ? "Mileage cost marked as paid and added to Reports." : "Mileage cost returned for correction.");
       if (status === "approved") {
         setPostApprovePrompt({ nextRecord: props.records.find((record) => record.id !== -claim.id && countsAsManualReview(record)) ?? null });
       }
@@ -4543,8 +4543,8 @@ function MileageCostReviewPage(props: {
         <label className="form-span-2">Description<textarea rows={3} value={claim.description ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, description: event.target.value })} /></label>
       </div>
       <div className="toolbar">
-        {claim.status === "pending" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Save Changes"}</button> : null}
         {props.canUseApprovalWorkflows && claim.status === "pending" ? <button className="primary-action" type="button" disabled={saving} onClick={() => void setStatus("approved")}>Approve Expense</button> : null}
+        {claim.status === "pending" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Save Changes"}</button> : null}
         {props.canUseApprovalWorkflows && claim.status === "approved" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("pending")}>Undo Approval</button> : null}
         <button className="danger-action" type="button" disabled={saving} onClick={async () => {
           if (!window.confirm("Move this mileage expense to the Recycle Bin? It can be restored for three days.")) return;
@@ -4553,7 +4553,7 @@ function MileageCostReviewPage(props: {
           catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Could not delete this mileage expense."); }
           finally { setSaving(false); }
         }}>Delete Document</button>
-        <button className="secondary-action" type="button" onClick={() => navigate("/costs")}>Back to Costs</button>
+        {props.canUseApprovalWorkflows && (claim.status === "pending" || claim.status === "approved") ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("published")}>Mark as Published</button> : null}
       </div>
     </section>
     </div>
@@ -5411,7 +5411,7 @@ function ClaimsPage({
     const nextEnd = params.get("to") ?? "";
 
     setStatusFilter(
-      nextStatus === "pending" || nextStatus === "approved" || nextStatus === "paid" || nextStatus === "rejected"
+      nextStatus === "pending" || nextStatus === "approved" || nextStatus === "published" || nextStatus === "paid" || nextStatus === "rejected"
         ? nextStatus
         : "all",
     );
@@ -5489,6 +5489,7 @@ function ClaimsPage({
             <option value="all">All claim statuses</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
+            <option value="published">Published</option>
             <option value="paid">Paid</option>
             <option value="rejected">Rejected</option>
           </select>
@@ -12162,6 +12163,8 @@ function claimStatusLabel(status: ClaimRecord["status"]) {
     ? "Pending"
     : status === "approved"
       ? "Approved"
+    : status === "published"
+      ? "Published"
       : status === "payment_processing"
         ? "Payment processing"
       : status === "paid"
@@ -12174,6 +12177,8 @@ function claimStatusToPill(status: ClaimRecord["status"]): "Review" | "Ready" | 
     ? "Review"
     : status === "approved"
       ? "Ready"
+    : status === "published"
+      ? "Published"
       : status === "payment_processing"
         ? "Processing"
       : status === "rejected"
