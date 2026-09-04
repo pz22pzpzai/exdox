@@ -6262,27 +6262,27 @@ function ClaimDetailPage(props: {
             >
               Reject claim
             </button>
-            <button
-              className="danger-action"
-              type="button"
-              disabled={savingStatus !== null || deleting}
-              onClick={async () => {
-                if (!window.confirm("Move this expense claim to the Recycle Bin? It can be restored for three days.")) return;
-                setDeleting(true);
-                try {
-                  await props.onDelete(claim.id);
-                  navigate("/claims");
-                } catch (deleteError) {
-                  setError(deleteError instanceof Error ? deleteError.message : "Could not delete this claim.");
-                } finally {
-                  setDeleting(false);
-                }
-              }}
-            >
-              {deleting ? "Deleting..." : "Delete claim"}
-            </button>
           </>
         ) : null}
+        {!props.employeeMode ? <button
+          className="danger-action"
+          type="button"
+          disabled={savingStatus !== null || deleting}
+          onClick={async () => {
+            if (!window.confirm("Move this expense claim to the Recycle Bin? It can be restored for three days.")) return;
+            setDeleting(true);
+            try {
+              await props.onDelete(claim.id);
+              navigate("/claims");
+            } catch (deleteError) {
+              setError(deleteError instanceof Error ? deleteError.message : "Could not delete this claim.");
+            } finally {
+              setDeleting(false);
+            }
+          }}
+        >
+          {deleting ? "Deleting..." : "Delete claim"}
+        </button> : null}
         </div> : null}
       </section>
       {error ? <div className="error-banner">{error}</div> : null}
