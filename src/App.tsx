@@ -1403,10 +1403,10 @@ export function App() {
               }}
               onRecycleBinRestore={async () => {
                 const [costs, sales, vault, claims] = await Promise.all([
-                  listReceipts(session.token, "cost"),
-                  listReceipts(session.token, "sales"),
-                  listReceipts(session.token, "vault"),
-                  listClaims(session.token),
+                  isRouteAllowed(session, "/costs") ? listReceipts(session.token, "cost") : Promise.resolve([]),
+                  isRouteAllowed(session, "/sales") ? listReceipts(session.token, "sales") : Promise.resolve([]),
+                  isRouteAllowed(session, "/vault") ? listReceipts(session.token, "vault") : Promise.resolve([]),
+                  isRouteAllowed(session, "/claims") ? listClaims(session.token) : Promise.resolve([]),
                 ]);
                 setStore((current) => ({ ...current, costs, sales, vault, claims }));
               }}
