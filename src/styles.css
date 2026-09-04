@@ -1865,11 +1865,45 @@ input {
   color: var(--ink);
 }
 
+.analytics-control-hint {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
 .analytics-date-range {
   grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  padding: 14px;
+  border: 1px solid #bcdcf1;
+  border-radius: 10px;
+  background: #f3faff;
+}
+
+.analytics-date-range-heading,
+.analytics-range-applied {
+  grid-column: 1 / -1;
+}
+
+.analytics-date-range-heading {
+  display: grid;
+  gap: 3px;
+  color: #173f63;
+}
+
+.analytics-date-range-heading span,
+.analytics-range-applied {
+  color: #526d88;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.analytics-range-applied {
+  margin: 0;
 }
 
 .analytics-date-range input {

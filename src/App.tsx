@@ -3572,20 +3572,26 @@ function SpendingReportsPage({ store }: { store: AppStore }) {
               <option value="this_month">This month</option>
               <option value="last_3_months">Last 3 months</option>
               <option value="last_12_months">Last 12 months</option>
-              <option value="custom">Custom date range</option>
+              <option value="custom">Custom date range...</option>
               <option value="all">All paid records</option>
             </select>
+            <span className="analytics-control-hint">Choose Custom date range to set a specific start and end date.</span>
           </label>
           {period === "custom" ? (
             <div className="analytics-date-range" aria-label="Custom reporting date range">
+              <div className="analytics-date-range-heading">
+                <strong>Custom reporting date range</strong>
+                <span>Charts, totals, ledger entries, and CSV exports update to match.</span>
+              </div>
               <label>
-                From
+                Start date
                 <input type="date" value={customStartDate} max={customEndDate || undefined} onChange={(event) => setCustomStartDate(event.target.value)} />
               </label>
               <label>
-                To
+                End date
                 <input type="date" value={customEndDate} min={customStartDate || undefined} onChange={(event) => setCustomEndDate(event.target.value)} />
               </label>
+              {hasValidCustomRange ? <p className="analytics-range-applied" aria-live="polite">Showing paid records from {formatShortAnalyticsDate(customStartDate)} to {formatShortAnalyticsDate(customEndDate)}.</p> : null}
             </div>
           ) : null}
         </div>
