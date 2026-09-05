@@ -124,6 +124,7 @@ const navItems = [
   { to: "/overview/automation", label: "Automation", icon: "automation" },
   { to: "/costs", label: "Costs Inbox", icon: "costs" },
   { to: "/sales", label: "Sales Inbox", icon: "sales" },
+  { to: "/customer-rules", label: "Customer Rules", icon: "rules" },
   { to: "/vault", label: "Vault", icon: "claims" },
   { to: "/claims", label: "Expense Claims", icon: "claims" },
   { to: "/rules", label: "Supplier Rules", icon: "rules" },
@@ -138,6 +139,7 @@ const privateAppRoutePrefixes = [
   "/overview",
   "/costs",
   "/sales",
+  "/customer-rules",
   "/vault",
   "/claims",
   "/rules",
@@ -484,6 +486,9 @@ function workspaceShellKicker(pathname: string, businessAdmin: boolean) {
   }
   if (pathname.startsWith("/rules")) {
     return "Supplier automation";
+  }
+  if (pathname.startsWith("/customer-rules")) {
+    return "Customer automation";
   }
   if (pathname.startsWith("/company-cards")) {
     return "Company card controls";
@@ -1022,7 +1027,9 @@ export function App() {
       canOpenSales ? listReceipts(sessionToken, "sales") : Promise.resolve([]),
       canOpenVault ? listReceipts(sessionToken, "vault") : Promise.resolve([]),
       canOpenClaims ? listClaims(sessionToken).catch(() => []) : Promise.resolve([]),
-      businessAdmin && canOpenRules ? listRules(sessionToken).catch(() => []) : Promise.resolve([]),
+      businessAdmin && canOpenRules
+        ? Promise.all([listRules(sessionToken, "cost"), listRules(sessionToken, "sales")]).then(([costRules, salesRules]) => [...costRules, ...salesRules]).catch(() => [])
+        : Promise.resolve([]),
       businessAdmin && canOpenReconciliation ? listReconciliation(sessionToken).catch(() => []) : Promise.resolve([]),
       businessAdmin && canOpenSettings ? getSettings(sessionToken).catch(() => null) : Promise.resolve(null),
     ]);
@@ -1353,7 +1360,7 @@ export function App() {
               session={session}
               store={store}
               error={error}
-              onUpload={async (workspaceContext, files) => {
+              onUpload={async (workspaceContext, files, ownerUserId) => {
                 const pendingReceipts = buildPendingReceipts(session, workspaceContext, files);
                 const targetKey =
                   workspaceContext === "cost" ? "costs" : workspaceContext === "sales" ? "sales" : "vault";
@@ -1364,7 +1371,7 @@ export function App() {
                 }));
 
                 try {
-                  const uploadResult = await uploadDocuments(session.token, workspaceContext, files);
+                  const uploadResult = await uploadDocuments(session.token, workspaceContext, files, ownerUserId);
                   const refreshed = await listReceipts(session.token, workspaceContext);
                   setStore((current) => ({
                     ...current,
@@ -1575,7 +1582,7 @@ function DashboardShell(props: {
   session: SessionState;
   store: AppStore;
   error: string | null;
-  onUpload: (workspaceContext: "cost" | "sales" | "vault", files: File[]) => Promise<void>;
+  onUpload: (workspaceContext: "cost" | "sales" | "vault", files: File[], ownerUserId?: number) => Promise<void>;
   onReceiptSave: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
   onReimbursementsMarkedPaid: () => Promise<number>;
   onReimbursementsExported: () => Promise<void>;
@@ -1996,9 +2003,12 @@ function DashboardShell(props: {
                       title="Sales Inbox"
                       records={props.store.sales}
                       basePath="/sales"
+                      showEmployeeFilter
+                      sessionToken={props.session.token}
                       settings={props.store.settings}
                       uploadBusy={uploadBusy}
-                      onUpload={(files) => props.onUpload("sales", files)}
+                      onUpload={(files, ownerUserId) => props.onUpload("sales", files, ownerUserId)}
+                      onReceiptSave={props.onReceiptSave}
                     />
                   }
                 />
@@ -2074,6 +2084,14 @@ function DashboardShell(props: {
                   path="/rules"
                   element={
                     <RulesPage rules={props.store.rules} onSave={props.onRuleSave} onDelete={props.onRuleDelete} />
+                  }
+                />
+              ) : null}
+              {isRouteAllowed(props.session, "/customer-rules") ? (
+                <Route
+                  path="/customer-rules"
+                  element={
+                    <RulesPage rules={props.store.rules} onSave={props.onRuleSave} onDelete={props.onRuleDelete} mode="customer" />
                   }
                 />
               ) : null}
@@ -4020,6 +4038,8 @@ function InboxPage({
   settings,
   uploadBusy,
   onUpload,
+  sessionToken,
+  onReceiptSave,
   onReimbursementsMarkedPaid,
 }: {
   title: string;
@@ -4028,7 +4048,9 @@ function InboxPage({
   showEmployeeFilter?: boolean;
   settings: OrganisationSettings | null;
   uploadBusy: boolean;
-  onUpload: (files: File[]) => Promise<void>;
+  onUpload: (files: File[], ownerUserId?: number) => Promise<void>;
+  sessionToken?: string;
+  onReceiptSave?: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
   onReimbursementsMarkedPaid?: () => Promise<number>;
 }) {
   const location = useLocation();
@@ -4045,6 +4067,11 @@ function InboxPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [markingPaymentsPaid, setMarkingPaymentsPaid] = useState(false);
   const [filtersReady, setFiltersReady] = useState(false);
+  const [salesView, setSalesView] = useState<"inbox" | "processing" | "approvals" | "archive">("inbox");
+  const [selectedSalesIds, setSelectedSalesIds] = useState<Set<number>>(new Set());
+  const [salesOwners, setSalesOwners] = useState<TeamMember[]>([]);
+  const [salesOwnerId, setSalesOwnerId] = useState("");
+  const [bulkSalesBusy, setBulkSalesBusy] = useState(false);
   const hydratedSearchRef = useRef<string | null>(null);
   const deferredQuery = useDeferredValue(query);
   const vatTrackingEnabled = isVatTrackingEnabled(settings);
@@ -4060,6 +4087,7 @@ function InboxPage({
     const nextEmployee = params.get("employee");
     const nextDepartment = params.get("department");
     const nextSort = params.get("sort");
+    const nextView = params.get("view");
 
     setQuery(nextSearch);
     setStatusFilter(
@@ -4094,10 +4122,24 @@ function InboxPage({
         ? nextSort
         : "newest",
     );
+    setSalesView(nextView === "processing" || nextView === "approvals" || nextView === "archive" ? nextView : "inbox");
     // Do not immediately overwrite a route filter with the previous local filter state.
     hydratedSearchRef.current = location.search;
     setFiltersReady(true);
   }, [location.search, showEmployeeFilter]);
+
+  useEffect(() => {
+    if (basePath !== "/sales" || !sessionToken) return;
+    let active = true;
+    getTeam(sessionToken)
+      .then((team) => {
+        if (active) setSalesOwners(team.members.filter((member) => member.status === "active"));
+      })
+      .catch(() => {
+        if (active) setSalesOwners([]);
+      });
+    return () => { active = false; };
+  }, [basePath, sessionToken]);
 
   useEffect(() => {
     if (!filtersReady) {
@@ -4119,8 +4161,9 @@ function InboxPage({
       employee: showEmployeeFilter && employeeFilter !== "All" ? employeeFilter : null,
       department: basePath === "/costs" && departmentFilter !== "All" ? departmentFilter : null,
       sort: sortOrder !== "newest" ? sortOrder : null,
+      view: basePath === "/sales" && salesView !== "inbox" ? salesView : null,
     });
-  }, [basePath, categoryFilter, departmentFilter, documentTypeFilter, employeeFilter, filtersReady, issueFilter, location.pathname, location.search, navigate, query, showEmployeeFilter, sortOrder, sourceFilter, statusFilter]);
+  }, [basePath, categoryFilter, departmentFilter, documentTypeFilter, employeeFilter, filtersReady, issueFilter, location.pathname, location.search, navigate, query, salesView, showEmployeeFilter, sortOrder, sourceFilter, statusFilter]);
 
   const search = deferredQuery.trim().toLowerCase();
   const isVaultInbox = basePath === "/vault";
@@ -4172,7 +4215,16 @@ function InboxPage({
   const hasActiveFilters = Boolean(
     search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || categoryFilter !== "All" || documentTypeFilter !== "All" || employeeFilter !== "All" || departmentFilter !== "All",
   );
-  const filtered = records.filter((record) => {
+  const salesViewRecords = basePath !== "/sales"
+    ? records
+    : records.filter((record) => salesView === "processing"
+      ? record.status === "Processing"
+      : salesView === "approvals"
+        ? record.status === "Review"
+        : salesView === "archive"
+          ? record.status === "Published" || record.status === "Paid" || record.status === "Rejected"
+          : record.status !== "Published" && record.status !== "Paid" && record.status !== "Rejected");
+  const filtered = salesViewRecords.filter((record) => {
     const matchesSearch =
       !search ||
       `${record.vendorName ?? ""} ${record.category ?? ""} ${record.sourceFilename} ${record.description ?? ""} ${record.customer ?? ""} ${record.rawTextSummary ?? ""}`
@@ -4199,6 +4251,27 @@ function InboxPage({
     return matchesSearch && matchesStatus && matchesSource && matchesCategory && matchesDocumentType && matchesEmployee && matchesDepartment && matchesIssue;
   }).sort((left, right) => compareInboxRecords(left, right, sortOrder));
 
+  const selectedSalesRecords = filtered.filter((record) => selectedSalesIds.has(record.id));
+  const runBulkSalesTransition = async (fromStatus: InboxStatus, toStatus: InboxStatus, successLabel: string) => {
+    if (!onReceiptSave) return;
+    const eligible = selectedSalesRecords.filter((record) => record.status === fromStatus);
+    if (!eligible.length) {
+      setFeedback(`Select at least one ${fromStatus.toLowerCase()} sales document first.`);
+      return;
+    }
+    setBulkSalesBusy(true);
+    setFeedback(null);
+    try {
+      await Promise.all(eligible.map((record) => onReceiptSave(record.id, { ...record, status: toStatus })));
+      setSelectedSalesIds(new Set());
+      setFeedback(`${eligible.length} sales document${eligible.length === 1 ? "" : "s"} ${successLabel}.`);
+    } catch (bulkError) {
+      setFeedback(bulkError instanceof Error ? bulkError.message : "Could not update the selected sales documents.");
+    } finally {
+      setBulkSalesBusy(false);
+    }
+  };
+
   return (
     <div className="stack-page">
       <section className="page-hero">
@@ -4210,6 +4283,20 @@ function InboxPage({
               : "Bulk ingestion, organisation-scoped review, and controlled document updates in a dedicated workspace."}
           </p>
         </div>
+        {basePath === "/sales" ? (
+          <div className="filter-row sales-workflow-tabs" aria-label="Sales workflow views">
+            {(["inbox", "processing", "approvals", "archive"] as const).map((view) => (
+              <button
+                key={view}
+                className={salesView === view ? "primary-action" : "secondary-action"}
+                type="button"
+                onClick={() => { setSalesView(view); setSelectedSalesIds(new Set()); }}
+              >
+                {view === "inbox" ? "Inbox" : view === "processing" ? "Processing" : view === "approvals" ? "Approval queue" : "Archive"}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="filter-row">
           <input
             className="search-input"
@@ -4229,6 +4316,8 @@ function InboxPage({
             <option value="Review">Review</option>
             <option value="Ready">Ready</option>
             <option value="Published">Published</option>
+            {basePath === "/sales" ? <option value="Paid">Paid</option> : null}
+            {basePath === "/sales" ? <option value="Rejected">Rejected</option> : null}
             {basePath === "/costs" ? <option value="Payment processing">Payment processing</option> : null}
             {basePath === "/costs" ? <option value="Paid">Paid</option> : null}
             {basePath === "/costs" ? <option value="Rejected">Rejected</option> : null}
@@ -4328,6 +4417,33 @@ function InboxPage({
       </section>
       {feedback ? <div className="success-banner">{feedback}</div> : null}
 
+      {basePath === "/sales" && selectedSalesRecords.length ? (
+        <section className="panel sales-bulk-bar">
+          <strong>{selectedSalesRecords.length} selected</strong>
+          <div className="toolbar">
+            <button className="secondary-action" type="button" disabled={bulkSalesBusy} onClick={() => void runBulkSalesTransition("Review", "Ready", "approved")}>Approve selected</button>
+            <button className="secondary-action" type="button" disabled={bulkSalesBusy} onClick={() => void runBulkSalesTransition("Ready", "Published", "marked as published")}>Publish selected</button>
+            <button className="secondary-action" type="button" disabled={bulkSalesBusy} onClick={() => void runBulkSalesTransition("Published", "Paid", "marked as paid")}>Mark selected paid</button>
+            <button className="secondary-action" type="button" disabled={bulkSalesBusy} onClick={async () => {
+              if (await downloadCsv(`selected-sales-${new Date().toISOString().slice(0, 10)}.csv`, buildInboxExportRows(selectedSalesRecords, settings))) setFeedback("Selected sales CSV downloaded.");
+            }}>Export selected</button>
+          </div>
+        </section>
+      ) : null}
+
+      {basePath === "/sales" && salesOwners.length ? (
+        <section className="panel sales-upload-owner">
+          <label>
+            Record owner
+            <select value={salesOwnerId} onChange={(event) => setSalesOwnerId(event.target.value)}>
+              <option value="">My account</option>
+              {salesOwners.map((member) => <option key={member.id} value={member.id}>{member.fullName || member.email}</option>)}
+            </select>
+          </label>
+          <p>Business admins can upload sales documents on behalf of an active team member. Ownership controls which employee can see the document.</p>
+        </section>
+      ) : null}
+
       <UploadDropZone
         title={
           basePath === "/costs"
@@ -4344,7 +4460,7 @@ function InboxPage({
               : "Store reference files in a separate archive workspace and mark them as Processed once they are safely stored."
         }
         busy={uploadBusy}
-        onFiles={onUpload}
+        onFiles={(files) => onUpload(files, salesOwnerId ? Number(salesOwnerId) : undefined)}
       />
 
       <section className="panel table-panel">
@@ -4362,9 +4478,11 @@ function InboxPage({
                 </tr>
               ) : (
                 <tr>
+                  {basePath === "/sales" ? <th><span className="sr-only">Select</span></th> : null}
                   <th>Status</th>
                   <th>Receipt Date</th>
-                  <th>Supplier Name</th>
+                  <th>{basePath === "/sales" ? "Seller / issuer" : "Supplier Name"}</th>
+                  {basePath === "/sales" ? <th>Customer</th> : null}
                   <th>Category</th>
                   {vatTrackingEnabled ? <th>Net Amount</th> : null}
                   {vatTrackingEnabled ? <th>VAT Amount</th> : null}
@@ -4416,6 +4534,18 @@ function InboxPage({
                     </>
                   ) : (
                     <>
+                      {basePath === "/sales" ? <td onClick={(event) => event.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${record.sourceFilename}`}
+                          checked={selectedSalesIds.has(record.id)}
+                          onChange={(event) => setSelectedSalesIds((current) => {
+                            const next = new Set(current);
+                            if (event.target.checked) next.add(record.id); else next.delete(record.id);
+                            return next;
+                          })}
+                        />
+                      </td> : null}
                       <td>
                         <div className="stacked-cell">
                           <StatusPill status={record.status} />
@@ -4425,6 +4555,7 @@ function InboxPage({
                       </td>
                       <td>{receiptDocumentDate(record)}</td>
                       <td>{record.vendorName ?? "Unknown supplier"}</td>
+                      {basePath === "/sales" ? <td>{record.customer ?? "Customer not captured"}</td> : null}
                       <td>{record.category ?? "Uncategorised"}</td>
                       {vatTrackingEnabled ? <td>{currency(record.netAmount, receiptCurrency(record))}</td> : null}
                       {vatTrackingEnabled ? <td>{currency(record.vatAmount, receiptCurrency(record))}</td> : null}
@@ -6629,12 +6760,16 @@ function ClaimDetailPage(props: {
 
 function RulesPage(props: {
   rules: SupplierRule[];
+  mode?: "supplier" | "customer";
   onSave: (
     payload: Partial<SupplierRule> &
       Pick<SupplierRule, "supplierMatchText" | "category" | "taxRate" | "paymentMethod" | "isActive">,
   ) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
 }) {
+  const workspaceContext: SupplierRule["workspaceContext"] = props.mode === "customer" ? "sales" : "cost";
+  const subjectLabel = workspaceContext === "sales" ? "customer" : "supplier";
+  const categoryChoices = workspaceContext === "sales" ? salesCategoryOptions : costCategoryOptions;
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -6642,6 +6777,7 @@ function RulesPage(props: {
   const [sortOrder, setSortOrder] = useState<"a_z" | "z_a" | "active_first">("a_z");
   const [draft, setDraft] = useState({
     id: undefined as number | undefined,
+    workspaceContext,
     supplierMatchText: "",
     category: "",
     taxRate: "20% Standard",
@@ -6679,7 +6815,7 @@ function RulesPage(props: {
     });
   }, [filtersReady, location.pathname, location.search, navigate, query, sortOrder, statusFilter]);
 
-  const filteredRules = props.rules.filter((rule) => {
+  const filteredRules = props.rules.filter((rule) => rule.workspaceContext === workspaceContext).filter((rule) => {
     const matchesSearch =
       !search ||
       `${rule.supplierMatchText} ${rule.category} ${rule.taxRate} ${rule.paymentMethod}`.toLowerCase().includes(search);
@@ -6696,18 +6832,23 @@ function RulesPage(props: {
           <span>Automation layer</span>
         </div>
         <p className="panel-copy">
-          Supplier Rules standardise supplier category and tax defaults. Manage card last-four matching and employee collision exceptions in Company Cards.
+          {workspaceContext === "sales"
+            ? "Customer Rules standardise revenue category, tax, and payment defaults for repeat customers without changing purchase processing."
+            : "Supplier Rules standardise supplier category and tax defaults. Manage card last-four matching and employee collision exceptions in Company Cards."}
         </p>
         {error ? <div className="error-banner">{error}</div> : null}
         {feedback ? <div className="success-banner">{feedback}</div> : null}
         <div className="form-grid">
           <label>
-            IF Supplier Name CONTAINS
+            IF {workspaceContext === "sales" ? "Customer Name" : "Supplier Name"} CONTAINS
             <input value={draft.supplierMatchText} onChange={(event) => setDraft({ ...draft, supplierMatchText: event.target.value })} />
           </label>
           <label>
             THEN Category
-            <input value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })} />
+            <select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })}>
+              <option value="">Choose category</option>
+              {categoryChoices.map((category) => <option key={category} value={category}>{category}</option>)}
+            </select>
           </label>
           <label>
             Tax Rate
@@ -6762,6 +6903,7 @@ function RulesPage(props: {
                 await props.onSave(draft);
                 setDraft({
                   id: undefined,
+                  workspaceContext,
                   supplierMatchText: "",
                   category: "",
                   taxRate: "20% Standard",
@@ -6786,6 +6928,7 @@ function RulesPage(props: {
               onClick={() =>
                 setDraft({
                   id: undefined,
+                  workspaceContext,
                   supplierMatchText: "",
                   category: "",
                   taxRate: "20% Standard",
@@ -6802,14 +6945,14 @@ function RulesPage(props: {
 
       <section className="panel">
         <div className="panel-heading">
-          <h2>Current rules</h2>
-          <span>{props.rules.length} live automations</span>
+          <h2>Current {subjectLabel} rules</h2>
+          <span>{filteredRules.length} matching automations</span>
         </div>
         <div className="filter-row">
           <input
             className="search-input"
             type="search"
-            placeholder="Search supplier, category, tax, or payment method"
+            placeholder={`Search ${subjectLabel}, category, tax, or payment method`}
             value={query}
             onChange={(event) => {
               const nextValue = event.target.value;
@@ -6824,8 +6967,8 @@ function RulesPage(props: {
             <option value="inactive">Inactive only</option>
           </select>
           <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
-            <option value="a_z">Supplier A-Z</option>
-            <option value="z_a">Supplier Z-A</option>
+            <option value="a_z">{workspaceContext === "sales" ? "Customer" : "Supplier"} A-Z</option>
+            <option value="z_a">{workspaceContext === "sales" ? "Customer" : "Supplier"} Z-A</option>
             <option value="active_first">Active first</option>
           </select>
           <button
@@ -6835,7 +6978,7 @@ function RulesPage(props: {
             title={filteredRules.length ? "Download the current supplier rules view as CSV" : "No supplier rules match the current filters yet"}
             onClick={async () => {
               if (await downloadCsv(
-                `supplier-rules-${new Date().toISOString().slice(0, 10)}.csv`,
+                `${subjectLabel}-rules-${new Date().toISOString().slice(0, 10)}.csv`,
                 buildRuleExportRows(filteredRules),
               )) {
                 setFeedback("Rules CSV downloaded.");
@@ -6851,7 +6994,7 @@ function RulesPage(props: {
             filteredRules.map((rule) => (
               <article className="rule-row" key={rule.id}>
                 <div>
-                  <strong>IF supplier contains "{rule.supplierMatchText}"</strong>
+                  <strong>IF {subjectLabel} contains "{rule.supplierMatchText}"</strong>
                   <p>
                     Category = {rule.category} | Tax Rate = {rule.taxRate} | Payment Method = {rule.paymentMethod} | {rule.isActive ? "Active" : "Inactive"}
                   </p>
@@ -6864,6 +7007,7 @@ function RulesPage(props: {
                     onClick={() =>
                       setDraft({
                         id: rule.id,
+                        workspaceContext: rule.workspaceContext,
                         supplierMatchText: rule.supplierMatchText,
                         category: rule.category,
                         taxRate: rule.taxRate,
@@ -6888,6 +7032,7 @@ function RulesPage(props: {
                         if (draft.id === rule.id) {
                           setDraft({
                             id: undefined,
+                            workspaceContext,
                             supplierMatchText: "",
                             category: "",
                             taxRate: "20% Standard",
@@ -6909,8 +7054,8 @@ function RulesPage(props: {
             ))
           ) : (
             <div className="empty-inline-state">
-              <strong>{query.trim() || statusFilter !== "all" ? "No supplier rules match the current filters." : "No supplier rules created yet."}</strong>
-              <p>{query.trim() || statusFilter !== "all" ? "Change the search or rule-status filter to see more automation rules." : "Build automation for recurring suppliers by setting category, tax rate, and payment defaults above."}</p>
+              <strong>{query.trim() || statusFilter !== "all" ? `No ${subjectLabel} rules match the current filters.` : `No ${subjectLabel} rules created yet.`}</strong>
+              <p>{query.trim() || statusFilter !== "all" ? "Change the search or rule-status filter to see more automation rules." : `Build automation for recurring ${subjectLabel}s by setting category, tax rate, and payment defaults above.`}</p>
             </div>
           )}
         </div>
@@ -12464,6 +12609,10 @@ function isRouteAllowed(session: SessionState, pathname: string) {
 
   if (session.user.isOwner && pathname.startsWith("/billing")) {
     return true;
+  }
+
+  if (pathname === "/customer-rules" || pathname.startsWith("/customer-rules/")) {
+    return isRouteAllowed(session, "/rules");
   }
 
   const allowedRoutes = session.allowedWebRoutes;

@@ -509,8 +509,8 @@ export async function markEmployeeReimbursementsPaid(token: string): Promise<{ p
   });
 }
 
-export async function listRules(token: string): Promise<SupplierRule[]> {
-  const response = await apiFetch<{ rules: SupplierRule[] }>("/rules", token);
+export async function listRules(token: string, workspaceContext: "cost" | "sales" = "cost"): Promise<SupplierRule[]> {
+  const response = await apiFetch<{ rules: SupplierRule[] }>(`/rules?workspace_context=${workspaceContext}`, token);
   return response.rules;
 }
 
@@ -669,6 +669,7 @@ export async function uploadDocuments(
   token: string,
   workspaceContext: "cost" | "sales" | "vault",
   files: File[],
+  ownerUserId?: number,
 ): Promise<{
   uploaded: string[];
   failed: Array<{ fileName: string; message: string }>;
@@ -678,6 +679,9 @@ export async function uploadDocuments(
       const formData = new FormData();
       formData.set("file", file);
       formData.set("workspace_context", workspaceContext);
+      if (workspaceContext === "sales" && ownerUserId) {
+        formData.set("owner_user_id", String(ownerUserId));
+      }
       formData.set(
         "document_type",
         workspaceContext === "sales" ? "invoice" : workspaceContext === "vault" ? "unknown" : "receipt",

@@ -147,6 +147,7 @@ export type EmployeeReimbursementPaymentRow = {
 
 export type SupplierRule = {
   id: number;
+  workspaceContext: "cost" | "sales";
   supplierMatchText: string;
   category: string;
   taxRate: string;
