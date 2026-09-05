@@ -225,6 +225,17 @@ export type InviteResult = {
   delivery?: {
     delivered: boolean;
     method: string;
+    messageId?: string | null;
+  };
+};
+
+export type InviteResendResult = {
+  userId: number;
+  email: string;
+  delivery: {
+    delivered: boolean;
+    method: string;
+    messageId?: string | null;
   };
 };
 

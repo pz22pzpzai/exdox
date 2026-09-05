@@ -10,6 +10,7 @@ import type {
   Department,
   MasterExpenseExportRow,
   InviteResult,
+  InviteResendResult,
   TeamMember,
   OrganisationSettings,
   ReceiptRecord,
@@ -633,6 +634,14 @@ export async function sendInvite(
   const response = await apiFetch<{ invite: InviteResult }>("/invite", token, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+  return response.invite;
+}
+
+export async function resendInvite(token: string, userId: number): Promise<InviteResendResult> {
+  const response = await apiFetch<{ invite: InviteResendResult }>("/invite/resend", token, {
+    method: "POST",
+    body: JSON.stringify({ userId }),
   });
   return response.invite;
 }

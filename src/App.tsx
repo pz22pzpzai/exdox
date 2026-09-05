@@ -44,6 +44,7 @@ import {
   resetPasswordWithToken,
   restoreRecycleBinItem,
   resendConfirmationEmail,
+  resendInvite,
   registerWithEmail,
   matchReconciliation,
   assignTeamMemberDepartment,
@@ -7492,6 +7493,7 @@ function SettingsPage(props: {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [resendingInviteId, setResendingInviteId] = useState<number | null>(null);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"Business_Admin" | "Standard_Employee">("Standard_Employee");
@@ -7903,7 +7905,7 @@ function SettingsPage(props: {
               setLastInvite(invite);
               setInviteFeedback(
                 invite.delivery?.delivered
-                  ? `Invite created for ${invite.email}.`
+                  ? `Invite created for ${invite.email}. The email service accepted it for delivery.`
                   : `Invite created for ${invite.email}. Email delivery did not complete, so use the invite link below.`,
               );
               setInviteName("");
@@ -7929,7 +7931,7 @@ function SettingsPage(props: {
           </div>
           <div>
             <strong>Delivery</strong>
-            <span>{lastInvite.delivery?.delivered ? `Sent by ${lastInvite.delivery.method}` : "Invite created"}</span>
+            <span>{lastInvite.delivery?.delivered ? "Accepted by email service" : "Manual invite link available"}</span>
           </div>
           <div>
             <strong>Status</strong>
@@ -8018,29 +8020,58 @@ function SettingsPage(props: {
             <div className="team-member-row" key={member.id}>
               <div>
                 <strong>{member.fullName?.trim() || member.email}</strong>
-                <small>{member.email} · {member.role === "Business_Admin" ? "Manager" : "Employee"}</small>
+                <small>
+                  {member.email} · {member.role === "Business_Admin" ? "Manager" : "Employee"}
+                  {member.status === "pending_invite" ? " · Pending invitation" : ""}
+                </small>
               </div>
-              <select
-                value={member.departmentId ?? ""}
-                disabled={teamBusy}
-                aria-label={`Department for ${member.fullName?.trim() || member.email}`}
-                onChange={async (event) => {
-                  setTeamBusy(true);
-                  setInviteError(null);
-                  try {
-                    await assignTeamMemberDepartment(props.session.token, member.id, event.target.value ? Number(event.target.value) : null);
-                    await refreshTeam();
-                    setInviteFeedback("Team member department updated.");
-                  } catch (assignmentError) {
-                    setInviteError(assignmentError instanceof Error ? assignmentError.message : "Could not update the department.");
-                  } finally {
-                    setTeamBusy(false);
-                  }
-                }}
-              >
-                <option value="">No department</option>
-                {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
-              </select>
+              <div className="team-member-actions">
+                <select
+                  value={member.departmentId ?? ""}
+                  disabled={teamBusy}
+                  aria-label={`Department for ${member.fullName?.trim() || member.email}`}
+                  onChange={async (event) => {
+                    setTeamBusy(true);
+                    setInviteError(null);
+                    try {
+                      await assignTeamMemberDepartment(props.session.token, member.id, event.target.value ? Number(event.target.value) : null);
+                      await refreshTeam();
+                      setInviteFeedback("Team member department updated.");
+                    } catch (assignmentError) {
+                      setInviteError(assignmentError instanceof Error ? assignmentError.message : "Could not update the department.");
+                    } finally {
+                      setTeamBusy(false);
+                    }
+                  }}
+                >
+                  <option value="">No department</option>
+                  {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+                </select>
+                {member.status === "pending_invite" ? (
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    disabled={teamBusy || resendingInviteId !== null}
+                    onClick={async () => {
+                      setResendingInviteId(member.id);
+                      setInviteError(null);
+                      setInviteFeedback(null);
+                      try {
+                        const resent = await resendInvite(props.session.token, member.id);
+                        setInviteFeedback(
+                          `Invitation email accepted for delivery to ${resent.email}. Ask them to check junk or spam if it does not appear.`,
+                        );
+                      } catch (resendError) {
+                        setInviteError(resendError instanceof Error ? resendError.message : "Could not resend the invitation email.");
+                      } finally {
+                        setResendingInviteId(null);
+                      }
+                    }}
+                  >
+                    {resendingInviteId === member.id ? "Resending..." : "Resend invite email"}
+                  </button>
+                ) : null}
+              </div>
             </div>
           ))}
         </div>

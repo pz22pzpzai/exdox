@@ -1136,6 +1136,15 @@ button.status-box:focus-visible {
   margin-top: 3px;
 }
 
+.team-member-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.team-member-actions > * {
+  width: 100%;
+}
+
 @media (max-width: 640px) {
   .team-member-row {
     grid-template-columns: 1fr;
