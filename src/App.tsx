@@ -7502,6 +7502,7 @@ function SettingsPage(props: {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [newDepartmentName, setNewDepartmentName] = useState("");
   const [teamBusy, setTeamBusy] = useState(false);
+  const [teamLoading, setTeamLoading] = useState(true);
   const [inviteFeedback, setInviteFeedback] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [lastInvite, setLastInvite] = useState<InviteResult | null>(null);
@@ -7543,9 +7544,14 @@ function SettingsPage(props: {
   }, [props.session]);
 
   const refreshTeam = async () => {
-    const team = await getTeam(props.session.token);
-    setDepartments(team.departments);
-    setTeamMembers(team.members);
+    setTeamLoading(true);
+    try {
+      const team = await getTeam(props.session.token);
+      setDepartments(team.departments);
+      setTeamMembers(team.members);
+    } finally {
+      setTeamLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -7995,10 +8001,14 @@ function SettingsPage(props: {
               setTeamBusy(true);
               setInviteError(null);
               try {
-                await createDepartment(props.session.token, newDepartmentName.trim());
+                const department = await createDepartment(props.session.token, newDepartmentName.trim());
+                setDepartments((current) => [...current.filter((item) => item.id !== department.id), department]
+                  .sort((left, right) => left.name.localeCompare(right.name)));
                 setNewDepartmentName("");
-                await refreshTeam();
                 setInviteFeedback("Department added.");
+                void refreshTeam().catch((teamError) => {
+                  setInviteError(teamError instanceof Error ? teamError.message : "Could not refresh team settings.");
+                });
               } catch (departmentError) {
                 setInviteError(departmentError instanceof Error ? departmentError.message : "Could not add the department.");
               } finally {
@@ -8009,6 +8019,21 @@ function SettingsPage(props: {
             Add department
           </button>
         </div>
+        <div className="department-list" aria-live="polite">
+          {teamLoading && departments.length === 0 ? (
+            <div className="team-empty-state">Loading departments...</div>
+          ) : departments.length === 0 ? (
+            <div className="team-empty-state">No departments created yet.</div>
+          ) : departments.map((department) => {
+            const memberCount = teamMembers.filter((member) => member.departmentId === department.id).length;
+            return (
+              <div className="department-list-item" key={department.id}>
+                <strong>{department.name}</strong>
+                <span>{memberCount} {memberCount === 1 ? "team member" : "team members"}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
       <div className="team-management-section">
         <div className="panel-heading">
@@ -8016,6 +8041,10 @@ function SettingsPage(props: {
           <span>Move employees between departments whenever the structure changes.</span>
         </div>
         <div className="team-member-list">
+          {teamLoading && teamMembers.length === 0 ? <div className="team-empty-state">Loading team members...</div> : null}
+          {!teamLoading && teamMembers.length === 0 ? (
+            <div className="team-empty-state">No team members are available to assign yet.</div>
+          ) : null}
           {teamMembers.map((member) => (
             <div className="team-member-row" key={member.id}>
               <div>
@@ -8031,12 +8060,22 @@ function SettingsPage(props: {
                   disabled={teamBusy}
                   aria-label={`Department for ${member.fullName?.trim() || member.email}`}
                   onChange={async (event) => {
+                    const departmentId = event.target.value ? Number(event.target.value) : null;
                     setTeamBusy(true);
                     setInviteError(null);
                     try {
-                      await assignTeamMemberDepartment(props.session.token, member.id, event.target.value ? Number(event.target.value) : null);
-                      await refreshTeam();
+                      await assignTeamMemberDepartment(props.session.token, member.id, departmentId);
+                      setTeamMembers((current) => current.map((item) => item.id === member.id
+                        ? {
+                            ...item,
+                            departmentId,
+                            departmentName: departments.find((department) => department.id === departmentId)?.name ?? null,
+                          }
+                        : item));
                       setInviteFeedback("Team member department updated.");
+                      void refreshTeam().catch((teamError) => {
+                        setInviteError(teamError instanceof Error ? teamError.message : "Could not refresh team settings.");
+                      });
                     } catch (assignmentError) {
                       setInviteError(assignmentError instanceof Error ? assignmentError.message : "Could not update the department.");
                     } finally {

@@ -1136,6 +1136,34 @@ button.status-box:focus-visible {
   margin-top: 3px;
 }
 
+.department-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.department-list-item {
+  align-items: center;
+  background: #f3f7fa;
+  border: 1px solid #d3dfeb;
+  border-radius: 10px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.department-list-item span,
+.team-empty-state {
+  color: #65758c;
+}
+
+.team-empty-state {
+  border: 1px dashed #b9cad9;
+  border-radius: 10px;
+  padding: 14px;
+}
+
 .team-member-actions {
   display: grid;
   gap: 8px;

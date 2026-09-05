@@ -647,7 +647,7 @@ export async function resendInvite(token: string, userId: number): Promise<Invit
 }
 
 export async function getTeam(token: string): Promise<{ departments: Department[]; members: TeamMember[] }> {
-  return apiFetch('/team', token);
+  return apiFetch('/team', token, { cache: 'no-store' });
 }
 
 export async function createDepartment(token: string, name: string): Promise<Department> {
