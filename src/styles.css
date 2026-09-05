@@ -1110,9 +1110,11 @@ button.status-box:focus-visible {
 }
 
 .team-management-section {
-  border-top: 1px solid #d3dfeb;
+  background: #fbfdff;
+  border: 1px solid #d3dfeb;
+  border-radius: 12px;
   margin-top: 20px;
-  padding-top: 20px;
+  padding: 18px;
 }
 
 .team-member-list {
