@@ -4240,7 +4240,6 @@ function InboxPage({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [markingPaymentsPaid, setMarkingPaymentsPaid] = useState(false);
   const [filtersReady, setFiltersReady] = useState(false);
-  const [salesView, setSalesView] = useState<"inbox" | "processing" | "approvals" | "archive">("inbox");
   const [selectedSalesIds, setSelectedSalesIds] = useState<Set<number>>(new Set());
   const [salesOwners, setSalesOwners] = useState<TeamMember[]>([]);
   const [salesOwnerId, setSalesOwnerId] = useState("");
@@ -4260,7 +4259,6 @@ function InboxPage({
     const nextEmployee = params.get("employee");
     const nextDepartment = params.get("department");
     const nextSort = params.get("sort");
-    const nextView = params.get("view");
 
     setQuery(nextSearch);
     setStatusFilter(
@@ -4269,7 +4267,8 @@ function InboxPage({
       nextStatus === "Ready" ||
       nextStatus === "Published" ||
       nextStatus === "Payment processing" ||
-      nextStatus === "Paid"
+      nextStatus === "Paid" ||
+      nextStatus === "Rejected"
         ? nextStatus
         : "All",
     );
@@ -4295,7 +4294,6 @@ function InboxPage({
         ? nextSort
         : "newest",
     );
-    setSalesView(nextView === "processing" || nextView === "approvals" || nextView === "archive" ? nextView : "inbox");
     // Do not immediately overwrite a route filter with the previous local filter state.
     hydratedSearchRef.current = location.search;
     setFiltersReady(true);
@@ -4334,9 +4332,9 @@ function InboxPage({
       employee: showEmployeeFilter && employeeFilter !== "All" ? employeeFilter : null,
       department: basePath === "/costs" && departmentFilter !== "All" ? departmentFilter : null,
       sort: sortOrder !== "newest" ? sortOrder : null,
-      view: basePath === "/sales" && salesView !== "inbox" ? salesView : null,
+      view: null,
     });
-  }, [basePath, categoryFilter, departmentFilter, documentTypeFilter, employeeFilter, filtersReady, issueFilter, location.pathname, location.search, navigate, query, salesView, showEmployeeFilter, sortOrder, sourceFilter, statusFilter]);
+  }, [basePath, categoryFilter, departmentFilter, documentTypeFilter, employeeFilter, filtersReady, issueFilter, location.pathname, location.search, navigate, query, showEmployeeFilter, sortOrder, sourceFilter, statusFilter]);
 
   const search = deferredQuery.trim().toLowerCase();
   const isVaultInbox = basePath === "/vault";
@@ -4388,16 +4386,7 @@ function InboxPage({
   const hasActiveFilters = Boolean(
     search || statusFilter !== "All" || issueFilter !== "All" || sourceFilter !== "All" || categoryFilter !== "All" || documentTypeFilter !== "All" || employeeFilter !== "All" || departmentFilter !== "All",
   );
-  const salesViewRecords = basePath !== "/sales"
-    ? records
-    : records.filter((record) => salesView === "processing"
-      ? record.status === "Processing"
-      : salesView === "approvals"
-        ? record.status === "Review"
-        : salesView === "archive"
-          ? record.status === "Published" || record.status === "Paid" || record.status === "Rejected"
-          : record.status !== "Published" && record.status !== "Paid" && record.status !== "Rejected");
-  const filtered = salesViewRecords.filter((record) => {
+  const filtered = records.filter((record) => {
     const matchesSearch =
       !search ||
       `${record.vendorName ?? ""} ${record.category ?? ""} ${record.sourceFilename} ${record.description ?? ""} ${record.customer ?? ""} ${record.rawTextSummary ?? ""}`
@@ -4456,27 +4445,6 @@ function InboxPage({
               : "Bulk ingestion, organisation-scoped review, and controlled document updates in a dedicated workspace."}
           </p>
         </div>
-        {basePath === "/sales" ? (
-          <div className="sales-hub-nav" aria-label="Sales workspace views">
-            <div className="filter-row sales-workflow-tabs">
-            {(["inbox", "processing", "approvals", "archive"] as const).map((view) => (
-              <button
-                key={view}
-                className={salesView === view ? "primary-action" : "secondary-action"}
-                type="button"
-                onClick={() => { setSalesView(view); setSelectedSalesIds(new Set()); }}
-              >
-                {view === "inbox" ? "Inbox" : view === "processing" ? "Processing" : view === "approvals" ? "Approval queue" : "Archive"}
-              </button>
-            ))}
-            </div>
-            <div className="filter-row">
-              <Link className="secondary-action" to="/sales/manage">Invoices, quotes & credit notes</Link>
-              <Link className="secondary-action" to="/sales/customers">Customers</Link>
-              <Link className="secondary-action" to="/sales/submissions">Submission email & history</Link>
-            </div>
-          </div>
-        ) : null}
         <div className="filter-row">
           <input
             className="search-input"

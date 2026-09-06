@@ -1118,7 +1118,6 @@ button.status-box:focus-visible {
 }
 
 .sales-workspace-nav,
-.sales-hub-nav,
 .sales-pdf-options,
 .sales-email-card {
   display: flex;
@@ -1135,8 +1134,7 @@ button.status-box:focus-visible {
   background: rgba(255, 255, 255, 0.72);
 }
 
-.sales-workspace-nav a,
-.sales-hub-nav a {
+.sales-workspace-nav a {
   text-decoration: none;
 }
 
@@ -1194,7 +1192,6 @@ button.status-box:focus-visible {
 @media (max-width: 760px) {
   .sales-workspace-nav,
   .sales-workspace-nav a,
-  .sales-hub-nav,
   .sales-email-card,
   .sales-email-card .toolbar,
   .sales-pdf-options,
