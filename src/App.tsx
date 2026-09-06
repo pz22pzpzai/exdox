@@ -1843,18 +1843,29 @@ function DashboardShell(props: {
                     }
                   }}
                 />
-                <UploadButton
-                  busy={uploadBusy}
-                  label="Upload Vault"
-                  onFiles={async (files) => {
-                    setUploadBusy(true);
-                    try {
-                      await props.onUpload("vault", files);
-                    } finally {
-                      setUploadBusy(false);
-                    }
-                  }}
-                />
+                {isRouteAllowed(props.session, "/vault") ? (
+                  <UploadButton
+                    busy={uploadBusy}
+                    label="Upload Vault"
+                    onFiles={async (files) => {
+                      setUploadBusy(true);
+                      try {
+                        await props.onUpload("vault", files);
+                      } finally {
+                        setUploadBusy(false);
+                      }
+                    }}
+                  />
+                ) : (
+                  <button
+                    className="primary-action"
+                    type="button"
+                    title="View plans that include the Vault workspace"
+                    onClick={() => navigate(`/billing?locked=${encodeURIComponent("/vault")}`)}
+                  >
+                    Upload Vault
+                  </button>
+                )}
               </>
             ) : <span className="employee-read-only-badge">Personal workspace</span>}
           </div>
@@ -3772,7 +3783,7 @@ function SpendingReportsPage({ store }: { store: AppStore }) {
                     <td>{formatShortAnalyticsDate(analyticsRecordDate(record))}</td>
                     <td>{analyticsPaymentMethodLabel(record.paymentMethod)}</td>
                     <td><strong>{currency(analyticsAmount(record), baseCurrency)}</strong></td>
-                    <td><Link className="table-action-link" to={`/costs/${record.id}`}>Open</Link></td>
+                    <td><Link className="table-action-link" to={recordRoute(record)}>Open</Link></td>
                   </tr>
                 ))}
               </tbody>
@@ -4676,28 +4687,42 @@ function MileageCostReviewPage(props: {
   const [postApprovePrompt, setPostApprovePrompt] = useState<null | { nextRecord: ReceiptRecord | null }>(null);
   const imageZoomStageRef = useRef<HTMLDivElement | null>(null);
   const imagePanStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const loadClaimRef = useRef(props.loadClaim);
+  const loadClaimEvidenceAssetRef = useRef(props.loadClaimEvidenceAsset);
+  loadClaimRef.current = props.loadClaim;
+  loadClaimEvidenceAssetRef.current = props.loadClaimEvidenceAsset;
 
   useEffect(() => {
     const claimId = Number(id);
     if (!Number.isFinite(claimId)) return;
+    let cancelled = false;
     setLoading(true);
-    props.loadClaim(claimId)
+    loadClaimRef.current(claimId)
       .then(async (payload) => {
         if (payload.claim.claimType !== "mileage") throw new Error("This cost is not a mileage record.");
+        if (cancelled) return;
         setClaim(payload.claim);
         const proof = payload.evidence ?? [];
         setEvidence(proof);
         const assets = await Promise.all(proof.map(async (item) => {
-          const url = await props.loadClaimEvidenceAsset(payload.claim.id, item.id).catch(() => "");
+          const url = await loadClaimEvidenceAssetRef.current(payload.claim.id, item.id).catch(() => "");
           return url ? { evidence: item, url } : null;
         }));
+        if (cancelled) return;
         setEvidenceAssets(assets.filter((item): item is { evidence: import("./types").ClaimEvidence; url: string } => item !== null));
         setSelectedEvidenceIndex(0);
         setError(null);
       })
-      .catch((loadError: Error) => setError(loadError.message || "Could not load this mileage cost."))
-      .finally(() => setLoading(false));
-  }, [id, props]);
+      .catch((loadError: Error) => {
+        if (!cancelled) setError(loadError.message || "Could not load this mileage cost.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   if (!claim) return <div className="empty-state">{error ?? (loading ? "Loading mileage cost..." : "Mileage cost unavailable.")}</div>;
 
@@ -4846,23 +4871,30 @@ function DocumentWorkspacePage(props: {
   const [reimbursementExportError, setReimbursementExportError] = useState<string | null>(null);
   const imageZoomStageRef = useRef<HTMLDivElement | null>(null);
   const imagePanStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const loadReceiptRef = useRef(props.loadReceipt);
+  loadReceiptRef.current = props.loadReceipt;
 
   useEffect(() => {
     if (!id) {
       return;
     }
+    let cancelled = false;
 
-    props.loadReceipt(Number(id))
+    loadReceiptRef.current(Number(id))
       .then((payload) => {
+        if (cancelled) return;
         setReceipt(payload.receipt);
         setAssetUrl(payload.assetUrl);
         setDownloadUrl(payload.downloadUrl);
         setError(null);
       })
       .catch((loadError: Error) => {
-        setError(loadError.message || "Could not load this receipt.");
+        if (!cancelled) setError(loadError.message || "Could not load this receipt.");
       });
-  }, [id, props]);
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   useEffect(() => {
     if (!receipt || receipt.invoiceDate?.trim()) {
@@ -5651,7 +5683,7 @@ function ClaimsPage({
         ? nextStatus
         : "all",
     );
-    setCategoryFilter(nextCategory === "mileage" || nextCategory === "receipt" ? nextCategory : "all");
+    setCategoryFilter(employeeMode && (nextCategory === "mileage" || nextCategory === "receipt") ? nextCategory : "all");
     setSortOrder(
       nextSort === "oldest" || nextSort === "highest_total" || nextSort === "lowest_total"
         ? nextSort
@@ -5660,7 +5692,7 @@ function ClaimsPage({
     setStartDate(nextStart);
     setEndDate(nextEnd);
     setFiltersReady(true);
-  }, [location.search]);
+  }, [employeeMode, location.search]);
 
   useEffect(() => {
     if (!filtersReady) {
@@ -5669,19 +5701,19 @@ function ClaimsPage({
 
     syncPageSearchParams(location.pathname, location.search, navigate, {
       status: statusFilter !== "all" ? statusFilter : null,
-      category: categoryFilter !== "all" ? categoryFilter : null,
+      category: employeeMode && categoryFilter !== "all" ? categoryFilter : null,
       from: startDate || null,
       to: endDate || null,
       sort: sortOrder !== "newest" ? sortOrder : null,
     });
-  }, [categoryFilter, endDate, filtersReady, location.pathname, location.search, navigate, sortOrder, startDate, statusFilter]);
+  }, [categoryFilter, employeeMode, endDate, filtersReady, location.pathname, location.search, navigate, sortOrder, startDate, statusFilter]);
 
   const filteredClaims = claims
     .filter((claim) => {
       const matchesStatus = statusFilter === "all"
         || (statusFilter === "pending" ? claim.status === "pending" && (claim.documentCount > 0 || claim.claimType === "mileage") : claim.status === statusFilter);
       return matchesStatus
-        && (categoryFilter === "all" || (categoryFilter === "mileage" ? claim.claimType === "mileage" : claim.claimType !== "mileage"))
+        && (!employeeMode || categoryFilter === "all" || (categoryFilter === "mileage" ? claim.claimType === "mileage" : claim.claimType !== "mileage"))
         && (!startDate || claim.createdAt.slice(0, 10) >= startDate)
         && (!endDate || claim.createdAt.slice(0, 10) <= endDate);
     })
@@ -5725,7 +5757,7 @@ function ClaimsPage({
         <div className="claims-filter-heading">
           <div>
             <h2>Filter claims</h2>
-            <p>Narrow the claim list by status, type, date, or total.</p>
+            <p>Narrow the claim list by status, {employeeMode ? "type, " : ""}date, or total.</p>
           </div>
           <span>{filteredClaims.length} result{filteredClaims.length === 1 ? "" : "s"}</span>
         </div>
@@ -5741,14 +5773,16 @@ function ClaimsPage({
               <option value="rejected">Rejected</option>
             </select>
           </label>
-          <label>
-            Claim type
-            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as typeof categoryFilter)}>
-              <option value="all">All claim types</option>
-              <option value="mileage">Mileage</option>
-              <option value="receipt">Receipt claim</option>
-            </select>
-          </label>
+          {employeeMode ? (
+            <label>
+              Claim type
+              <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as typeof categoryFilter)}>
+                <option value="all">All claim types</option>
+                <option value="mileage">Mileage</option>
+                <option value="receipt">Receipt claim</option>
+              </select>
+            </label>
+          ) : null}
           <label>
             Sort by
             <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}>
@@ -5788,7 +5822,7 @@ function ClaimsPage({
           <button
             className="secondary-action"
             type="button"
-            disabled={statusFilter === "all" && categoryFilter === "all" && sortOrder === "newest" && !startDate && !endDate}
+            disabled={statusFilter === "all" && (!employeeMode || categoryFilter === "all") && sortOrder === "newest" && !startDate && !endDate}
             onClick={() => {
               setStatusFilter("all");
               setCategoryFilter("all");
@@ -6223,23 +6257,32 @@ function EmployeeReceiptDetailPage(props: {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const loadReceiptRef = useRef(props.loadReceipt);
+  loadReceiptRef.current = props.loadReceipt;
 
   useEffect(() => {
     if (!id) {
       return;
     }
-    props.loadReceipt(Number(id))
+    let cancelled = false;
+    loadReceiptRef.current(Number(id))
       .then((payload) => {
+        if (cancelled) return;
         setReceipt(payload.receipt);
         setAssetUrl(payload.assetUrl);
         setDownloadUrl(payload.downloadUrl);
         setError(null);
       })
       .catch((loadError: Error) => {
-        setReceipt(null);
-        setError(loadError.message || "This receipt is not available.");
+        if (!cancelled) {
+          setReceipt(null);
+          setError(loadError.message || "This receipt is not available.");
+        }
       });
-  }, [id, props]);
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   if (!receipt) {
     return (
@@ -11512,7 +11555,9 @@ function inferredReceiptTextDate(record: { description?: string | null; rawTextS
 
 function normalizeSavedDate(value: string | null | undefined) {
   const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
+  if (!trimmed) return null;
+  const isoDate = trimmed.match(/^(\d{4}-\d{2}-\d{2})(?:T|$)/);
+  return isoDate?.[1] ?? trimmed;
 }
 
 function normalizeParsedDateParts(year: string, month: string, day: string) {
