@@ -21,6 +21,9 @@ import type {
   SupplierRule,
   CompanyCard,
   CompanyCardEmployeeException,
+  SalesCustomer,
+  SalesDocument,
+  SalesWorkspace,
 } from "./types";
 
 const API_BASE_URL =
@@ -679,6 +682,9 @@ export async function uploadDocuments(
       const formData = new FormData();
       formData.set("file", file);
       formData.set("workspace_context", workspaceContext);
+      if (workspaceContext === "sales") {
+        formData.set("split_mode", window.localStorage.getItem("exdox-sales-pdf-mode") || "auto_detect");
+      }
       if (workspaceContext === "sales" && ownerUserId) {
         formData.set("owner_user_id", String(ownerUserId));
       }
@@ -724,6 +730,51 @@ export async function uploadDocuments(
       message: result.message,
     })),
   };
+}
+
+export async function getSalesWorkspace(token: string): Promise<SalesWorkspace> {
+  return apiFetch("/sales-workspace", token, { cache: "no-store" });
+}
+
+export async function saveSalesCustomer(token: string, payload: Partial<SalesCustomer> & Pick<SalesCustomer, "name">): Promise<SalesCustomer> {
+  const response = await apiFetch<{ customer: SalesCustomer }>("/sales-workspace", token, { method: "POST", body: JSON.stringify({ action: "customer", ...payload }) });
+  return response.customer;
+}
+
+export async function importSalesCustomers(token: string, rows: Array<Record<string, unknown>>): Promise<SalesCustomer[]> {
+  const response = await apiFetch<{ customers: SalesCustomer[] }>("/sales-workspace", token, { method: "POST", body: JSON.stringify({ action: "import_customers", rows }) });
+  return response.customers;
+}
+
+export async function deleteSalesCustomer(token: string, id: string): Promise<void> {
+  await apiFetch(`/sales-workspace?action=customer&id=${encodeURIComponent(id)}`, token, { method: "DELETE" });
+}
+
+export async function saveSalesDocument(token: string, payload: Record<string, unknown>): Promise<SalesDocument> {
+  const response = await apiFetch<{ document: SalesDocument }>("/sales-workspace", token, { method: "POST", body: JSON.stringify({ action: "document", ...payload }) });
+  return response.document;
+}
+
+export async function addSalesPayment(token: string, documentId: string, payload: { amount: number; paidAt: string; method: string; reference?: string }): Promise<SalesDocument> {
+  const response = await apiFetch<{ document: SalesDocument }>("/sales-workspace", token, { method: "POST", body: JSON.stringify({ action: "payment", documentId, ...payload }) });
+  return response.document;
+}
+
+export async function convertSalesQuote(token: string, documentId: string): Promise<{ quote: SalesDocument; invoice: SalesDocument }> {
+  return apiFetch("/sales-workspace", token, { method: "POST", body: JSON.stringify({ action: "convert_quote", documentId }) });
+}
+
+export async function issueSalesDocument(token: string, documentId: string): Promise<{ document: SalesDocument; messageId: string | null }> {
+  return apiFetch("/sales-workspace", token, { method: "POST", body: JSON.stringify({ action: "issue_document", documentId }) });
+}
+
+export async function rotateSalesSubmissionAddress(token: string): Promise<SalesWorkspace["submissionAddress"]> {
+  const response = await apiFetch<{ submissionAddress: SalesWorkspace["submissionAddress"] }>("/sales-workspace", token, { method: "POST", body: JSON.stringify({ action: "rotate_address" }) });
+  return response.submissionAddress;
+}
+
+export async function getSalesDocumentPdf(token: string, documentId: string): Promise<{ previewUrl: string; downloadUrl: string }> {
+  return apiFetch(`/sales-workspace?action=document_pdf&id=${encodeURIComponent(documentId)}`, token);
 }
 
 async function apiFetch<T = Record<string, never>>(

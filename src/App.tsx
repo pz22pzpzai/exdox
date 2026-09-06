@@ -64,6 +64,16 @@ import {
   uploadClaimEvidence,
   upgradeBillingPlan,
   uploadDocuments,
+  addSalesPayment,
+  convertSalesQuote,
+  deleteSalesCustomer,
+  getSalesDocumentPdf,
+  getSalesWorkspace,
+  importSalesCustomers,
+  issueSalesDocument,
+  rotateSalesSubmissionAddress,
+  saveSalesCustomer,
+  saveSalesDocument,
 } from "./api";
 import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
 import type {
@@ -85,6 +95,9 @@ import type {
   CompanyCard,
   CompanyCardEmployeeException,
   TaxRate,
+  SalesCustomer,
+  SalesDocument,
+  SalesWorkspace,
 } from "./types";
 
 const taxRates: TaxRate[] = [
@@ -2025,6 +2038,15 @@ function DashboardShell(props: {
                 />
               ) : null}
               {isRouteAllowed(props.session, "/sales") ? (
+                <Route path="/sales/manage" element={<SalesOperationsPage sessionToken={props.session.token} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/sales") ? (
+                <Route path="/sales/customers" element={<SalesCustomersPage sessionToken={props.session.token} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/sales") ? (
+                <Route path="/sales/submissions" element={<SalesSubmissionsPage sessionToken={props.session.token} />} />
+              ) : null}
+              {isRouteAllowed(props.session, "/sales") ? (
                 <Route
                   path="/sales/:id"
                   element={
@@ -2260,7 +2282,7 @@ function helpChatReply(message: string) {
     return "Workspace Health brings together record-quality checks and day-to-day workflow progress. It highlights unreadable uploads, processing documents, review work, missing supplier or category details, claims progress, and handoff queues. It is not an error score: open the relevant item, complete the missing details, and save the review.";
   }
   if (includes("submission channels", "mobile capture", "web upload", "how can documents enter")) {
-    return "Documents enter Exdox through the mobile app capture flow or the website upload buttons for Costs, Sales, and Vault. Exdox does not currently offer inbound email submission, bank feeds, or accounting-software imports, so those are not routes you need to configure.";
+    return "Documents enter Exdox through mobile capture, website upload, or your private Sales submission email address. Open Sales, then Submission email & history, to copy that address. Sales email attachments always enter review. Commerce imports and accounting-software imports are not currently available.";
   }
   if (includes("workflow", "workflow page", "productivity", "automation")) {
     return "Workflows, Workspace Health, and Automation are operational views of the same workspace. Workspace Health shows where records need attention and how work is progressing; Workflows shows the approval lanes; Automation manages supplier-rule defaults. They do not replace the final human review and approval step.";
@@ -2284,7 +2306,7 @@ function helpChatReply(message: string) {
     return "Costs Inbox is for receipts, supplier bills, and purchase evidence. Open each Review item, check supplier, date, category, payment method, totals, and VAT where applicable, save corrections, then approve it. Approved personal-spend items can later be included in a reimbursement payment summary.";
   }
   if (includes("sales review", "approve sales", "sales invoice", "sales inbox")) {
-    return "Sales Inbox is for sales invoices and supporting sales documents. Upload through Upload Sales, then open the Review item, check the extracted customer, invoice number, date, totals, category, and VAT, save corrections, and approve it. Sales records are separate from employee reimbursement workflows.";
+    return "Sales supports imported documents plus native invoices, quotes, and credit notes. Use Sales Inbox for upload and review, Customers for reusable billing details, Invoices, quotes & credit notes to create and track balances, and Submission email & history for your private forwarding address and audit trail. Sales remains separate from employee reimbursement workflows.";
   }
   if (includes("vault ocr", "vault processing", "vault status", "vault upload", "archive document")) {
     return "Vault is for source evidence you need to store separately from active Costs and Sales. Upload with Upload Vault. Exdox reads the file using the same OCR route as receipt and invoice uploads, then records a Ready or Review outcome. Vault documents do count towards the workspace document allowance.";
@@ -4041,6 +4063,146 @@ function AutomationPage({ store }: { store: AppStore }) {
   );
 }
 
+function SalesWorkspaceNav({ active }: { active: "inbox" | "documents" | "customers" | "submissions" }) {
+  return (
+    <nav className="sales-workspace-nav" aria-label="Sales workspace">
+      <Link className={active === "inbox" ? "primary-action" : "secondary-action"} to="/sales">Imported sales</Link>
+      <Link className={active === "documents" ? "primary-action" : "secondary-action"} to="/sales/manage">Invoices, quotes & credit notes</Link>
+      <Link className={active === "customers" ? "primary-action" : "secondary-action"} to="/sales/customers">Customers</Link>
+      <Link className={active === "submissions" ? "primary-action" : "secondary-action"} to="/sales/submissions">Submission email & history</Link>
+    </nav>
+  );
+}
+
+function useSalesWorkspaceData(sessionToken: string) {
+  const [workspace, setWorkspace] = useState<SalesWorkspace | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const refresh = async () => {
+    setLoading(true);
+    try { setWorkspace(await getSalesWorkspace(sessionToken)); setError(null); }
+    catch (loadError) { setError(loadError instanceof Error ? loadError.message : "Could not load the Sales workspace."); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { void refresh(); }, [sessionToken]);
+  return { workspace, setWorkspace, error, setError, loading, refresh };
+}
+
+function SalesOperationsPage({ sessionToken }: { sessionToken: string }) {
+  const { workspace, error, setError, loading, refresh } = useSalesWorkspaceData(sessionToken);
+  const [kind, setKind] = useState<SalesDocument["kind"]>("invoice");
+  const [customerId, setCustomerId] = useState("");
+  const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dueDate, setDueDate] = useState("");
+  const [draftLines, setDraftLines] = useState([{ description: "", quantity: "1", unitPrice: "", taxRate: "20" }]);
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [paymentDocument, setPaymentDocument] = useState<SalesDocument | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+
+  const createDocument = async () => {
+    setBusy(true); setError(null); setFeedback(null);
+    try {
+      const document = await saveSalesDocument(sessionToken, {
+        kind, customerId, issueDate, dueDate: dueDate || null, notes,
+        lineItems: draftLines.map((line) => ({ description: line.description, quantity: Number(line.quantity), unitPrice: Number(line.unitPrice), taxRate: Number(line.taxRate) })),
+      });
+      setDraftLines([{ description: "", quantity: "1", unitPrice: "", taxRate: "20" }]); setNotes("");
+      setFeedback(`${salesDocumentKindLabel(document.kind)} ${document.number} saved as a draft.`);
+      await refresh();
+    } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save the sales document."); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="stack-page">
+      <section className="page-hero"><div><h2>Sales documents</h2><p>Create and track invoices, quotes, and credit notes without changing imported Sales records.</p></div></section>
+      <SalesWorkspaceNav active="documents" />
+      {error ? <div className="error-banner">{error}</div> : null}
+      {feedback ? <div className="success-banner">{feedback}</div> : null}
+      <section className="panel sales-create-panel">
+        <div className="panel-heading"><div><h3>Create sales document</h3><p>Totals and outstanding balance are calculated automatically.</p></div></div>
+        {!loading && !workspace?.customers.some((customer) => customer.active) ? <div className="notice-banner">Add an active customer before creating a document. <Link to="/sales/customers">Open Customers</Link></div> : null}
+        <div className="form-grid">
+          <label>Document type<select value={kind} onChange={(event) => setKind(event.target.value as SalesDocument["kind"])}><option value="invoice">Invoice</option><option value="quote">Quote</option><option value="credit_note">Credit note</option></select></label>
+          <label>Customer<select value={customerId} onChange={(event) => setCustomerId(event.target.value)}><option value="">Choose customer</option>{workspace?.customers.filter((customer) => customer.active).map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select></label>
+          <label>Issue date<input type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} /></label>
+          <label>Due date<input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label>
+          <div className="form-span-2 sales-line-editor"><strong>Line items</strong>{draftLines.map((line, index) => <div className="sales-line-row" key={index}><label>Description<input value={line.description} onChange={(event) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, description: event.target.value } : item))} placeholder="Service or product supplied" /></label><label>Quantity<input type="number" min="0.01" step="0.01" value={line.quantity} onChange={(event) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: event.target.value } : item))} /></label><label>Unit price<input type="number" min="0" step="0.01" value={line.unitPrice} onChange={(event) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unitPrice: event.target.value } : item))} /></label><label>VAT<select value={line.taxRate} onChange={(event) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, taxRate: event.target.value } : item))}><option value="20">20%</option><option value="5">5%</option><option value="0">0%</option></select></label>{draftLines.length > 1 ? <button className="danger-action" type="button" onClick={() => setDraftLines((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</button> : null}</div>)}<button className="secondary-action" type="button" onClick={() => setDraftLines((current) => [...current, { description: "", quantity: "1", unitPrice: "", taxRate: "20" }])}>Add line item</button></div>
+          <label className="form-span-2">Notes<textarea rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
+        </div>
+        <button className="primary-action" type="button" disabled={busy || !customerId || draftLines.some((line) => !line.description.trim() || !(Number(line.unitPrice) >= 0) || !(Number(line.quantity) > 0))} onClick={() => void createDocument()}>{busy ? "Saving..." : `Create ${salesDocumentKindLabel(kind).toLowerCase()}`}</button>
+      </section>
+      <section className="panel">
+        <div className="panel-heading"><div><h3>Created documents</h3><p>Record full or partial payments and keep the remaining balance visible.</p></div><span>{workspace?.documents.length ?? 0} documents</span></div>
+        {loading ? <p>Loading Sales documents...</p> : workspace?.documents.length ? (
+          <div className="table-scroll"><table><thead><tr><th>Document</th><th>Customer</th><th>Issued</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+            {workspace.documents.map((document) => <tr key={document.id}><td><strong>{document.number}</strong><br /><span>{salesDocumentKindLabel(document.kind)}</span></td><td>{document.customerName}</td><td>{document.issueDate}</td><td>{document.currency} {document.total.toFixed(2)}</td><td>{document.currency} {document.paidAmount.toFixed(2)}</td><td><strong>{document.currency} {document.outstandingAmount.toFixed(2)}</strong></td><td><SignalPill tone={document.status === "part_paid" ? "warning" : "info"}>{salesStatusLabel(document.status)}</SignalPill></td><td><div className="table-action-cell">
+              <button className="secondary-action" type="button" onClick={async () => { try { const asset = await getSalesDocumentPdf(sessionToken, document.id); window.open(asset.previewUrl, "_blank", "noopener,noreferrer"); } catch (assetError) { setError(assetError instanceof Error ? assetError.message : "Could not open the PDF."); } }}>Open PDF</button>
+              {document.status !== "paid" && document.status !== "void" ? <button className="secondary-action" type="button" onClick={async () => { setBusy(true); try { await issueSalesDocument(sessionToken, document.id); setFeedback(`${document.number} emailed to ${document.customerName}.`); await refresh(); } catch (issueError) { setError(issueError instanceof Error ? issueError.message : "Could not send the document."); } finally { setBusy(false); } }}>Email customer</button> : null}
+              {document.kind === "quote" && document.status !== "accepted" ? <button className="secondary-action" type="button" onClick={async () => { setBusy(true); try { await convertSalesQuote(sessionToken, document.id); setFeedback(`${document.number} converted to an invoice.`); await refresh(); } catch (convertError) { setError(convertError instanceof Error ? convertError.message : "Could not convert the quote."); } finally { setBusy(false); } }}>Convert to invoice</button> : null}
+              {document.kind !== "quote" && document.outstandingAmount > 0 ? <button className="primary-action" type="button" onClick={() => { setPaymentDocument(document); setPaymentAmount(document.outstandingAmount.toFixed(2)); }}>Record payment</button> : null}
+            </div></td></tr>)}
+          </tbody></table></div>
+        ) : <div className="empty-inline-state"><strong>No native Sales documents yet</strong><span>Create the first invoice, quote, or credit note above.</span></div>}
+      </section>
+      {paymentDocument ? <div className="modal-backdrop" role="presentation"><section className="modal-card" role="dialog" aria-modal="true" aria-label="Record sales payment"><h3>Record payment for {paymentDocument.number}</h3><p>Outstanding: {paymentDocument.currency} {paymentDocument.outstandingAmount.toFixed(2)}</p><div className="form-grid"><label>Amount<input type="number" min="0.01" max={paymentDocument.outstandingAmount} step="0.01" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} /></label><label>Paid date<input id="sales-payment-date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} /></label><label>Method<select id="sales-payment-method" defaultValue="Bank transfer"><option>Bank transfer</option><option>Card</option><option>Cash</option><option>Other</option></select></label><label>Reference<input id="sales-payment-reference" /></label></div><div className="toolbar"><button className="primary-action" type="button" onClick={async () => { setBusy(true); try { const paidAt = (document.getElementById("sales-payment-date") as HTMLInputElement).value; const method = (document.getElementById("sales-payment-method") as HTMLSelectElement).value; const reference = (document.getElementById("sales-payment-reference") as HTMLInputElement).value; await addSalesPayment(sessionToken, paymentDocument.id, { amount: Number(paymentAmount), paidAt, method, reference }); setPaymentDocument(null); setFeedback("Payment recorded and balance updated."); await refresh(); } catch (paymentError) { setError(paymentError instanceof Error ? paymentError.message : "Could not record payment."); } finally { setBusy(false); } }}>Save payment</button><button className="secondary-action" type="button" onClick={() => setPaymentDocument(null)}>Cancel</button></div></section></div> : null}
+    </div>
+  );
+}
+
+function SalesCustomersPage({ sessionToken }: { sessionToken: string }) {
+  const { workspace, error, setError, loading, refresh } = useSalesWorkspaceData(sessionToken);
+  const [editing, setEditing] = useState<Partial<SalesCustomer>>({ name: "", currency: "GBP", paymentTermsDays: 30, active: true });
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const setField = (field: keyof SalesCustomer, value: unknown) => setEditing((current) => ({ ...current, [field]: value }));
+  return <div className="stack-page"><section className="page-hero"><div><h2>Customers</h2><p>Maintain billing details once, then reuse them across imported and native Sales documents.</p></div></section><SalesWorkspaceNav active="customers" />
+    {error ? <div className="error-banner">{error}</div> : null}{feedback ? <div className="success-banner">{feedback}</div> : null}
+    <section className="panel"><div className="panel-heading"><div><h3>{editing.id ? "Edit customer" : "Add customer"}</h3><p>Names and email addresses support automatic matching suggestions during Sales review.</p></div><label className="secondary-action file-action">Import customer CSV<input type="file" accept=".csv,text/csv" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; setBusy(true); try { const rows = parseCustomerCsv(await file.text()); const imported = await importSalesCustomers(sessionToken, rows); setFeedback(`${imported.length} customer${imported.length === 1 ? "" : "s"} imported.`); await refresh(); } catch (importError) { setError(importError instanceof Error ? importError.message : "Could not import customers."); } finally { setBusy(false); event.target.value = ""; } }} /></label></div>
+      <div className="form-grid"><label>Business or customer name<input value={editing.name ?? ""} onChange={(event) => setField("name", event.target.value)} /></label><label>Contact name<input value={editing.contactName ?? ""} onChange={(event) => setField("contactName", event.target.value)} /></label><label>Email<input type="email" value={editing.email ?? ""} onChange={(event) => setField("email", event.target.value)} /></label><label>Phone<input value={editing.phone ?? ""} onChange={(event) => setField("phone", event.target.value)} /></label><label className="form-span-2">Billing address<textarea rows={3} value={editing.billingAddress ?? ""} onChange={(event) => setField("billingAddress", event.target.value)} /></label><label>Company number<input value={editing.companyNumber ?? ""} onChange={(event) => setField("companyNumber", event.target.value)} /></label><label>VAT number<input value={editing.vatNumber ?? ""} onChange={(event) => setField("vatNumber", event.target.value)} /></label><label>Payment terms (days)<input type="number" min="0" max="365" value={editing.paymentTermsDays ?? 30} onChange={(event) => setField("paymentTermsDays", Number(event.target.value))} /></label><label>Currency<input maxLength={3} value={editing.currency ?? "GBP"} onChange={(event) => setField("currency", event.target.value.toUpperCase())} /></label></div>
+      <div className="toolbar"><button className="primary-action" disabled={busy || !editing.name?.trim()} type="button" onClick={async () => { setBusy(true); try { await saveSalesCustomer(sessionToken, editing as SalesCustomer); setEditing({ name: "", currency: "GBP", paymentTermsDays: 30, active: true }); setFeedback("Customer saved."); await refresh(); } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save the customer."); } finally { setBusy(false); } }}>{busy ? "Saving..." : "Save customer"}</button>{editing.id ? <button className="secondary-action" type="button" onClick={() => setEditing({ name: "", currency: "GBP", paymentTermsDays: 30, active: true })}>Cancel edit</button> : null}</div>
+    </section>
+    <section className="panel"><div className="panel-heading"><div><h3>Customer directory</h3><p>CSV columns supported: name, contactName, email, phone, billingAddress, companyNumber, vatNumber, paymentTermsDays, currency.</p></div><span>{workspace?.customers.length ?? 0} customers</span></div>{loading ? <p>Loading customers...</p> : workspace?.customers.length ? <div className="table-scroll"><table><thead><tr><th>Customer</th><th>Contact</th><th>Terms</th><th>VAT number</th><th>Status</th><th>Actions</th></tr></thead><tbody>{workspace.customers.map((customer) => <tr key={customer.id}><td><strong>{customer.name}</strong><br /><span>{customer.billingAddress}</span></td><td>{customer.contactName}<br /><span>{customer.email}</span></td><td>{customer.paymentTermsDays} days</td><td>{customer.vatNumber || "-"}</td><td>{customer.active ? "Active" : "Inactive"}</td><td><div className="table-action-cell"><button className="secondary-action" type="button" onClick={() => setEditing(customer)}>Edit</button><button className="danger-action" type="button" onClick={async () => { if (!window.confirm(`Delete ${customer.name}?`)) return; try { await deleteSalesCustomer(sessionToken, customer.id); await refresh(); } catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Could not delete the customer."); } }}>Delete</button></div></td></tr>)}</tbody></table></div> : <p>No customers have been added yet.</p>}</section>
+  </div>;
+}
+
+function SalesSubmissionsPage({ sessionToken }: { sessionToken: string }) {
+  const { workspace, setWorkspace, error, setError, loading } = useSalesWorkspaceData(sessionToken);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  return <div className="stack-page"><section className="page-hero"><div><h2>Sales submissions</h2><p>Forward sales attachments into the same review queue and audit every submission channel.</p></div></section><SalesWorkspaceNav active="submissions" />{error ? <div className="error-banner">{error}</div> : null}{feedback ? <div className="success-banner">{feedback}</div> : null}
+    <section className="panel sales-email-card"><div><span className="eyebrow">Your private Sales address</span><h3>{workspace?.submissionAddress.address || "Loading address..."}</h3><p>Forward PDF, JPG, PNG, or WebP sales documents here. Keep this address private; attachments are assigned to your account and always enter review.</p></div><div className="toolbar"><button className="primary-action" disabled={!workspace} type="button" onClick={async () => { if (!workspace) return; await navigator.clipboard.writeText(workspace.submissionAddress.address); setFeedback("Sales submission address copied."); }}>Copy address</button><button className="secondary-action" disabled={!workspace} type="button" onClick={async () => { if (!window.confirm("Rotate this address? The old address will stop accepting submissions.")) return; try { const submissionAddress = await rotateSalesSubmissionAddress(sessionToken); setWorkspace((current) => current ? { ...current, submissionAddress } : current); setFeedback("Sales submission address rotated."); } catch (rotateError) { setError(rotateError instanceof Error ? rotateError.message : "Could not rotate the address."); } }}>Rotate address</button></div></section>
+    <section className="panel"><div className="panel-heading"><div><h3>Submission history</h3><p>Web, mobile, email, and native-document activity is retained here, including failures and duplicate outcomes.</p></div><span>{workspace?.submissions.length ?? 0} submissions</span></div>{loading ? <p>Loading history...</p> : workspace?.submissions.length ? <div className="table-scroll"><table><thead><tr><th>Submitted</th><th>Channel</th><th>Source</th><th>PDF handling</th><th>Status</th><th>Created records</th><th>Details</th></tr></thead><tbody>{workspace.submissions.map((submission) => <tr key={submission.id}><td>{new Date(submission.createdAt).toLocaleString("en-GB")}</td><td>{submission.channel}</td><td>{submission.sourceFilename}</td><td>{submission.splitMode.replaceAll("_", " ")}</td><td>{submission.status}</td><td>{submission.receiptIds.length}</td><td>{submission.message || "-"}</td></tr>)}</tbody></table></div> : <p>No Sales submission history yet.</p>}</section>
+  </div>;
+}
+
+function parseCustomerCsv(csv: string): Array<Record<string, unknown>> {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+  const source = csv.replace(/^\uFEFF/, "");
+  for (let index = 0; index <= source.length; index += 1) {
+    const character = source[index] ?? "\n";
+    if (character === '"' && quoted && source[index + 1] === '"') { cell += '"'; index += 1; continue; }
+    if (character === '"') { quoted = !quoted; continue; }
+    if (character === "," && !quoted) { row.push(cell.trim()); cell = ""; continue; }
+    if ((character === "\n" || character === "\r") && !quoted) {
+      if (character === "\r" && source[index + 1] === "\n") index += 1;
+      row.push(cell.trim());
+      if (row.some(Boolean)) rows.push(row);
+      row = []; cell = ""; continue;
+    }
+    cell += character;
+  }
+  const headers = rows.shift()?.map((header) => header.trim()) ?? [];
+  return rows.map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
+}
+
+function salesDocumentKindLabel(kind: SalesDocument["kind"]) { return kind === "credit_note" ? "Credit note" : `${kind[0].toUpperCase()}${kind.slice(1)}`; }
+function salesStatusLabel(status: SalesDocument["status"]) { return status.replaceAll("_", " ").replace(/^./, (value) => value.toUpperCase()); }
+
 function InboxPage({
   title,
   records,
@@ -4295,7 +4457,8 @@ function InboxPage({
           </p>
         </div>
         {basePath === "/sales" ? (
-          <div className="filter-row sales-workflow-tabs" aria-label="Sales workflow views">
+          <div className="sales-hub-nav" aria-label="Sales workspace views">
+            <div className="filter-row sales-workflow-tabs">
             {(["inbox", "processing", "approvals", "archive"] as const).map((view) => (
               <button
                 key={view}
@@ -4306,6 +4469,12 @@ function InboxPage({
                 {view === "inbox" ? "Inbox" : view === "processing" ? "Processing" : view === "approvals" ? "Approval queue" : "Archive"}
               </button>
             ))}
+            </div>
+            <div className="filter-row">
+              <Link className="secondary-action" to="/sales/manage">Invoices, quotes & credit notes</Link>
+              <Link className="secondary-action" to="/sales/customers">Customers</Link>
+              <Link className="secondary-action" to="/sales/submissions">Submission email & history</Link>
+            </div>
           </div>
         ) : null}
         <div className="filter-row">
@@ -4452,6 +4621,24 @@ function InboxPage({
             </select>
           </label>
           <p>Business admins can upload sales documents on behalf of an active team member. Ownership controls which employee can see the document.</p>
+        </section>
+      ) : null}
+
+      {basePath === "/sales" ? (
+        <section className="panel sales-pdf-options">
+          <div>
+            <strong>PDF document handling</strong>
+            <p>Choose how multi-page PDFs should enter Sales. This preference applies to the next Sales upload.</p>
+          </div>
+          <select
+            defaultValue={window.localStorage.getItem("exdox-sales-pdf-mode") || "auto_detect"}
+            onChange={(event) => window.localStorage.setItem("exdox-sales-pdf-mode", event.target.value)}
+            aria-label="Sales PDF document handling"
+          >
+            <option value="auto_detect">Automatically detect documents</option>
+            <option value="single_document">Treat the PDF as one document</option>
+            <option value="one_document_per_page">One document per page</option>
+          </select>
         </section>
       ) : null}
 
@@ -4869,6 +5056,7 @@ function DocumentWorkspacePage(props: {
   const [postApprovePrompt, setPostApprovePrompt] = useState<null | { nextReceiptId: number | null }>(null);
   const [reimbursementExporting, setReimbursementExporting] = useState(false);
   const [reimbursementExportError, setReimbursementExportError] = useState<string | null>(null);
+  const [salesCustomers, setSalesCustomers] = useState<SalesCustomer[]>([]);
   const imageZoomStageRef = useRef<HTMLDivElement | null>(null);
   const imagePanStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const loadReceiptRef = useRef(props.loadReceipt);
@@ -4895,6 +5083,15 @@ function DocumentWorkspacePage(props: {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (props.mode !== "sales") return;
+    let active = true;
+    getSalesWorkspace(props.sessionToken).then((workspace) => {
+      if (active) setSalesCustomers(workspace.customers.filter((customer) => customer.active));
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [props.mode, props.sessionToken]);
 
   useEffect(() => {
     if (!receipt || receipt.invoiceDate?.trim()) {
@@ -5052,7 +5249,9 @@ function DocumentWorkspacePage(props: {
           ) : null}
           <label>
             Customer
-            <input value={receipt.customer ?? ""} onChange={(event) => setReceipt({ ...receipt, customer: event.target.value })} />
+            <input list={props.mode === "sales" ? "sales-customer-suggestions" : undefined} value={receipt.customer ?? ""} onChange={(event) => setReceipt({ ...receipt, customer: event.target.value })} />
+            {props.mode === "sales" ? <datalist id="sales-customer-suggestions">{salesCustomers.map((customer) => <option key={customer.id} value={customer.name}>{customer.email || customer.contactName || "Saved customer"}</option>)}</datalist> : null}
+            {props.mode === "sales" && salesCustomers.length ? <span className="field-hint">Choose a saved customer or keep the extracted name. Matching ignores capitalisation and punctuation.</span> : null}
           </label>
           <label>
             Receipt Date

@@ -1117,6 +1117,92 @@ button.status-box:focus-visible {
   padding: 18px;
 }
 
+.sales-workspace-nav,
+.sales-hub-nav,
+.sales-pdf-options,
+.sales-email-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.sales-workspace-nav {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.sales-workspace-nav a,
+.sales-hub-nav a {
+  text-decoration: none;
+}
+
+.sales-pdf-options p,
+.sales-email-card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.sales-pdf-options select {
+  min-width: min(100%, 310px);
+}
+
+.sales-create-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.sales-create-panel > .primary-action {
+  justify-self: start;
+}
+
+.sales-line-editor {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.sales-line-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(100px, 0.7fr)) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+@media (max-width: 900px) {
+  .sales-line-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sales-email-card {
+  background: linear-gradient(135deg, #ffffff 0%, #edf8fb 100%);
+  border-color: #b8d9ed;
+}
+
+.sales-email-card h3 {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .sales-workspace-nav,
+  .sales-workspace-nav a,
+  .sales-hub-nav,
+  .sales-email-card,
+  .sales-email-card .toolbar,
+  .sales-pdf-options,
+  .sales-pdf-options select {
+    width: 100%;
+  }
+}
+
 .team-member-list {
   display: grid;
   gap: 10px;

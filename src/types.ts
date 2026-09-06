@@ -314,3 +314,57 @@ export type BillingPlanDefinition = {
   trialDays: number | null;
   highlight?: string;
 };
+
+export type SalesCustomer = {
+  id: string;
+  name: string;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  billingAddress: string | null;
+  shippingAddress: string | null;
+  companyNumber: string | null;
+  vatNumber: string | null;
+  paymentTermsDays: number;
+  currency: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SalesLineItem = { description: string; quantity: number; unitPrice: number; taxRate: number; netAmount: number; taxAmount: number; totalAmount: number };
+export type SalesPayment = { id: string; amount: number; paidAt: string; method: string; reference: string | null; createdAt: string };
+export type SalesDocument = {
+  id: string;
+  kind: "invoice" | "quote" | "credit_note";
+  number: string;
+  customerId: string;
+  customerName: string;
+  issueDate: string;
+  dueDate: string | null;
+  currency: string;
+  status: "draft" | "issued" | "accepted" | "declined" | "part_paid" | "paid" | "void";
+  notes: string | null;
+  linkedDocumentId: string | null;
+  lineItems: SalesLineItem[];
+  subtotal: number;
+  taxTotal: number;
+  total: number;
+  paidAmount: number;
+  outstandingAmount: number;
+  payments: SalesPayment[];
+  createdAt: string;
+  updatedAt: string;
+};
+export type SalesSubmission = {
+  id: string;
+  channel: "web" | "mobile" | "email" | "native";
+  sourceFilename: string;
+  splitMode: "single_document" | "one_document_per_page" | "auto_detect";
+  status: "processing" | "completed" | "duplicate" | "failed";
+  receiptIds: number[];
+  message: string | null;
+  createdAt: string;
+};
+export type SalesSubmissionAddress = { address: string; token: string; createdAt: string; updatedAt: string };
+export type SalesWorkspace = { customers: SalesCustomer[]; documents: SalesDocument[]; submissions: SalesSubmission[]; submissionAddress: SalesSubmissionAddress };
