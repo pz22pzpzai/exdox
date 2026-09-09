@@ -232,6 +232,11 @@ export type XeroIntegrationSettings = {
   purchaseStatus: "DRAFT" | "SUBMITTED" | "AUTHORISED";
   salesStatus: "DRAFT" | "SUBMITTED" | "AUTHORISED";
   publishAttachments: boolean;
+  companyCardBankAccountCode: string | null;
+  trackingCategoryId: string | null;
+  trackingOptionId: string | null;
+  categoryAccountMappings: Record<string, string>;
+  taxTypeMappings: Record<string, string>;
 };
 
 export type XeroReferenceData = {
