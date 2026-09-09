@@ -218,8 +218,42 @@ export type OrganisationSettings = {
 export type XeroIntegrationStatus = {
   configured: boolean;
   connected: boolean;
+  tenantId: string | null;
   tenantName: string | null;
   connectedAt: string | null;
+  availableTenants: Array<{ tenantId: string; tenantName: string }>;
+};
+
+export type XeroIntegrationSettings = {
+  purchaseAccountCode: string | null;
+  salesAccountCode: string | null;
+  purchaseTaxType: string | null;
+  salesTaxType: string | null;
+  purchaseStatus: "DRAFT" | "SUBMITTED" | "AUTHORISED";
+  salesStatus: "DRAFT" | "SUBMITTED" | "AUTHORISED";
+  publishAttachments: boolean;
+};
+
+export type XeroReferenceData = {
+  accounts: Array<{ accountId: string; code: string; name: string; type: string }>;
+  bankAccounts: Array<{ accountId: string; code: string; name: string; type: string }>;
+  taxRates: Array<{ name: string; taxType: string; canApplyToExpenses: boolean; canApplyToRevenue: boolean }>;
+  trackingCategories: Array<{ trackingCategoryId: string; name: string; options: Array<{ trackingOptionId: string; name: string }> }>;
+  contacts: Array<{ contactId: string; name: string; emailAddress: string | null; isSupplier: boolean; isCustomer: boolean }>;
+  items: Array<{ itemId: string; code: string; name: string; isSold: boolean; isPurchased: boolean }>;
+  currencies: Array<{ code: string; description: string }>;
+  users: Array<{ userId: string; name: string; emailAddress: string | null; isSubscriber: boolean }>;
+  settings: XeroIntegrationSettings;
+  refreshedAt: string;
+};
+
+export type XeroPublication = {
+  sourceType: "receipt" | "sales_document" | "claim";
+  sourceId: string;
+  xeroType: string;
+  xeroId: string;
+  xeroNumber: string | null;
+  publishedAt: string;
 };
 
 export type InviteResult = {
@@ -360,6 +394,9 @@ export type SalesDocument = {
   paidAmount: number;
   outstandingAmount: number;
   payments: SalesPayment[];
+  xeroId?: string | null;
+  xeroNumber?: string | null;
+  xeroPublishedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };

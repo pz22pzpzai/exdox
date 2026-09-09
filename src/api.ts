@@ -25,6 +25,9 @@ import type {
   SalesDocument,
   SalesWorkspace,
   XeroIntegrationStatus,
+  XeroIntegrationSettings,
+  XeroReferenceData,
+  XeroPublication,
 } from "./types";
 
 const API_BASE_URL =
@@ -632,8 +635,29 @@ export async function disconnectXero(token: string): Promise<void> {
   await apiFetch<{ success: true }>("/xero/connection", token, { method: "DELETE" });
 }
 
+export async function selectXeroTenant(token: string, tenantId: string): Promise<{ tenantId: string; tenantName: string }> {
+  return apiFetch<{ tenantId: string; tenantName: string }>("/xero/tenant", token, { method: "POST", body: JSON.stringify({ tenantId }) });
+}
+
 export async function syncXeroCustomers(token: string): Promise<{ created: number; alreadyPresent: number; total: number }> {
   return apiFetch<{ created: number; alreadyPresent: number; total: number }>("/xero/customers/sync", token, { method: "POST" });
+}
+
+export async function importXeroCustomers(token: string): Promise<{ imported: number; alreadyPresent: number }> {
+  return apiFetch<{ imported: number; alreadyPresent: number }>("/xero/customers/import", token, { method: "POST" });
+}
+
+export async function getXeroReferenceData(token: string): Promise<XeroReferenceData> {
+  return apiFetch<XeroReferenceData>("/xero/reference-data", token, { cache: "no-store" });
+}
+
+export async function saveXeroIntegrationSettings(token: string, settings: XeroIntegrationSettings): Promise<XeroIntegrationSettings> {
+  const response = await apiFetch<{ settings: XeroIntegrationSettings }>("/xero/settings", token, { method: "PUT", body: JSON.stringify(settings) });
+  return response.settings;
+}
+
+export async function publishToXero(token: string, sourceType: XeroPublication["sourceType"], sourceId: string | number): Promise<{ alreadyPublished: boolean; publication: XeroPublication; warning: string | null }> {
+  return apiFetch<{ alreadyPublished: boolean; publication: XeroPublication; warning: string | null }>("/xero/publish", token, { method: "POST", body: JSON.stringify({ sourceType, sourceId }) });
 }
 
 export async function saveSettings(

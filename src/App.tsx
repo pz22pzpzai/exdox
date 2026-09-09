@@ -36,6 +36,7 @@ import {
   getReceiptAssetUrl,
   getSettings,
   getXeroIntegrationStatus,
+  getXeroReferenceData,
   listClaims,
   listReceipts,
   listReconciliation,
@@ -72,12 +73,16 @@ import {
   getSalesDocumentPdf,
   getSalesWorkspace,
   importSalesCustomers,
+  importXeroCustomers,
   issueSalesDocument,
   rotateSalesSubmissionAddress,
   saveSalesCustomer,
   saveSalesDocument,
+  saveXeroIntegrationSettings,
+  selectXeroTenant,
   startXeroConnection,
   syncXeroCustomers,
+  publishToXero,
 } from "./api";
 import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
 import type {
@@ -103,6 +108,8 @@ import type {
   SalesDocument,
   SalesWorkspace,
   XeroIntegrationStatus,
+  XeroIntegrationSettings,
+  XeroReferenceData,
 } from "./types";
 
 const taxRates: TaxRate[] = [
@@ -140,6 +147,7 @@ const navItems = [
   { to: "/overview/workflows", label: "Workflows", icon: "workflow" },
   { to: "/overview/analytics", label: "Analytics", icon: "analytics" },
   { to: "/overview/automation", label: "Automation", icon: "automation" },
+  { to: "/settings/integrations", label: "Integrations", icon: "settings" },
   { to: "/costs", label: "Costs Inbox", icon: "costs" },
   { to: "/sales", label: "Sales Inbox", icon: "sales" },
   { to: "/customer-rules", label: "Customer Rules", icon: "rules" },
@@ -1970,6 +1978,9 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/automation" element={<AutomationPage store={props.store} />} />
               ) : null}
+              {isRouteAllowed(props.session, "/settings") ? (
+                <Route path="/settings/integrations" element={<AccountingIntegrationsPage session={props.session} />} />
+              ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/attention" element={<AttentionPage session={props.session} store={props.store} />} />
               ) : null}
@@ -2003,7 +2014,7 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
                   path="/costs/mileage/:id"
-                  element={<MileageCostReviewPage loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} onStatusChange={props.onClaimStatusChange} onSave={props.onClaimSave} onDelete={props.onClaimDelete} records={props.store.costs} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
+                  element={<MileageCostReviewPage sessionToken={props.session.token} loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} onStatusChange={props.onClaimStatusChange} onSave={props.onClaimSave} onDelete={props.onClaimDelete} records={props.store.costs} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
                 />
               ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
@@ -2112,7 +2123,7 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route
                   path="/claims/:id"
-                element={<ClaimDetailPage onStatusChange={props.onClaimStatusChange} onDelete={props.onClaimDelete} onSave={props.onClaimSave} loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} uploadClaimEvidence={props.uploadClaimEvidence} settings={props.store.settings} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
+                element={<ClaimDetailPage sessionToken={props.session.token} onStatusChange={props.onClaimStatusChange} onDelete={props.onClaimDelete} onSave={props.onClaimSave} loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} uploadClaimEvidence={props.uploadClaimEvidence} settings={props.store.settings} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
                 />
               ) : null}
               <Route path="/dropbox" element={<Navigate to="/costs" replace />} />
@@ -2195,6 +2206,7 @@ function DashboardShell(props: {
                 path="/claims/:id"
                 element={
                   <ClaimDetailPage
+                    sessionToken={props.session.token}
                     onStatusChange={props.onClaimStatusChange}
                     onDelete={props.onClaimDelete}
                     onSave={props.onClaimSave}
@@ -2344,7 +2356,7 @@ function helpChatReply(message: string) {
     return "Profile/Settings lets each user choose their default landing page, date format, compact table view, and browser-specific upload, review, and claim alerts. These preferences apply only to the browser where you save them, not to every person in the workspace.";
   }
   if (includes("bank", "open banking", "bank feed", "reconciliation", "xero", "quickbooks", "sage", "accounting software")) {
-    return "Business admins can connect Xero in Profile/Settings and choose when to copy active Sales customers into their connected Xero organisation. Exdox does not automatically send historic documents or provide bank feeds, Open Banking, bank reconciliation, QuickBooks, or Sage connections. CSV exports remain available for other accounting processes.";
+    return "Business admins can open Integrations from the main workspace menu to connect Xero, choose the Xero organisation, refresh its accounts, contacts, tax rates, tracking categories and bank accounts, set publishing defaults, and sync Sales customers. Approved Costs, Sales invoices and credit notes, mileage, and Expense Claims can then be published to Xero from their normal review screens with duplicate protection and optional source attachments. Open Banking, QuickBooks, and Sage are separate connections and are not enabled yet.";
   }
   if (includes("employee view", "employee dashboard", "what can employees see", "employee permissions", "my expenses", "my claims")) {
     return "Employees use the same login but receive a personal Exdox workspace. They can see only their own expenses and claims, track their reimbursement status, download their personal expense CSV, and contact support. They cannot see the business dashboard, other employees' data, billing, company settings, or approval controls.";
@@ -4093,6 +4105,16 @@ function useSalesWorkspaceData(sessionToken: string) {
   return { workspace, setWorkspace, error, setError, loading, refresh };
 }
 
+function useXeroConnected(sessionToken: string) {
+  const [connected, setConnected] = useState(false);
+  useEffect(() => {
+    let active = true;
+    getXeroIntegrationStatus(sessionToken).then((status) => { if (active) setConnected(status.connected); }).catch(() => { if (active) setConnected(false); });
+    return () => { active = false; };
+  }, [sessionToken]);
+  return connected;
+}
+
 function SalesOperationsPage({ sessionToken }: { sessionToken: string }) {
   const { workspace, error, setError, loading, refresh } = useSalesWorkspaceData(sessionToken);
   const [kind, setKind] = useState<SalesDocument["kind"]>("invoice");
@@ -4105,6 +4127,7 @@ function SalesOperationsPage({ sessionToken }: { sessionToken: string }) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [paymentDocument, setPaymentDocument] = useState<SalesDocument | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
+  const xeroConnected = useXeroConnected(sessionToken);
 
   const createDocument = async () => {
     setBusy(true); setError(null); setFeedback(null);
@@ -4145,6 +4168,7 @@ function SalesOperationsPage({ sessionToken }: { sessionToken: string }) {
           <div className="table-scroll"><table><thead><tr><th>Document</th><th>Customer</th><th>Issued</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Actions</th></tr></thead><tbody>
             {workspace.documents.map((document) => <tr key={document.id}><td><strong>{document.number}</strong><br /><span>{salesDocumentKindLabel(document.kind)}</span></td><td>{document.customerName}</td><td>{document.issueDate}</td><td>{document.currency} {document.total.toFixed(2)}</td><td>{document.currency} {document.paidAmount.toFixed(2)}</td><td><strong>{document.currency} {document.outstandingAmount.toFixed(2)}</strong></td><td><SignalPill tone={document.status === "part_paid" ? "warning" : "info"}>{salesStatusLabel(document.status)}</SignalPill></td><td><div className="table-action-cell">
               <button className="secondary-action" type="button" onClick={async () => { try { const asset = await getSalesDocumentPdf(sessionToken, document.id); window.open(asset.previewUrl, "_blank", "noopener,noreferrer"); } catch (assetError) { setError(assetError instanceof Error ? assetError.message : "Could not open the PDF."); } }}>Open PDF</button>
+              {document.kind !== "quote" && xeroConnected ? <button className={document.xeroPublishedAt ? "secondary-action" : "primary-action"} type="button" disabled={busy || Boolean(document.xeroPublishedAt)} onClick={async () => { setBusy(true); setError(null); setFeedback(null); try { const result = await publishToXero(sessionToken, "sales_document", document.id); setFeedback(result.alreadyPublished ? `${document.number} was already published to Xero.` : `${document.number} published to Xero${result.publication.xeroNumber ? ` as ${result.publication.xeroNumber}` : ""}.`); if (result.warning) setError(result.warning); await refresh(); } catch (publishError) { setError(publishError instanceof Error ? publishError.message : "Could not publish this document to Xero."); } finally { setBusy(false); } }}>{document.xeroPublishedAt ? "Published to Xero" : "Publish to Xero"}</button> : document.kind !== "quote" ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : null}
               {document.status !== "paid" && document.status !== "void" ? <button className="secondary-action" type="button" onClick={async () => { setBusy(true); try { await issueSalesDocument(sessionToken, document.id); setFeedback(`${document.number} emailed to ${document.customerName}.`); await refresh(); } catch (issueError) { setError(issueError instanceof Error ? issueError.message : "Could not send the document."); } finally { setBusy(false); } }}>Email customer</button> : null}
               {document.kind === "quote" && document.status !== "accepted" ? <button className="secondary-action" type="button" onClick={async () => { setBusy(true); try { await convertSalesQuote(sessionToken, document.id); setFeedback(`${document.number} converted to an invoice.`); await refresh(); } catch (convertError) { setError(convertError instanceof Error ? convertError.message : "Could not convert the quote."); } finally { setBusy(false); } }}>Convert to invoice</button> : null}
               {document.kind !== "quote" && document.outstandingAmount > 0 ? <button className="primary-action" type="button" onClick={() => { setPaymentDocument(document); setPaymentAmount(document.outstandingAmount.toFixed(2)); }}>Record payment</button> : null}
@@ -4825,6 +4849,7 @@ function RecycleBinPage({ sessionToken, onRestore }: { sessionToken: string; onR
 }
 
 function MileageCostReviewPage(props: {
+  sessionToken: string;
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[]; evidence?: import("./types").ClaimEvidence[] }>;
   loadClaimEvidenceAsset: (claimId: number, evidenceId: string) => Promise<string>;
   onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
@@ -4845,6 +4870,7 @@ function MileageCostReviewPage(props: {
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [postApprovePrompt, setPostApprovePrompt] = useState<null | { nextRecord: ReceiptRecord | null }>(null);
+  const xeroConnected = useXeroConnected(props.sessionToken);
   const imageZoomStageRef = useRef<HTMLDivElement | null>(null);
   const imagePanStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const loadClaimRef = useRef(props.loadClaim);
@@ -4953,6 +4979,7 @@ function MileageCostReviewPage(props: {
         {props.canUseApprovalWorkflows && claim.status === "pending" ? <button className="primary-action" type="button" disabled={saving} onClick={() => void setStatus("approved")}>Approve Expense</button> : null}
         {claim.status === "pending" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Save Changes"}</button> : null}
         {props.canUseApprovalWorkflows && claim.status === "approved" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("pending")}>Undo Approval</button> : null}
+        {props.canUseApprovalWorkflows && (claim.status === "approved" || claim.status === "published") && xeroConnected ? <button className="primary-action" type="button" disabled={saving} onClick={async () => { setSaving(true); setError(null); setFeedback(null); try { const result = await publishToXero(props.sessionToken, "claim", claim.id); setClaim((current) => current ? { ...current, status: "published" } : current); setFeedback(result.alreadyPublished ? "This mileage claim was already published to Xero." : `Mileage claim published to Xero${result.publication.xeroNumber ? ` as ${result.publication.xeroNumber}` : ""}.`); if (result.warning) setError(result.warning); } catch (publishError) { setError(publishError instanceof Error ? publishError.message : "Could not publish this mileage claim to Xero."); } finally { setSaving(false); } }}>Publish to Xero</button> : claim.status === "approved" ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : null}
         <button className="danger-action" type="button" disabled={saving} onClick={async () => {
           if (!window.confirm("Move this mileage expense to the Recycle Bin? It can be restored for three days.")) return;
           setSaving(true); setError(null); setFeedback(null);
@@ -4960,7 +4987,7 @@ function MileageCostReviewPage(props: {
           catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Could not delete this mileage expense."); }
           finally { setSaving(false); }
         }}>Delete Document</button>
-        {props.canUseApprovalWorkflows && (claim.status === "pending" || claim.status === "approved") ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("published")}>Mark as Published</button> : null}
+        {props.canUseApprovalWorkflows && !xeroConnected && (claim.status === "pending" || claim.status === "approved") ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("published")}>Mark as Published</button> : null}
       </div>
     </section>
     </div>
@@ -5030,6 +5057,7 @@ function DocumentWorkspacePage(props: {
   const [reimbursementExporting, setReimbursementExporting] = useState(false);
   const [reimbursementExportError, setReimbursementExportError] = useState<string | null>(null);
   const [salesCustomers, setSalesCustomers] = useState<SalesCustomer[]>([]);
+  const xeroConnected = useXeroConnected(props.sessionToken);
   const imageZoomStageRef = useRef<HTMLDivElement | null>(null);
   const imagePanStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const loadReceiptRef = useRef(props.loadReceipt);
@@ -5207,7 +5235,7 @@ function DocumentWorkspacePage(props: {
             Supplier Name
             <input value={receipt.vendorName ?? ""} onChange={(event) => setReceipt({ ...receipt, vendorName: event.target.value })} />
           </label>
-          {!isVaultRecord ? (
+          {!isVaultRecord && !xeroConnected ? (
             <label>
               Category
               <select value={receipt.category ?? ""} onChange={(event) => setReceipt({ ...receipt, category: event.target.value })}>
@@ -5546,6 +5574,25 @@ function DocumentWorkspacePage(props: {
         ) : null}
 
         <div className="toolbar">
+          {!isVaultRecord && receiptApproved && xeroConnected ? (
+            <button
+              className="primary-action"
+              type="button"
+              disabled={saving}
+              onClick={async () => {
+                setSaving(true); setFeedback(null); setError(null);
+                try {
+                  const result = await publishToXero(props.sessionToken, "receipt", receipt.id);
+                  setReceipt({ ...receipt, status: "Published" });
+                  setFeedback(result.alreadyPublished ? "This document was already published to Xero." : `Published to Xero${result.publication.xeroNumber ? ` as ${result.publication.xeroNumber}` : ""}.`);
+                  if (result.warning) setError(result.warning);
+                } catch (publishError) { setError(publishError instanceof Error ? publishError.message : "Could not publish this document to Xero."); }
+                finally { setSaving(false); }
+              }}
+            >
+              {saving ? "Publishing…" : "Publish to Xero"}
+            </button>
+          ) : !isVaultRecord && receiptApproved ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : null}
           {!isVaultRecord && !reimbursementPaymentLocked ? (
             <button
               className={receiptApproved && !receiptPublished ? "secondary-action" : "primary-action"}
@@ -6602,6 +6649,7 @@ function EmployeeReportsPage(props: {
 }
 
 function ClaimDetailPage(props: {
+  sessionToken: string;
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[]; evidence?: import("./types").ClaimEvidence[] }>;
   loadClaimEvidenceAsset: (claimId: number, evidenceId: string) => Promise<string>;
   uploadClaimEvidence: (id: number, file: File) => Promise<import("./types").ClaimEvidence>;
@@ -6627,6 +6675,7 @@ function ClaimDetailPage(props: {
   const [query, setQuery] = useState("");
   const [receiptStatusFilter, setReceiptStatusFilter] = useState<InboxStatus | "All">("All");
   const deferredQuery = useDeferredValue(query);
+  const xeroConnected = useXeroConnected(props.sessionToken);
 
   useEffect(() => {
     if (!id) {
@@ -6768,6 +6817,21 @@ function ClaimDetailPage(props: {
             >
               Approve claim
             </button>
+            {(claim.status === "approved" || claim.status === "published") && xeroConnected ? <button
+              className="primary-action"
+              type="button"
+              disabled={savingStatus !== null}
+              onClick={async () => {
+                setSavingStatus("published"); setError(null); setFeedback(null);
+                try {
+                  const result = await publishToXero(props.sessionToken, "claim", claim.id);
+                  setClaim((current) => current ? { ...current, status: "published" } : current);
+                  setFeedback(result.alreadyPublished ? "This claim was already published to Xero." : `Claim published to Xero${result.publication.xeroNumber ? ` as ${result.publication.xeroNumber}` : ""}.`);
+                  if (result.warning) setError(result.warning);
+                } catch (publishError) { setError(publishError instanceof Error ? publishError.message : "Could not publish this claim to Xero."); }
+                finally { setSavingStatus(null); }
+              }}
+            >Publish to Xero</button> : claim.status === "approved" ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : null}
             <button
               className="secondary-action"
               type="button"
@@ -7829,6 +7893,129 @@ function BankCallbackPage(props: {
   );
 }
 
+function AccountingIntegrationsPage({ session }: { session: SessionState }) {
+  const location = useLocation();
+  const [status, setStatus] = useState<XeroIntegrationStatus | null>(null);
+  const [referenceData, setReferenceData] = useState<XeroReferenceData | null>(null);
+  const [settings, setSettings] = useState<XeroIntegrationSettings | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const refresh = async (refreshLists = false) => {
+    const nextStatus = await getXeroIntegrationStatus(session.token);
+    setStatus(nextStatus);
+    if (nextStatus.connected && (refreshLists || !referenceData)) {
+      const data = await getXeroReferenceData(session.token);
+      setReferenceData(data);
+      setSettings(data.settings);
+    }
+  };
+
+  useEffect(() => {
+    void refresh(true).catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Could not load accounting integrations."));
+  }, [session.token]);
+
+  const connect = async () => {
+    setBusy("connect"); setError(null); setFeedback(null);
+    try {
+      const { authorizationUrl } = await startXeroConnection(session.token);
+      window.location.assign(authorizationUrl);
+    } catch (connectionError) {
+      setError(connectionError instanceof Error ? connectionError.message : "Could not open Xero.");
+      setBusy(null);
+    }
+  };
+
+  const syncCustomers = async () => {
+    setBusy("customers"); setError(null); setFeedback(null);
+    try {
+      const result = await syncXeroCustomers(session.token);
+      setFeedback(result.total === 0 ? "There are no active Sales customers to sync yet." : `${result.created} customer${result.created === 1 ? "" : "s"} added to Xero; ${result.alreadyPresent} already existed.`);
+      await refresh(true);
+    } catch (syncError) { setError(syncError instanceof Error ? syncError.message : "Could not sync customers."); }
+    finally { setBusy(null); }
+  };
+
+  const bringCustomersFromXero = async () => {
+    setBusy("import-customers"); setError(null); setFeedback(null);
+    try {
+      const result = await importXeroCustomers(session.token);
+      setFeedback(`${result.imported} Xero customer${result.imported === 1 ? "" : "s"} added to Exdox; ${result.alreadyPresent} already existed.`);
+    } catch (syncError) { setError(syncError instanceof Error ? syncError.message : "Could not import Xero customers."); }
+    finally { setBusy(null); }
+  };
+
+  const saveSettings = async () => {
+    if (!settings) return;
+    setBusy("settings"); setError(null); setFeedback(null);
+    try {
+      setSettings(await saveXeroIntegrationSettings(session.token, settings));
+      setFeedback("Xero publishing defaults saved.");
+    } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save Xero defaults."); }
+    finally { setBusy(null); }
+  };
+
+  const purchaseAccounts = referenceData?.accounts.filter((account) => ["EXPENSE", "DIRECTCOSTS", "OVERHEADS", "CURRENT", "FIXED", "INVENTORY"].includes(account.type)) ?? [];
+  const salesAccounts = referenceData?.accounts.filter((account) => ["REVENUE", "SALES", "OTHERINCOME"].includes(account.type)) ?? [];
+  const purchaseTaxes = referenceData?.taxRates.filter((tax) => tax.canApplyToExpenses) ?? [];
+  const salesTaxes = referenceData?.taxRates.filter((tax) => tax.canApplyToRevenue) ?? [];
+  const callbackResult = new URLSearchParams(location.search).get("xero");
+
+  return <div className="stack-page">
+    <section className="page-hero"><div><span className="eyebrow">Business settings</span><h2>Integrations</h2><p>Connect accounting software, import its bookkeeping lists, and control where approved Exdox records are published.</p></div></section>
+    {callbackResult === "connected" ? <div className="success-banner">Xero authorised this Exdox workspace. Its accounting lists are loading below.</div> : null}
+    {callbackResult === "failed" ? <div className="error-banner">Xero was not connected. Try again and choose the organisation you want Exdox to use.</div> : null}
+    {error ? <div className="error-banner">{error}</div> : null}
+    {feedback ? <div className="success-banner">{feedback}</div> : null}
+
+    <section className="panel">
+      <div className="panel-heading"><div><h3>Xero accounting</h3><p>Available only to business admins for this Exdox workspace.</p></div><SignalPill tone={status?.connected ? "info" : "warning"}>{status?.connected ? "Connected" : "Not connected"}</SignalPill></div>
+      <div className="summary-list">
+        <div><strong>Organisation</strong>{status?.availableTenants?.length && status.availableTenants.length > 1 ? <select value={status.tenantId ?? ""} disabled={busy !== null} onChange={(event) => { const tenantId = event.target.value; setBusy("tenant"); setError(null); setFeedback(null); void selectXeroTenant(session.token, tenantId).then((selected) => { setStatus((current) => current ? { ...current, tenantId: selected.tenantId, tenantName: selected.tenantName } : current); setReferenceData(null); return refresh(true); }).then(() => setFeedback("Connected Xero organisation changed and its lists refreshed.")).catch((tenantError) => setError(tenantError instanceof Error ? tenantError.message : "Could not change Xero organisation.")).finally(() => setBusy(null)); }}>{status.availableTenants.map((tenant) => <option key={tenant.tenantId} value={tenant.tenantId}>{tenant.tenantName}</option>)}</select> : <span>{status?.tenantName ?? "Connect a Xero organisation"}</span>}</div>
+        <div><strong>Data Exdox uses</strong><span>Chart of accounts, suppliers and customers, tax rates, tracking categories, bank accounts, invoices, bills, payments, and source attachments.</span></div>
+        <div><strong>Publishing controls</strong><span>Approved Costs, Sales documents, and Expense Claims get a Publish to Xero action in their normal review screen.</span></div>
+      </div>
+      <div className="toolbar">
+        <button className="primary-action" type="button" disabled={busy !== null || status?.configured === false} onClick={() => void connect()}>{busy === "connect" ? "Opening Xero…" : status?.connected ? "Reconnect or change organisation" : "Connect Xero"}</button>
+        {status?.connected ? <button className="secondary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("refresh"); setError(null); setFeedback(null); void refresh(true).then(() => setFeedback("Xero accounting lists refreshed.")).catch((refreshError) => setError(refreshError instanceof Error ? refreshError.message : "Could not refresh Xero.")).finally(() => setBusy(null)); }}>{busy === "refresh" ? "Refreshing…" : "Refresh Xero data"}</button> : null}
+        {status?.connected ? <button className="danger-action" type="button" disabled={busy !== null} onClick={() => { if (!window.confirm("Disconnect Xero from this Exdox workspace? Existing records in Xero will not be deleted.")) return; setBusy("disconnect"); void disconnectXero(session.token).then(() => { setStatus((current) => current ? { ...current, connected: false, tenantId: null, tenantName: null, connectedAt: null, availableTenants: [] } : current); setReferenceData(null); setSettings(null); setFeedback("Xero disconnected. Existing Xero records were left unchanged."); }).catch((disconnectError) => setError(disconnectError instanceof Error ? disconnectError.message : "Could not disconnect Xero.")).finally(() => setBusy(null)); }}>Disconnect</button> : null}
+      </div>
+    </section>
+
+    {status?.connected && settings && referenceData ? <>
+      <section className="panel">
+        <div className="panel-heading"><div><h3>Import and list synchronisation</h3><p>Use Xero's live bookkeeping structure inside Exdox to prevent miscoding.</p></div><span>Last refreshed {new Date(referenceData.refreshedAt).toLocaleString("en-GB")}</span></div>
+        <section className="metrics-grid">
+          <MetricCard label="Chart of accounts" value={String(referenceData.accounts.length)} detail="Including cost, revenue, and bank accounts" />
+          <MetricCard label="Tax rates" value={String(referenceData.taxRates.length)} detail="Active Xero tax codes" />
+          <MetricCard label="Contacts" value={String(referenceData.contacts.length)} detail="Suppliers and customers" />
+          <MetricCard label="Tracking" value={String(referenceData.trackingCategories.length)} detail="Categories and options" />
+          <MetricCard label="Products and services" value={String(referenceData.items.length)} detail="Xero item codes" />
+          <MetricCard label="Currencies and users" value={`${referenceData.currencies.length} / ${referenceData.users.length}`} detail="Organisation accounting context" />
+        </section>
+        <div className="toolbar"><button className="secondary-action" type="button" disabled={busy !== null} onClick={() => void bringCustomersFromXero()}>{busy === "import-customers" ? "Importing…" : "Import Xero customers into Exdox"}</button><button className="secondary-action" type="button" disabled={busy !== null} onClick={() => void syncCustomers()}>{busy === "customers" ? "Syncing…" : "Copy active Exdox Sales customers to Xero"}</button></div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-heading"><div><h3>Publishing defaults</h3><p>These defaults apply when an admin publishes an approved item from Costs, Sales, or Expense Claims.</p></div></div>
+        <div className="form-grid">
+          <label>Default cost account<select value={settings.purchaseAccountCode ?? ""} onChange={(event) => setSettings({ ...settings, purchaseAccountCode: event.target.value || null })}><option value="">Choose Xero cost account</option>{purchaseAccounts.map((account) => <option key={account.accountId} value={account.code}>{account.code} — {account.name}</option>)}</select></label>
+          <label>Default sales account<select value={settings.salesAccountCode ?? ""} onChange={(event) => setSettings({ ...settings, salesAccountCode: event.target.value || null })}><option value="">Choose Xero sales account</option>{salesAccounts.map((account) => <option key={account.accountId} value={account.code}>{account.code} — {account.name}</option>)}</select></label>
+          <label>Default cost tax<select value={settings.purchaseTaxType ?? ""} onChange={(event) => setSettings({ ...settings, purchaseTaxType: event.target.value || null })}><option value="">Use account default</option>{purchaseTaxes.map((tax) => <option key={tax.taxType} value={tax.taxType}>{tax.name}</option>)}</select></label>
+          <label>Default sales tax<select value={settings.salesTaxType ?? ""} onChange={(event) => setSettings({ ...settings, salesTaxType: event.target.value || null })}><option value="">Use account default</option>{salesTaxes.map((tax) => <option key={tax.taxType} value={tax.taxType}>{tax.name}</option>)}</select></label>
+          <label>Publish costs and claims as<select value={settings.purchaseStatus} onChange={(event) => setSettings({ ...settings, purchaseStatus: event.target.value as XeroIntegrationSettings["purchaseStatus"] })}><option value="DRAFT">Draft</option><option value="SUBMITTED">Awaiting approval</option><option value="AUTHORISED">Awaiting payment</option></select></label>
+          <label>Publish Sales as<select value={settings.salesStatus} onChange={(event) => setSettings({ ...settings, salesStatus: event.target.value as XeroIntegrationSettings["salesStatus"] })}><option value="DRAFT">Draft</option><option value="SUBMITTED">Awaiting approval</option><option value="AUTHORISED">Awaiting payment</option></select></label>
+          <label className="toggle-field">Attach source documents<button className={`toggle-button${settings.publishAttachments ? " on" : ""}`} type="button" onClick={() => setSettings({ ...settings, publishAttachments: !settings.publishAttachments })}>{settings.publishAttachments ? "On" : "Off"}</button></label>
+        </div>
+        <div className="toolbar"><button className="primary-action" type="button" disabled={busy !== null} onClick={() => void saveSettings()}>{busy === "settings" ? "Saving…" : "Save Xero defaults"}</button></div>
+      </section>
+
+      <section className="panel"><div className="panel-heading"><div><h3>Where to publish</h3><p>Publishing stays beside the record being reviewed, matching normal finance software workflows.</p></div></div><ul className="summary-list"><li><Link className="summary-action-row" to="/costs?status=Ready"><strong>Approved Costs</strong><span>Open a Ready cost and choose Publish to Xero.</span></Link></li><li><Link className="summary-action-row" to="/sales/manage"><strong>Sales invoices and credit notes</strong><span>Publish created Sales documents directly into Xero.</span></Link></li><li><Link className="summary-action-row" to="/claims?status=approved"><strong>Approved Expense Claims</strong><span>Publish a claim as a Xero purchase bill with its receipt evidence.</span></Link></li></ul></section>
+    </> : null}
+  </div>;
+}
+
 function SettingsPage(props: {
   session: SessionState;
   settings: OrganisationSettings | null;
@@ -7842,7 +8029,6 @@ function SettingsPage(props: {
   onSignOut: () => void;
 }) {
   const navigate = useNavigate();
-  const location = useLocation();
   const openContactRoute = (subject: string) => {
     navigate(`${contactPagePath}?subject=${encodeURIComponent(subject)}`);
   };
@@ -7876,54 +8062,6 @@ function SettingsPage(props: {
   const [preferencesFeedback, setPreferencesFeedback] = useState<string | null>(null);
   const [billingPortalBusy, setBillingPortalBusy] = useState(false);
   const [billingPortalError, setBillingPortalError] = useState<string | null>(null);
-  const [xeroStatus, setXeroStatus] = useState<XeroIntegrationStatus | null>(null);
-  const [xeroBusy, setXeroBusy] = useState(false);
-  const [xeroError, setXeroError] = useState<string | null>(null);
-  const [xeroFeedback, setXeroFeedback] = useState<string | null>(null);
-
-  const refreshXeroStatus = async () => {
-    const status = await getXeroIntegrationStatus(props.session.token);
-    setXeroStatus(status);
-  };
-
-  const connectXero = async () => {
-    setXeroBusy(true);
-    setXeroError(null);
-    try {
-      const { authorizationUrl } = await startXeroConnection(props.session.token);
-      window.location.assign(authorizationUrl);
-    } catch (connectionError) {
-      setXeroError(connectionError instanceof Error ? connectionError.message : "Could not start the Xero connection.");
-      setXeroBusy(false);
-    }
-  };
-
-  const removeXeroConnection = async () => {
-    setXeroBusy(true);
-    setXeroError(null);
-    try {
-      await disconnectXero(props.session.token);
-      await refreshXeroStatus();
-    } catch (connectionError) {
-      setXeroError(connectionError instanceof Error ? connectionError.message : "Could not disconnect Xero.");
-    } finally {
-      setXeroBusy(false);
-    }
-  };
-
-  const syncCustomersToXero = async () => {
-    setXeroBusy(true);
-    setXeroError(null);
-    setXeroFeedback(null);
-    try {
-      const result = await syncXeroCustomers(props.session.token);
-      setXeroFeedback(result.total === 0 ? "There are no active Sales customers to sync yet." : `${result.created} customer${result.created === 1 ? "" : "s"} added to Xero; ${result.alreadyPresent} already there.`);
-    } catch (connectionError) {
-      setXeroError(connectionError instanceof Error ? connectionError.message : "Could not sync customers to Xero.");
-    } finally {
-      setXeroBusy(false);
-    }
-  };
 
   const openBillingPortal = async () => {
     const billing = props.session.billing;
@@ -7973,11 +8111,6 @@ function SettingsPage(props: {
     });
   }, [props.session.token]);
 
-  useEffect(() => {
-    void refreshXeroStatus().catch((connectionError) => {
-      setXeroError(connectionError instanceof Error ? connectionError.message : "Could not load the Xero connection.");
-    });
-  }, [props.session.token]);
 
   if (!draft) {
     return <div className="empty-state">Settings unavailable.</div>;
@@ -8015,43 +8148,6 @@ function SettingsPage(props: {
             <strong>Current access</strong>
             <span>{props.session.billing ? props.session.billing.status.replace(/_/g, " ") : "Active in workspace"}</span>
           </div>
-        </div>
-      </div>
-
-      <div className="panel settings-panel">
-        <div className="panel-heading">
-          <h2>Xero</h2>
-          <span>Connect the accounting organisation used by this Exdox workspace</span>
-        </div>
-        {new URLSearchParams(location.search).get("xero") === "connected" ? <div className="success-banner">Xero is connected to this workspace.</div> : null}
-        {new URLSearchParams(location.search).get("xero") === "failed" ? <div className="error-banner">The Xero connection was not completed. Please try again.</div> : null}
-        {xeroError ? <div className="error-banner">{xeroError}</div> : null}
-        {xeroFeedback ? <div className="success-banner">{xeroFeedback}</div> : null}
-        <div className="summary-list">
-          <div>
-            <strong>Connection</strong>
-            <span>{xeroStatus?.connected ? `Connected to ${xeroStatus.tenantName ?? "your Xero organisation"}` : "Not connected"}</span>
-          </div>
-          <div>
-            <strong>How it works</strong>
-            <span>Only business admins can connect or disconnect Xero. You choose when to copy active Sales customers; Exdox does not send historic documents automatically.</span>
-          </div>
-        </div>
-        <div className="toolbar">
-          {xeroStatus?.connected ? (
-            <>
-              <button className="primary-action" type="button" disabled={xeroBusy} onClick={() => void syncCustomersToXero()}>
-                {xeroBusy ? "Syncing…" : "Sync Sales customers to Xero"}
-              </button>
-              <button className="danger-action" type="button" disabled={xeroBusy} onClick={() => void removeXeroConnection()}>
-                Disconnect Xero
-              </button>
-            </>
-          ) : (
-            <button className="primary-action" type="button" disabled={xeroBusy || xeroStatus?.configured === false} onClick={() => void connectXero()}>
-              {xeroBusy ? "Opening Xero…" : "Connect Xero"}
-            </button>
-          )}
         </div>
       </div>
 
@@ -12973,6 +13069,9 @@ function getAttentionRoute(session: SessionState, store: AppStore) {
 }
 
 function routeTitle(pathname: string) {
+  if (pathname.startsWith("/settings/integrations")) {
+    return "Integrations";
+  }
   if (pathname.startsWith("/overview/attention")) {
     return "Attention";
   }
