@@ -4109,7 +4109,7 @@ function useXeroConnected(sessionToken: string) {
   const [connected, setConnected] = useState(false);
   useEffect(() => {
     let active = true;
-    getXeroIntegrationStatus(sessionToken).then((status) => { if (active) setConnected(status.connected); }).catch(() => { if (active) setConnected(false); });
+    getXeroIntegrationStatus(sessionToken).then((status) => { if (active) setConnected(status.available && status.connected); }).catch(() => { if (active) setConnected(false); });
     return () => { active = false; };
   }, [sessionToken]);
   return connected;
@@ -7905,7 +7905,7 @@ function AccountingIntegrationsPage({ session }: { session: SessionState }) {
   const refresh = async (refreshLists = false) => {
     const nextStatus = await getXeroIntegrationStatus(session.token);
     setStatus(nextStatus);
-    if (nextStatus.connected && (refreshLists || !referenceData)) {
+    if (nextStatus.available && nextStatus.connected && (refreshLists || !referenceData)) {
       const data = await getXeroReferenceData(session.token);
       setReferenceData(data);
       setSettings(data.settings);
@@ -7967,24 +7967,26 @@ function AccountingIntegrationsPage({ session }: { session: SessionState }) {
     <section className="page-hero"><div><span className="eyebrow">Business settings</span><h2>Integrations</h2><p>Connect accounting software, import its bookkeeping lists, and control where approved Exdox records are published.</p></div></section>
     {callbackResult === "connected" ? <div className="success-banner">Xero authorised this Exdox workspace. Its accounting lists are loading below.</div> : null}
     {callbackResult === "failed" ? <div className="error-banner">Xero was not connected. Try again and choose the organisation you want Exdox to use.</div> : null}
+    {callbackResult === "locked" ? <div className="error-banner">Xero was not connected because this workspace is still in its trial or does not have an active paid plan.</div> : null}
     {error ? <div className="error-banner">{error}</div> : null}
     {feedback ? <div className="success-banner">{feedback}</div> : null}
 
     <section className="panel">
-      <div className="panel-heading"><div><h3>Xero accounting</h3><p>Available only to business admins for this Exdox workspace.</p></div><SignalPill tone={status?.connected ? "info" : "warning"}>{status?.connected ? "Connected" : "Not connected"}</SignalPill></div>
+      <div className="panel-heading"><div><h3>Xero accounting</h3><p>Available only to business admins for this Exdox workspace.</p></div><SignalPill tone={status?.available && status.connected ? "info" : "warning"}>{status?.available ? status.connected ? "Connected" : "Not connected" : "Locked"}</SignalPill></div>
+      {status && !status.available ? <div className="notice-banner"><strong>Xero is locked during the trial.</strong><span>{status.lockedReason ?? "Choose a paid plan to unlock Xero."}</span>{session.user.isOwner ? <Link className="secondary-action link-action" to="/billing">Choose a paid plan</Link> : <span>Ask the workspace owner to activate a paid plan.</span>}</div> : null}
       <div className="summary-list">
-        <div><strong>Organisation</strong>{status?.availableTenants?.length && status.availableTenants.length > 1 ? <select value={status.tenantId ?? ""} disabled={busy !== null} onChange={(event) => { const tenantId = event.target.value; setBusy("tenant"); setError(null); setFeedback(null); void selectXeroTenant(session.token, tenantId).then((selected) => { setStatus((current) => current ? { ...current, tenantId: selected.tenantId, tenantName: selected.tenantName } : current); setReferenceData(null); return refresh(true); }).then(() => setFeedback("Connected Xero organisation changed and its lists refreshed.")).catch((tenantError) => setError(tenantError instanceof Error ? tenantError.message : "Could not change Xero organisation.")).finally(() => setBusy(null)); }}>{status.availableTenants.map((tenant) => <option key={tenant.tenantId} value={tenant.tenantId}>{tenant.tenantName}</option>)}</select> : <span>{status?.tenantName ?? "Connect a Xero organisation"}</span>}</div>
+        <div><strong>Organisation</strong>{status?.available && status.availableTenants?.length && status.availableTenants.length > 1 ? <select value={status.tenantId ?? ""} disabled={busy !== null} onChange={(event) => { const tenantId = event.target.value; setBusy("tenant"); setError(null); setFeedback(null); void selectXeroTenant(session.token, tenantId).then((selected) => { setStatus((current) => current ? { ...current, tenantId: selected.tenantId, tenantName: selected.tenantName } : current); setReferenceData(null); return refresh(true); }).then(() => setFeedback("Connected Xero organisation changed and its lists refreshed.")).catch((tenantError) => setError(tenantError instanceof Error ? tenantError.message : "Could not change Xero organisation.")).finally(() => setBusy(null)); }}>{status.availableTenants.map((tenant) => <option key={tenant.tenantId} value={tenant.tenantId}>{tenant.tenantName}</option>)}</select> : <span>{status?.available ? status.tenantName ?? "Connect a Xero organisation" : "Unlock with an active paid plan"}</span>}</div>
         <div><strong>Data Exdox uses</strong><span>Chart of accounts, suppliers and customers, tax rates, tracking categories, bank accounts, invoices, bills, and source attachments.</span></div>
         <div><strong>Publishing controls</strong><span>Approved Costs, Sales documents, and Expense Claims get a Publish to Xero action in their normal review screen.</span></div>
       </div>
       <div className="toolbar">
-        <button className="primary-action" type="button" disabled={busy !== null || status?.configured === false} onClick={() => void connect()}>{busy === "connect" ? "Opening Xero…" : status?.connected ? "Reconnect or change organisation" : "Connect Xero"}</button>
-        {status?.connected ? <button className="secondary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("refresh"); setError(null); setFeedback(null); void refresh(true).then(() => setFeedback("Xero accounting lists refreshed.")).catch((refreshError) => setError(refreshError instanceof Error ? refreshError.message : "Could not refresh Xero.")).finally(() => setBusy(null)); }}>{busy === "refresh" ? "Refreshing…" : "Refresh Xero data"}</button> : null}
+        {status?.available ? <button className="primary-action" type="button" disabled={busy !== null || status.configured === false} onClick={() => void connect()}>{busy === "connect" ? "Opening Xero…" : status.connected ? "Reconnect or change organisation" : "Connect Xero"}</button> : null}
+        {status?.available && status.connected ? <button className="secondary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("refresh"); setError(null); setFeedback(null); void refresh(true).then(() => setFeedback("Xero accounting lists refreshed.")).catch((refreshError) => setError(refreshError instanceof Error ? refreshError.message : "Could not refresh Xero.")).finally(() => setBusy(null)); }}>{busy === "refresh" ? "Refreshing…" : "Refresh Xero data"}</button> : null}
         {status?.connected ? <button className="danger-action" type="button" disabled={busy !== null} onClick={() => { if (!window.confirm("Disconnect Xero from this Exdox workspace? Existing records in Xero will not be deleted.")) return; setBusy("disconnect"); void disconnectXero(session.token).then(() => { setStatus((current) => current ? { ...current, connected: false, tenantId: null, tenantName: null, connectedAt: null, availableTenants: [] } : current); setReferenceData(null); setSettings(null); setFeedback("Xero disconnected. Existing Xero records were left unchanged."); }).catch((disconnectError) => setError(disconnectError instanceof Error ? disconnectError.message : "Could not disconnect Xero.")).finally(() => setBusy(null)); }}>Disconnect</button> : null}
       </div>
     </section>
 
-    {status?.connected && settings && referenceData ? <>
+    {status?.available && status.connected && settings && referenceData ? <>
       <section className="panel">
         <div className="panel-heading"><div><h3>Import and list synchronisation</h3><p>Use Xero's live bookkeeping structure inside Exdox to prevent miscoding.</p></div><span>Last refreshed {new Date(referenceData.refreshedAt).toLocaleString("en-GB")}</span></div>
         <section className="metrics-grid">

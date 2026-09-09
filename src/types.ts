@@ -217,6 +217,9 @@ export type OrganisationSettings = {
 
 export type XeroIntegrationStatus = {
   configured: boolean;
+  available: boolean;
+  billingStatus: BillingStatus;
+  lockedReason: string | null;
   connected: boolean;
   tenantId: string | null;
   tenantName: string | null;
