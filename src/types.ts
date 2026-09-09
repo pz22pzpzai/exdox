@@ -215,6 +215,13 @@ export type OrganisationSettings = {
   mileageRate: number;
 };
 
+export type XeroIntegrationStatus = {
+  configured: boolean;
+  connected: boolean;
+  tenantName: string | null;
+  connectedAt: string | null;
+};
+
 export type InviteResult = {
   userId: number;
   email: string;

@@ -24,6 +24,7 @@ import type {
   SalesCustomer,
   SalesDocument,
   SalesWorkspace,
+  XeroIntegrationStatus,
 } from "./types";
 
 const API_BASE_URL =
@@ -617,6 +618,22 @@ export async function completeBankCallback(
 export async function getSettings(token: string): Promise<OrganisationSettings> {
   const response = await apiFetch<{ settings: OrganisationSettings }>("/settings", token);
   return response.settings;
+}
+
+export async function getXeroIntegrationStatus(token: string): Promise<XeroIntegrationStatus> {
+  return apiFetch<XeroIntegrationStatus>("/xero/status", token, { cache: "no-store" });
+}
+
+export async function startXeroConnection(token: string): Promise<{ authorizationUrl: string }> {
+  return apiFetch<{ authorizationUrl: string }>("/xero/connect", token, { method: "POST" });
+}
+
+export async function disconnectXero(token: string): Promise<void> {
+  await apiFetch<{ success: true }>("/xero/connection", token, { method: "DELETE" });
+}
+
+export async function syncXeroCustomers(token: string): Promise<{ created: number; alreadyPresent: number; total: number }> {
+  return apiFetch<{ created: number; alreadyPresent: number; total: number }>("/xero/customers/sync", token, { method: "POST" });
 }
 
 export async function saveSettings(

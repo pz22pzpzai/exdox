@@ -26,6 +26,7 @@ import {
   deleteAccount,
   deleteClaim,
   deleteReceipt,
+  disconnectXero,
   listRecycleBin,
   fetchSession,
   getClaim,
@@ -34,6 +35,7 @@ import {
   getReceipt,
   getReceiptAssetUrl,
   getSettings,
+  getXeroIntegrationStatus,
   listClaims,
   listReceipts,
   listReconciliation,
@@ -74,6 +76,8 @@ import {
   rotateSalesSubmissionAddress,
   saveSalesCustomer,
   saveSalesDocument,
+  startXeroConnection,
+  syncXeroCustomers,
 } from "./api";
 import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
 import type {
@@ -98,6 +102,7 @@ import type {
   SalesCustomer,
   SalesDocument,
   SalesWorkspace,
+  XeroIntegrationStatus,
 } from "./types";
 
 const taxRates: TaxRate[] = [
@@ -2339,7 +2344,7 @@ function helpChatReply(message: string) {
     return "Profile/Settings lets each user choose their default landing page, date format, compact table view, and browser-specific upload, review, and claim alerts. These preferences apply only to the browser where you save them, not to every person in the workspace.";
   }
   if (includes("bank", "open banking", "bank feed", "reconciliation", "xero", "quickbooks", "sage", "accounting software")) {
-    return "Exdox does not currently provide bank feeds, Open Banking, bank reconciliation, or live accounting-software integrations. Do not rely on the product for those connections yet. You can use the available CSV exports for your accountant or finance process instead.";
+    return "Business admins can connect Xero in Profile/Settings and choose when to copy active Sales customers into their connected Xero organisation. Exdox does not automatically send historic documents or provide bank feeds, Open Banking, bank reconciliation, QuickBooks, or Sage connections. CSV exports remain available for other accounting processes.";
   }
   if (includes("employee view", "employee dashboard", "what can employees see", "employee permissions", "my expenses", "my claims")) {
     return "Employees use the same login but receive a personal Exdox workspace. They can see only their own expenses and claims, track their reimbursement status, download their personal expense CSV, and contact support. They cannot see the business dashboard, other employees' data, billing, company settings, or approval controls.";
@@ -7837,6 +7842,7 @@ function SettingsPage(props: {
   onSignOut: () => void;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const openContactRoute = (subject: string) => {
     navigate(`${contactPagePath}?subject=${encodeURIComponent(subject)}`);
   };
@@ -7870,6 +7876,54 @@ function SettingsPage(props: {
   const [preferencesFeedback, setPreferencesFeedback] = useState<string | null>(null);
   const [billingPortalBusy, setBillingPortalBusy] = useState(false);
   const [billingPortalError, setBillingPortalError] = useState<string | null>(null);
+  const [xeroStatus, setXeroStatus] = useState<XeroIntegrationStatus | null>(null);
+  const [xeroBusy, setXeroBusy] = useState(false);
+  const [xeroError, setXeroError] = useState<string | null>(null);
+  const [xeroFeedback, setXeroFeedback] = useState<string | null>(null);
+
+  const refreshXeroStatus = async () => {
+    const status = await getXeroIntegrationStatus(props.session.token);
+    setXeroStatus(status);
+  };
+
+  const connectXero = async () => {
+    setXeroBusy(true);
+    setXeroError(null);
+    try {
+      const { authorizationUrl } = await startXeroConnection(props.session.token);
+      window.location.assign(authorizationUrl);
+    } catch (connectionError) {
+      setXeroError(connectionError instanceof Error ? connectionError.message : "Could not start the Xero connection.");
+      setXeroBusy(false);
+    }
+  };
+
+  const removeXeroConnection = async () => {
+    setXeroBusy(true);
+    setXeroError(null);
+    try {
+      await disconnectXero(props.session.token);
+      await refreshXeroStatus();
+    } catch (connectionError) {
+      setXeroError(connectionError instanceof Error ? connectionError.message : "Could not disconnect Xero.");
+    } finally {
+      setXeroBusy(false);
+    }
+  };
+
+  const syncCustomersToXero = async () => {
+    setXeroBusy(true);
+    setXeroError(null);
+    setXeroFeedback(null);
+    try {
+      const result = await syncXeroCustomers(props.session.token);
+      setXeroFeedback(result.total === 0 ? "There are no active Sales customers to sync yet." : `${result.created} customer${result.created === 1 ? "" : "s"} added to Xero; ${result.alreadyPresent} already there.`);
+    } catch (connectionError) {
+      setXeroError(connectionError instanceof Error ? connectionError.message : "Could not sync customers to Xero.");
+    } finally {
+      setXeroBusy(false);
+    }
+  };
 
   const openBillingPortal = async () => {
     const billing = props.session.billing;
@@ -7919,6 +7973,12 @@ function SettingsPage(props: {
     });
   }, [props.session.token]);
 
+  useEffect(() => {
+    void refreshXeroStatus().catch((connectionError) => {
+      setXeroError(connectionError instanceof Error ? connectionError.message : "Could not load the Xero connection.");
+    });
+  }, [props.session.token]);
+
   if (!draft) {
     return <div className="empty-state">Settings unavailable.</div>;
   }
@@ -7955,6 +8015,43 @@ function SettingsPage(props: {
             <strong>Current access</strong>
             <span>{props.session.billing ? props.session.billing.status.replace(/_/g, " ") : "Active in workspace"}</span>
           </div>
+        </div>
+      </div>
+
+      <div className="panel settings-panel">
+        <div className="panel-heading">
+          <h2>Xero</h2>
+          <span>Connect the accounting organisation used by this Exdox workspace</span>
+        </div>
+        {new URLSearchParams(location.search).get("xero") === "connected" ? <div className="success-banner">Xero is connected to this workspace.</div> : null}
+        {new URLSearchParams(location.search).get("xero") === "failed" ? <div className="error-banner">The Xero connection was not completed. Please try again.</div> : null}
+        {xeroError ? <div className="error-banner">{xeroError}</div> : null}
+        {xeroFeedback ? <div className="success-banner">{xeroFeedback}</div> : null}
+        <div className="summary-list">
+          <div>
+            <strong>Connection</strong>
+            <span>{xeroStatus?.connected ? `Connected to ${xeroStatus.tenantName ?? "your Xero organisation"}` : "Not connected"}</span>
+          </div>
+          <div>
+            <strong>How it works</strong>
+            <span>Only business admins can connect or disconnect Xero. You choose when to copy active Sales customers; Exdox does not send historic documents automatically.</span>
+          </div>
+        </div>
+        <div className="toolbar">
+          {xeroStatus?.connected ? (
+            <>
+              <button className="primary-action" type="button" disabled={xeroBusy} onClick={() => void syncCustomersToXero()}>
+                {xeroBusy ? "Syncing…" : "Sync Sales customers to Xero"}
+              </button>
+              <button className="danger-action" type="button" disabled={xeroBusy} onClick={() => void removeXeroConnection()}>
+                Disconnect Xero
+              </button>
+            </>
+          ) : (
+            <button className="primary-action" type="button" disabled={xeroBusy || xeroStatus?.configured === false} onClick={() => void connectXero()}>
+              {xeroBusy ? "Opening Xero…" : "Connect Xero"}
+            </button>
+          )}
         </div>
       </div>
 
