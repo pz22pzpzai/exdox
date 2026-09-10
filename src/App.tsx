@@ -53,6 +53,7 @@ import {
   registerWithEmail,
   matchReconciliation,
   assignTeamMemberDepartment,
+  removeTeamMember,
   removeRule,
   removeCompanyCard,
   removeCompanyCardException,
@@ -8069,6 +8070,7 @@ function SettingsPage(props: {
   const [error, setError] = useState<string | null>(null);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [resendingInviteId, setResendingInviteId] = useState<number | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<number | null>(null);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"Business_Admin" | "Standard_Employee">("Standard_Employee");
@@ -8621,7 +8623,7 @@ function SettingsPage(props: {
       <div className="team-management-section">
         <div className="panel-heading">
           <h3>Team members</h3>
-          <span>Move employees between departments whenever the structure changes.</span>
+          <span>Manage department access or remove people who no longer belong to this workspace.</span>
         </div>
         {teamSectionError ? <div className="error-banner">{teamSectionError}</div> : null}
         {teamFeedback ? <div className="success-banner">{teamFeedback}</div> : null}
@@ -8642,7 +8644,7 @@ function SettingsPage(props: {
               <div className="team-member-actions">
                 <select
                   value={member.departmentId ?? ""}
-                  disabled={teamBusy}
+                  disabled={teamBusy || removingMemberId !== null}
                   aria-label={`Department for ${member.fullName?.trim() || member.email}`}
                   onChange={async (event) => {
                     const departmentId = event.target.value ? Number(event.target.value) : null;
@@ -8676,7 +8678,7 @@ function SettingsPage(props: {
                   <button
                     className="secondary-action"
                     type="button"
-                    disabled={teamBusy || resendingInviteId !== null}
+                    disabled={teamBusy || resendingInviteId !== null || removingMemberId !== null}
                     onClick={async () => {
                       setResendingInviteId(member.id);
                       setInviteError(null);
@@ -8694,6 +8696,36 @@ function SettingsPage(props: {
                     }}
                   >
                     {resendingInviteId === member.id ? "Resending..." : "Resend invite email"}
+                  </button>
+                ) : null}
+                {member.id !== props.session.user.id && member.invitedByUserId !== null ? (
+                  <button
+                    className="danger-action"
+                    type="button"
+                    disabled={teamBusy || removingMemberId !== null}
+                    onClick={async () => {
+                      const memberLabel = member.fullName?.trim() || member.email;
+                      if (!window.confirm(`Remove ${memberLabel} from this workspace? They will no longer be able to sign in. Their existing business documents will be retained for audit history.`)) {
+                        return;
+                      }
+                      setRemovingMemberId(member.id);
+                      setTeamSectionError(null);
+                      setTeamFeedback(null);
+                      try {
+                        await removeTeamMember(props.session.token, member.id);
+                        setTeamMembers((current) => current.filter((item) => item.id !== member.id));
+                        setTeamFeedback(`${memberLabel} was removed from the workspace.`);
+                        void refreshTeam().catch((teamError) => {
+                          setTeamSectionError(teamError instanceof Error ? teamError.message : "Could not refresh team settings.");
+                        });
+                      } catch (removeError) {
+                        setTeamSectionError(removeError instanceof Error ? removeError.message : "Could not remove the team member.");
+                      } finally {
+                        setRemovingMemberId(null);
+                      }
+                    }}
+                  >
+                    {removingMemberId === member.id ? "Removing..." : "Remove team member"}
                   </button>
                 ) : null}
               </div>

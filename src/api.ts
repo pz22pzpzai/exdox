@@ -723,6 +723,10 @@ export async function assignTeamMemberDepartment(token: string, userId: number, 
   });
 }
 
+export async function removeTeamMember(token: string, userId: number): Promise<void> {
+  await apiFetch(`/team/${userId}`, token, { method: 'DELETE' });
+}
+
 export async function uploadDocuments(
   token: string,
   workspaceContext: "cost" | "sales" | "vault",
