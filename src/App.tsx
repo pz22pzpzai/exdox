@@ -2921,14 +2921,15 @@ function DataHealthPage({ store }: { store: AppStore }) {
   const healthIssues = buildWorkspaceHealthIssues(store, 6, false);
   const codingGapRecords = buildCodingGapRecords(store);
   const attentionRecords = buildAttentionRecords(store, false);
+  const reviewRecords = allRecords.filter((record) => countsAsManualReview(record));
   const workspaceBreakdown = [
-    { label: "Costs", route: "/costs", records: attentionRecords.filter(({ record }) => record.workspaceContext === "cost") },
-    { label: "Sales", route: "/sales", records: attentionRecords.filter(({ record }) => record.workspaceContext === "sales") },
-    { label: "Vault", route: "/vault", records: attentionRecords.filter(({ record }) => record.workspaceContext === "vault") },
+    { label: "Costs", route: "/costs?issue=Needs+review", records: reviewRecords.filter((record) => record.workspaceContext === "cost") },
+    { label: "Sales", route: "/sales?issue=Needs+review", records: reviewRecords.filter((record) => record.workspaceContext === "sales") },
+    { label: "Vault", route: "/vault?issue=Needs+review", records: reviewRecords.filter((record) => record.workspaceContext === "vault") },
   ];
   const unreadableCount = allRecords.filter((record) => looksUnreadable(record)).length;
   const processingCount = allRecords.filter((record) => record.status === "Processing").length;
-  const reviewCount = allRecords.filter((record) => countsAsManualReview(record)).length;
+  const reviewCount = reviewRecords.length;
   const readyCount = allRecords.filter((record) => record.status === "Ready").length;
   const publishedCount = allRecords.filter((record) => record.status === "Published").length;
   const pendingClaims = pendingClaimsNeedingAction(store.claims).length;
@@ -3043,7 +3044,7 @@ function DataHealthPage({ store }: { store: AppStore }) {
         <article className="panel">
           <div className="panel-heading">
             <h2>Workspace breakdown</h2>
-            <span>Where the cleanup work is sitting</span>
+            <span>Where the review work is sitting</span>
           </div>
           <ul className="summary-list">
             {workspaceBreakdown.map((workspace) => (
@@ -3051,7 +3052,7 @@ function DataHealthPage({ store }: { store: AppStore }) {
                 <button className="summary-action-row" type="button" onClick={() => navigate(workspace.route)}>
                   <strong>{workspace.label}</strong>
                   <span>
-                    {workspace.records.length} attention item{workspace.records.length === 1 ? "" : "s"} in this queue
+                    {workspace.records.length} review item{workspace.records.length === 1 ? "" : "s"} in this queue
                   </span>
                 </button>
               </li>
