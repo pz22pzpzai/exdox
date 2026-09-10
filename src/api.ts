@@ -305,6 +305,20 @@ export async function createBillingPortalSession(token: string): Promise<{ porta
   });
 }
 
+export async function createAccountingIntegrationUnlockCheckout(token: string): Promise<{ checkoutUrl: string | null; sessionId: string; alreadyUnlocked: boolean }> {
+  return apiFetch("/billing/accounting-integration-unlock/checkout-session", token, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function confirmAccountingIntegrationUnlock(token: string, sessionId: string): Promise<{ unlocked: boolean; alreadyUnlocked: boolean; unlockedAt: string | null; creditAmountPence: number }> {
+  return apiFetch("/billing/accounting-integration-unlock/confirm", token, {
+    method: "POST",
+    body: JSON.stringify({ sessionId }),
+  });
+}
+
 export async function upgradeBillingPlan(
   token: string,
   payload: { planId: BillingPlanId; monthlyDocumentLimit: number; includedUsers: number },

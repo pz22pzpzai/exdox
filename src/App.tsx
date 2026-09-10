@@ -17,6 +17,8 @@ import {
   confirmEmailWithToken,
   createBillingCheckoutSession,
   createBillingPortalSession,
+  createAccountingIntegrationUnlockCheckout,
+  confirmAccountingIntegrationUnlock,
   createClaim,
   createDepartment,
   exportEmployeeReimbursements,
@@ -7961,19 +7963,37 @@ function AccountingIntegrationsPage({ session }: { session: SessionState }) {
   const purchaseTaxes = referenceData?.taxRates.filter((tax) => tax.canApplyToExpenses) ?? [];
   const salesTaxes = referenceData?.taxRates.filter((tax) => tax.canApplyToRevenue) ?? [];
   const selectedTrackingCategory = referenceData?.trackingCategories.find((category) => category.trackingCategoryId === settings?.trackingCategoryId) ?? null;
-  const callbackResult = new URLSearchParams(location.search).get("xero");
+  const callbackParams = new URLSearchParams(location.search);
+  const callbackResult = callbackParams.get("xero");
+  const accountingUnlockResult = callbackParams.get("accounting_unlock");
+  const accountingUnlockSessionId = callbackParams.get("session_id");
+
+  useEffect(() => {
+    if (accountingUnlockResult !== "success" || !accountingUnlockSessionId) return;
+    let active = true;
+    setBusy("unlock-confirm");
+    setError(null);
+    void confirmAccountingIntegrationUnlock(session.token, accountingUnlockSessionId)
+      .then(() => refresh(true))
+      .then(() => { if (active) setFeedback("Your £5 payment is confirmed. Accounting integrations are unlocked, and a £5 credit has been added to your first subscription invoice."); })
+      .catch((unlockError) => { if (active) setError(unlockError instanceof Error ? unlockError.message : "Could not confirm the accounting integration payment."); })
+      .finally(() => { if (active) setBusy(null); });
+    return () => { active = false; };
+  }, [accountingUnlockResult, accountingUnlockSessionId, session.token]);
 
   return <div className="stack-page">
     <section className="page-hero"><div><span className="eyebrow">Business settings</span><h2>Integrations</h2><p>Connect accounting software, import its bookkeeping lists, and control where approved Exdox records are published.</p></div></section>
     {callbackResult === "connected" ? <div className="success-banner">Xero authorised this Exdox workspace. Its accounting lists are loading below.</div> : null}
     {callbackResult === "failed" ? <div className="error-banner">Xero was not connected. Try again and choose the organisation you want Exdox to use.</div> : null}
     {callbackResult === "locked" ? <div className="error-banner">Xero was not connected because this workspace is still in its trial or does not have an active paid plan.</div> : null}
+    {accountingUnlockResult === "cancelled" ? <div className="notice-banner">The £5 payment was cancelled. Accounting integrations remain locked during the free trial.</div> : null}
     {error ? <div className="error-banner">{error}</div> : null}
     {feedback ? <div className="success-banner">{feedback}</div> : null}
 
     <section className="panel">
       <div className="panel-heading"><div><h3>Xero accounting</h3><p>Available only to business admins for this Exdox workspace.</p></div><SignalPill tone={status?.available && status.connected ? "info" : "warning"}>{status?.available ? status.connected ? "Connected" : "Not connected" : "Locked"}</SignalPill></div>
-      {status && !status.available ? <div className="notice-banner"><strong>Xero is locked during the trial.</strong><span>{status.lockedReason ?? "Choose a paid plan to unlock Xero."}</span>{session.user.isOwner ? <Link className="secondary-action link-action" to="/billing">Choose a paid plan</Link> : <span>Ask the workspace owner to activate a paid plan.</span>}</div> : null}
+      {status && !status.available ? <div className="notice-banner"><strong>Accounting software integrations are locked during the free trial.</strong><span>{status.lockedReason ?? "An active paid plan is required."}</span>{status.trialUnlockEligible ? <span>For example, on the £15 monthly plan you pay £5 now, Stripe charges £10 when the trial ends, and later months return to £15.</span> : null}{session.user.isOwner && status.trialUnlockEligible ? <button className="primary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("unlock-checkout"); setError(null); setFeedback(null); void createAccountingIntegrationUnlockCheckout(session.token).then((result) => { if (result.alreadyUnlocked) return refresh(true); if (result.checkoutUrl) window.location.href = result.checkoutUrl; else throw new Error("Stripe did not return a checkout page."); }).catch((unlockError) => setError(unlockError instanceof Error ? unlockError.message : "Could not open the £5 payment checkout.")).finally(() => setBusy(null)); }}>{busy === "unlock-checkout" ? "Opening secure checkout…" : `Pay £${((status.trialUnlockPricePence || 500) / 100).toFixed(0)} once and unlock`}</button> : status.trialUnlockEligible ? <span>Ask the workspace owner to make the one-off £5 payment.</span> : session.user.isOwner ? <Link className="secondary-action link-action" to="/billing">Manage subscription</Link> : <span>Ask the workspace owner to activate the subscription.</span>}</div> : null}
+      {status?.billingStatus === "trialing" && status.trialUnlockPurchasedAt ? <div className="success-banner">Accounting integrations are unlocked for this trial. The £5 paid has been credited against the first subscription invoice.</div> : null}
       <div className="summary-list">
         <div><strong>Organisation</strong>{status?.available && status.availableTenants?.length && status.availableTenants.length > 1 ? <select value={status.tenantId ?? ""} disabled={busy !== null} onChange={(event) => { const tenantId = event.target.value; setBusy("tenant"); setError(null); setFeedback(null); void selectXeroTenant(session.token, tenantId).then((selected) => { setStatus((current) => current ? { ...current, tenantId: selected.tenantId, tenantName: selected.tenantName } : current); setReferenceData(null); return refresh(true); }).then(() => setFeedback("Connected Xero organisation changed and its lists refreshed.")).catch((tenantError) => setError(tenantError instanceof Error ? tenantError.message : "Could not change Xero organisation.")).finally(() => setBusy(null)); }}>{status.availableTenants.map((tenant) => <option key={tenant.tenantId} value={tenant.tenantId}>{tenant.tenantName}</option>)}</select> : <span>{status?.available ? status.tenantName ?? "Connect a Xero organisation" : "Unlock with an active paid plan"}</span>}</div>
         <div><strong>Data Exdox uses</strong><span>Chart of accounts, suppliers and customers, tax rates, tracking categories, bank accounts, invoices, bills, and source attachments.</span></div>

@@ -220,6 +220,9 @@ export type XeroIntegrationStatus = {
   available: boolean;
   billingStatus: BillingStatus;
   lockedReason: string | null;
+  trialUnlockEligible: boolean;
+  trialUnlockPurchasedAt: string | null;
+  trialUnlockPricePence: number;
   connected: boolean;
   tenantId: string | null;
   tenantName: string | null;
