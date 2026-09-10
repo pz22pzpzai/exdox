@@ -5400,6 +5400,11 @@ input {
 /* Give the authenticated workspace a roomier 80% presentation on full desktop displays. */
 @media (min-width: 981px) and (hover: hover) and (pointer: fine) {
   .dashboard-shell {
+    min-height: 125vh;
     zoom: 0.8;
+  }
+
+  .sidebar {
+    height: 125vh;
   }
 }
