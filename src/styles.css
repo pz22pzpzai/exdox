@@ -5396,3 +5396,10 @@ input {
     display: inline-flex;
   }
 }
+
+/* Give the authenticated workspace a roomier 80% presentation on full desktop displays. */
+@media (min-width: 981px) and (hover: hover) and (pointer: fine) {
+  .dashboard-shell {
+    zoom: 0.8;
+  }
+}
