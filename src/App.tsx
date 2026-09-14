@@ -4124,7 +4124,7 @@ function useSalesWorkspaceData(sessionToken: string) {
 }
 
 function useXeroConnected(sessionToken: string) {
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState<boolean | null>(null);
   useEffect(() => {
     let active = true;
     getXeroIntegrationStatus(sessionToken).then((status) => { if (active) setConnected(status.available && status.connected); }).catch(() => { if (active) setConnected(false); });
@@ -4186,7 +4186,7 @@ function SalesOperationsPage({ sessionToken }: { sessionToken: string }) {
           <div className="table-scroll"><table><thead><tr><th>Document</th><th>Customer</th><th>Issued</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Actions</th></tr></thead><tbody>
             {workspace.documents.map((document) => <tr key={document.id}><td><strong>{document.number}</strong><br /><span>{salesDocumentKindLabel(document.kind)}</span></td><td>{document.customerName}</td><td>{document.issueDate}</td><td>{document.currency} {document.total.toFixed(2)}</td><td>{document.currency} {document.paidAmount.toFixed(2)}</td><td><strong>{document.currency} {document.outstandingAmount.toFixed(2)}</strong></td><td><SignalPill tone={document.status === "part_paid" ? "warning" : "info"}>{salesStatusLabel(document.status)}</SignalPill></td><td><div className="table-action-cell">
               <button className="secondary-action" type="button" onClick={async () => { try { const asset = await getSalesDocumentPdf(sessionToken, document.id); window.open(asset.previewUrl, "_blank", "noopener,noreferrer"); } catch (assetError) { setError(assetError instanceof Error ? assetError.message : "Could not open the PDF."); } }}>Open PDF</button>
-              {document.kind !== "quote" && xeroConnected ? <button className={document.xeroPublishedAt ? "secondary-action" : "primary-action"} type="button" disabled={busy || Boolean(document.xeroPublishedAt)} onClick={async () => { setBusy(true); setError(null); setFeedback(null); try { const result = await publishToXero(sessionToken, "sales_document", document.id); setFeedback(result.alreadyPublished ? `${document.number} was already published to Xero.` : `${document.number} published to Xero${result.publication.xeroNumber ? ` as ${result.publication.xeroNumber}` : ""}.`); if (result.warning) setError(result.warning); await refresh(); } catch (publishError) { setError(publishError instanceof Error ? publishError.message : "Could not publish this document to Xero."); } finally { setBusy(false); } }}>{document.xeroPublishedAt ? "Published to Xero" : "Publish to Xero"}</button> : document.kind !== "quote" ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : null}
+        {document.kind !== "quote" && xeroConnected ? <button className={document.xeroPublishedAt ? "secondary-action" : "primary-action"} type="button" disabled={busy || Boolean(document.xeroPublishedAt)} onClick={async () => { setBusy(true); setError(null); setFeedback(null); try { const result = await publishToXero(sessionToken, "sales_document", document.id); setFeedback(result.alreadyPublished ? `${document.number} was already published to Xero.` : `${document.number} published to Xero${result.publication.xeroNumber ? ` as ${result.publication.xeroNumber}` : ""}.`); if (result.warning) setError(result.warning); await refresh(); } catch (publishError) { setError(publishError instanceof Error ? publishError.message : "Could not publish this document to Xero."); } finally { setBusy(false); } }}>{document.xeroPublishedAt ? "Published to Xero" : "Publish to Xero"}</button> : document.kind !== "quote" && xeroConnected === false ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : document.kind !== "quote" ? <button className="secondary-action" type="button" disabled>Checking Xero connection…</button> : null}
               {document.status !== "paid" && document.status !== "void" ? <button className="secondary-action" type="button" onClick={async () => { setBusy(true); try { await issueSalesDocument(sessionToken, document.id); setFeedback(`${document.number} emailed to ${document.customerName}.`); await refresh(); } catch (issueError) { setError(issueError instanceof Error ? issueError.message : "Could not send the document."); } finally { setBusy(false); } }}>Email customer</button> : null}
               {document.kind === "quote" && document.status !== "accepted" ? <button className="secondary-action" type="button" onClick={async () => { setBusy(true); try { await convertSalesQuote(sessionToken, document.id); setFeedback(`${document.number} converted to an invoice.`); await refresh(); } catch (convertError) { setError(convertError instanceof Error ? convertError.message : "Could not convert the quote."); } finally { setBusy(false); } }}>Convert to invoice</button> : null}
               {document.kind !== "quote" && document.outstandingAmount > 0 ? <button className="primary-action" type="button" onClick={() => { setPaymentDocument(document); setPaymentAmount(document.outstandingAmount.toFixed(2)); }}>Record payment</button> : null}
@@ -4998,7 +4998,7 @@ function MileageCostReviewPage(props: {
         {props.canUseApprovalWorkflows && claim.status === "pending" ? <button className="primary-action" type="button" disabled={saving} onClick={() => void setStatus("approved")}>Approve Expense</button> : null}
         {claim.status === "pending" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Save Changes"}</button> : null}
         {props.canUseApprovalWorkflows && claim.status === "approved" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("pending")}>Undo Approval</button> : null}
-        {props.canUseApprovalWorkflows && (claim.status === "approved" || claim.status === "published") && xeroConnected ? <button className="primary-action" type="button" disabled={saving} onClick={async () => { setSaving(true); setError(null); setFeedback(null); try { const result = await publishToXero(props.sessionToken, "claim", claim.id); setClaim((current) => current ? { ...current, status: "published" } : current); setFeedback(result.alreadyPublished ? "This mileage claim was already published to Xero." : `Mileage claim published to Xero${result.publication.xeroNumber ? ` as ${result.publication.xeroNumber}` : ""}.`); if (result.warning) setError(result.warning); } catch (publishError) { setError(publishError instanceof Error ? publishError.message : "Could not publish this mileage claim to Xero."); } finally { setSaving(false); } }}>Publish to Xero</button> : claim.status === "approved" ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : null}
+        {props.canUseApprovalWorkflows && (claim.status === "approved" || claim.status === "published") && xeroConnected ? <button className="primary-action" type="button" disabled={saving} onClick={async () => { setSaving(true); setError(null); setFeedback(null); try { const result = await publishToXero(props.sessionToken, "claim", claim.id); setClaim((current) => current ? { ...current, status: "published" } : current); setFeedback(result.alreadyPublished ? "This mileage claim was already published to Xero." : `Mileage claim published to Xero${result.publication.xeroNumber ? ` as ${result.publication.xeroNumber}` : ""}.`); if (result.warning) setError(result.warning); } catch (publishError) { setError(publishError instanceof Error ? publishError.message : "Could not publish this mileage claim to Xero."); } finally { setSaving(false); } }}>Publish to Xero</button> : claim.status === "approved" && xeroConnected === false ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : claim.status === "approved" ? <button className="secondary-action" type="button" disabled>Checking Xero connection…</button> : null}
         <button className="danger-action" type="button" disabled={saving} onClick={async () => {
           if (!window.confirm("Move this mileage expense to the Recycle Bin? It can be restored for three days.")) return;
           setSaving(true); setError(null); setFeedback(null);
@@ -5006,7 +5006,7 @@ function MileageCostReviewPage(props: {
           catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Could not delete this mileage expense."); }
           finally { setSaving(false); }
         }}>Delete Document</button>
-        {props.canUseApprovalWorkflows && !xeroConnected && (claim.status === "pending" || claim.status === "approved") ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("published")}>Mark as Published</button> : null}
+        {props.canUseApprovalWorkflows && xeroConnected === false && (claim.status === "pending" || claim.status === "approved") ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("published")}>Mark as Published</button> : null}
       </div>
     </section>
     </div>
@@ -5261,7 +5261,7 @@ function DocumentWorkspacePage(props: {
             Supplier Name
             <input value={receipt.vendorName ?? ""} onChange={(event) => setReceipt({ ...receipt, vendorName: event.target.value })} />
           </label>
-          {!isVaultRecord && !xeroConnected ? (
+          {!isVaultRecord && xeroConnected === false ? (
             <label>
               Category
               <select value={receipt.category ?? ""} onChange={(event) => setReceipt({ ...receipt, category: event.target.value })}>
@@ -5618,7 +5618,7 @@ function DocumentWorkspacePage(props: {
             >
               {saving ? "Publishing…" : "Publish to Xero"}
             </button>
-          ) : !isVaultRecord && receiptApproved ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : null}
+          ) : !isVaultRecord && receiptApproved && xeroConnected === false ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : !isVaultRecord && receiptApproved ? <button className="secondary-action" type="button" disabled>Checking Xero connection…</button> : null}
           {!isVaultRecord && !reimbursementPaymentLocked ? (
             <button
               className={receiptApproved && !receiptPublished ? "secondary-action" : "primary-action"}
@@ -6912,7 +6912,7 @@ function ClaimDetailPage(props: {
                 } catch (publishError) { setError(publishError instanceof Error ? publishError.message : "Could not publish this claim to Xero."); }
                 finally { setSavingStatus(null); }
               }}
-            >Publish to Xero</button> : claim.status === "approved" ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : null}
+            >Publish to Xero</button> : claim.status === "approved" && xeroConnected === false ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : claim.status === "approved" ? <button className="secondary-action" type="button" disabled>Checking Xero connection…</button> : null}
             <button
               className="secondary-action"
               type="button"
@@ -7989,7 +7989,11 @@ function AccountingIntegrationsPage({ session }: { session: SessionState }) {
     if (nextStatus.available && nextStatus.connected && (refreshLists || !referenceData)) {
       const data = await getXeroReferenceData(session.token);
       setReferenceData(data);
-      setSettings(data.settings);
+      setSettings({
+        ...data.settings,
+        purchaseTaxTypeMappings: data.settings.purchaseTaxTypeMappings ?? {},
+        salesTaxTypeMappings: data.settings.salesTaxTypeMappings ?? {},
+      });
     }
   };
 
@@ -8114,7 +8118,8 @@ function AccountingIntegrationsPage({ session }: { session: SessionState }) {
           <label className="toggle-field">Attach source documents<button className={`toggle-button${settings.publishAttachments ? " on" : ""}`} type="button" onClick={() => setSettings({ ...settings, publishAttachments: !settings.publishAttachments })}>{settings.publishAttachments ? "On" : "Off"}</button></label>
         </div>
         <section className="workspace-detail-section"><div className="panel-heading"><div><h4>Exdox category mapping</h4><p>Send each Exdox category to the correct Xero account instead of relying only on one default.</p></div></div><div className="form-grid">{costCategoryOptions.map((category) => <label key={`cost-${category}`}>Cost: {category}<select value={settings.categoryAccountMappings[category] ?? ""} onChange={(event) => setSettings({ ...settings, categoryAccountMappings: { ...settings.categoryAccountMappings, [category]: event.target.value } })}><option value="">Use default cost account</option>{purchaseAccounts.map((account) => <option key={account.accountId} value={account.code}>{account.code} — {account.name}</option>)}</select></label>)}{salesCategoryOptions.map((category) => <label key={`sales-${category}`}>Sales: {category}<select value={settings.categoryAccountMappings[category] ?? ""} onChange={(event) => setSettings({ ...settings, categoryAccountMappings: { ...settings.categoryAccountMappings, [category]: event.target.value } })}><option value="">Use default sales account</option>{salesAccounts.map((account) => <option key={account.accountId} value={account.code}>{account.code} — {account.name}</option>)}</select></label>)}</div></section>
-        <section className="workspace-detail-section"><div className="panel-heading"><div><h4>Tax mapping</h4><p>Match Exdox VAT labels to the exact tax codes returned by this Xero organisation.</p></div></div><div className="form-grid">{taxRates.map((taxLabel) => <label key={taxLabel}>{taxLabel}<select value={settings.taxTypeMappings[taxLabel] ?? ""} onChange={(event) => setSettings({ ...settings, taxTypeMappings: { ...settings.taxTypeMappings, [taxLabel]: event.target.value } })}><option value="">Use the cost or sales default</option>{referenceData.taxRates.map((tax) => <option key={tax.taxType} value={tax.taxType}>{tax.name}</option>)}</select></label>)}</div></section>
+        <section className="workspace-detail-section"><div className="panel-heading"><div><h4>Purchase VAT mapping</h4><p>Map cost and claim VAT labels only to Xero tax codes that apply to expenses.</p></div></div><div className="form-grid">{taxRates.map((taxLabel) => <label key={`purchase-tax-${taxLabel}`}>Cost: {taxLabel}<select value={settings.purchaseTaxTypeMappings[taxLabel] ?? ""} onChange={(event) => setSettings({ ...settings, purchaseTaxTypeMappings: { ...settings.purchaseTaxTypeMappings, [taxLabel]: event.target.value } })}><option value="">Use default cost tax</option>{purchaseTaxes.map((tax) => <option key={tax.taxType} value={tax.taxType}>{tax.name}</option>)}</select></label>)}</div></section>
+        <section className="workspace-detail-section"><div className="panel-heading"><div><h4>Sales VAT mapping</h4><p>Map sales VAT labels only to Xero tax codes that apply to revenue.</p></div></div><div className="form-grid">{taxRates.map((taxLabel) => <label key={`sales-tax-${taxLabel}`}>Sales: {taxLabel}<select value={settings.salesTaxTypeMappings[taxLabel] ?? ""} onChange={(event) => setSettings({ ...settings, salesTaxTypeMappings: { ...settings.salesTaxTypeMappings, [taxLabel]: event.target.value } })}><option value="">Use default sales tax</option>{salesTaxes.map((tax) => <option key={tax.taxType} value={tax.taxType}>{tax.name}</option>)}</select></label>)}</div></section>
         <div className="toolbar"><button className="primary-action" type="button" disabled={busy !== null} onClick={() => void saveSettings()}>{busy === "settings" ? "Saving…" : "Save Xero defaults"}</button></div>
       </section>
 

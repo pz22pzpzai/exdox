@@ -242,7 +242,8 @@ export type XeroIntegrationSettings = {
   trackingCategoryId: string | null;
   trackingOptionId: string | null;
   categoryAccountMappings: Record<string, string>;
-  taxTypeMappings: Record<string, string>;
+  purchaseTaxTypeMappings: Record<string, string>;
+  salesTaxTypeMappings: Record<string, string>;
 };
 
 export type XeroReferenceData = {
