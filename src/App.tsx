@@ -1659,10 +1659,10 @@ function DashboardShell(props: {
   const salesReviewCount = props.store.sales.filter((receipt) => countsAsManualReview(receipt)).length;
   const vaultAttentionCount = props.store.vault.filter((receipt) => receipt.needsReview || receipt.status === "Processing").length;
   const pendingClaimCount = pendingClaimsNeedingAction(props.store.claims).length;
-  const paymentProcessingCount = props.store.costs.filter(
+  const paymentsToMarkPaidCount = props.store.costs.filter(
     (receipt) =>
       receipt.paymentMethod === "cash_personal" &&
-      receipt.status === "Payment processing" &&
+      (receipt.status === "Ready" || receipt.status === "Payment processing") &&
       !receipt.needsReview,
   ).length;
   const openBankMatchCount = props.store.reconciliation.filter((line) => line.status === "Open").length;
@@ -1814,15 +1814,15 @@ function DashboardShell(props: {
                     {actionLabel}
                   </span>
                 )}
-                {paymentProcessingCount > 0 ? (
+                {paymentsToMarkPaidCount > 0 ? (
                   <button
                     className="icon-button action-count-button"
                     type="button"
-                    aria-label={`Review ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} before marking them paid`}
-                    title={`Review ${paymentProcessingCount} reimbursement payment${paymentProcessingCount === 1 ? "" : "s"} before marking them paid`}
-                    onClick={() => navigate(`/costs?status=${encodeURIComponent("Payment processing")}`)}
+                    aria-label={`Review ${paymentsToMarkPaidCount} reimbursement payment${paymentsToMarkPaidCount === 1 ? "" : "s"} before marking them paid`}
+                    title={`Review ${paymentsToMarkPaidCount} reimbursement payment${paymentsToMarkPaidCount === 1 ? "" : "s"} before marking them paid`}
+                    onClick={() => navigate(`/costs?status=${encodeURIComponent("Ready")}`)}
                   >
-                    {`${paymentProcessingCount} payment${paymentProcessingCount === 1 ? "" : "s"} to mark paid`}
+                    {`${paymentsToMarkPaidCount} payment${paymentsToMarkPaidCount === 1 ? "" : "s"} to mark paid`}
                   </button>
                 ) : null}
               </>
@@ -2308,10 +2308,10 @@ function helpChatReply(message: string) {
     return "Workflows, Workspace Health, and Automation are operational views of the same workspace. Workspace Health shows where records need attention and how work is progressing; Workflows shows the approval lanes; Automation manages supplier-rule defaults. They do not replace the final human review and approval step.";
   }
   if (includes("reviewed in purchases", "reviewed purchase", "reviewed receipt", "ready for reimbursement", "awaiting reimbursement")) {
-    return "A Reviewed purchase has passed document review but has not yet been included in a reimbursement payment batch, so it remains in Purchases. When an admin downloads the Employee reimbursement payment summary, eligible personal expenses move to Payment processing and then appear in the employee's Reports archive.";
+    return "A Ready purchase has passed document review and is waiting for its next accounting step. Publishing it to Xero moves it to Published. If the business pays from a reimbursement summary instead, it stays Ready until an admin confirms that payment was made and marks it Paid.";
   }
   if (includes("payment processing", "mark as paid", "payment batch", "reimbursement payment", "reimbursement summary", "reimbursement csv")) {
-    return "After all eligible personal expenses are approved, a business admin downloads the Employee reimbursement payment summary CSV. Exdox marks those expenses Payment processing so they cannot appear in the next batch. Once the business has paid them, use the bulk Mark as paid action. Employees then see the records as Paid in Reports.";
+    return "After eligible personal expenses are approved, a business admin can download the Employee reimbursement payment summary CSV and Exdox emails the employees. Those costs stay Ready until the business has actually paid them and uses Mark as paid. Costs published to connected accounting software move to Published instead and leave the Exdox payment queue.";
   }
   if (includes("master export", "master csv", "approved expense export", "accountant csv", "expense summary csv")) {
     return "In Expense Claims, business admins can use Master approved expense export. Select the relevant employee claims and Exdox creates one accountant-friendly row per employee with totals and counts, not individual receipt lines. The selected employees receive an Exdox summary email without their payment amount.";
@@ -2852,6 +2852,20 @@ function AttentionPage({ session, store }: { session: SessionState; store: AppSt
         route: "/claims?status=pending",
         count: pendingClaims,
         countLabel: `${pendingClaims} pending claim${pendingClaims === 1 ? "" : "s"}`,
+      });
+    }
+    const paymentsToMarkPaid = store.costs.filter((receipt) =>
+      receipt.paymentMethod === "cash_personal" &&
+      (receipt.status === "Ready" || receipt.status === "Payment processing") &&
+      !receipt.needsReview
+    ).length;
+    if (paymentsToMarkPaid > 0) {
+      items.push({
+        title: "Reimbursements need payment",
+        detail: `${paymentsToMarkPaid} approved personal-spend cost${paymentsToMarkPaid === 1 ? " is" : "s are"} ready to be paid and marked paid.`,
+        route: "/costs?status=Ready",
+        count: paymentsToMarkPaid,
+        countLabel: `${paymentsToMarkPaid} payment${paymentsToMarkPaid === 1 ? "" : "s"} to mark paid`,
       });
     }
   } else if (pendingClaimsNeedingAction(store.claims).length > 0) {
@@ -4384,11 +4398,12 @@ function InboxPage({
         ? "Sales CSV downloaded."
         : "Costs CSV downloaded.";
   const duplicateInsights = buildDuplicateInsights(records);
-  const paymentProcessingCount = records.filter(
+  const paymentsToMarkPaidCount = records.filter(
     (record) =>
       record.workspaceContext === "cost" &&
       record.paymentMethod === "cash_personal" &&
-      record.status === "Payment processing",
+      (record.status === "Ready" || record.status === "Payment processing") &&
+      !record.needsReview,
   ).length;
   const employeeOptions = Array.from(
     new Map(
@@ -4569,13 +4584,13 @@ function InboxPage({
           >
             Export CSV
           </button>
-          {basePath === "/costs" && statusFilter === "Payment processing" && paymentProcessingCount && onReimbursementsMarkedPaid ? (
+          {basePath === "/costs" && (statusFilter === "Ready" || statusFilter === "Payment processing") && paymentsToMarkPaidCount > 0 && onReimbursementsMarkedPaid ? (
             <button
               className="primary-action"
               type="button"
               disabled={markingPaymentsPaid}
               onClick={async () => {
-                if (!window.confirm(`Mark all ${paymentProcessingCount} reimbursement expense${paymentProcessingCount === 1 ? "" : "s"} as paid? This removes them from the active payment batch.`)) {
+                if (!window.confirm(`Mark all ${paymentsToMarkPaidCount} approved reimbursement expense${paymentsToMarkPaidCount === 1 ? "" : "s"} as paid? Only do this after the payments have actually been made.`)) {
                   return;
                 }
                 setMarkingPaymentsPaid(true);
@@ -4591,7 +4606,7 @@ function InboxPage({
             >
               {markingPaymentsPaid
                 ? "Marking paid..."
-                : `Mark ${paymentProcessingCount} payment${paymentProcessingCount === 1 ? "" : "s"} as paid`}
+                : `Mark ${paymentsToMarkPaidCount} payment${paymentsToMarkPaidCount === 1 ? "" : "s"} as paid`}
             </button>
           ) : null}
         </div>
@@ -5060,6 +5075,7 @@ function DocumentWorkspacePage(props: {
   const [postApprovePrompt, setPostApprovePrompt] = useState<null | { nextReceiptId: number | null }>(null);
   const [reimbursementExporting, setReimbursementExporting] = useState(false);
   const [reimbursementExportError, setReimbursementExportError] = useState<string | null>(null);
+  const [xeroCostsPublishing, setXeroCostsPublishing] = useState(false);
   const [salesCustomers, setSalesCustomers] = useState<SalesCustomer[]>([]);
   const xeroConnected = useXeroConnected(props.sessionToken);
   const imageZoomStageRef = useRef<HTMLDivElement | null>(null);
@@ -5147,6 +5163,12 @@ function DocumentWorkspacePage(props: {
       ? { ...receipt, status: "Ready" as const, needsReview: false }
       : receipt,
   ];
+  const costsReadyForXero = reviewedRecordsForExport.filter((record) =>
+    record.workspaceContext === "cost" &&
+    record.status === "Ready" &&
+    !record.needsReview &&
+    !record.mileageClaimId
+  );
 
   return (
     <>
@@ -5763,10 +5785,65 @@ function DocumentWorkspacePage(props: {
                 {props.mode === "cost" ? (
                   <div className="reimbursement-export-action">
                     {reimbursementExportError ? <div className="error-banner" role="alert">{reimbursementExportError}</div> : null}
+                    {xeroConnected && costsReadyForXero.length > 0 ? (
+                      <button
+                        className="primary-action"
+                        type="button"
+                        disabled={xeroCostsPublishing || reimbursementExporting}
+                        onClick={async () => {
+                          if (!window.confirm(`Publish all ${costsReadyForXero.length} approved cost${costsReadyForXero.length === 1 ? "" : "s"} to Xero? Successful records will move to Published and will no longer need to be marked paid in Exdox.`)) {
+                            return;
+                          }
+                          setXeroCostsPublishing(true);
+                          setReimbursementExportError(null);
+                          setError(null);
+                          setFeedback(null);
+                          const publishedIds: number[] = [];
+                          const warnings: string[] = [];
+                          const failures: string[] = [];
+                          for (const cost of costsReadyForXero) {
+                            try {
+                              const result = await publishToXero(props.sessionToken, "receipt", cost.id);
+                              publishedIds.push(cost.id);
+                              if (result.warning) warnings.push(result.warning);
+                            } catch (publishError) {
+                              failures.push(publishError instanceof Error ? publishError.message : `Cost ${cost.id} could not be published.`);
+                            }
+                          }
+                          try {
+                            const reimbursementIds = costsReadyForXero
+                              .filter((cost) => publishedIds.includes(cost.id) && cost.paymentMethod === "cash_personal")
+                              .map((cost) => cost.id);
+                            const notifications = reimbursementIds.length
+                              ? (await exportEmployeeReimbursements(props.sessionToken, { receiptIds: reimbursementIds })).notifications
+                              : { sent: 0, failed: 0 };
+                            await props.onReimbursementsExported?.();
+                            const summary = `${publishedIds.length} cost${publishedIds.length === 1 ? "" : "s"} published to Xero. ${notifications.sent} reimbursement email${notifications.sent === 1 ? " was" : "s were"} sent.`;
+                            setFeedback(summary);
+                            if (failures.length || warnings.length || notifications.failed) {
+                              setReimbursementExportError([
+                                ...failures,
+                                ...warnings,
+                                ...(notifications.failed ? [`${notifications.failed} reimbursement email${notifications.failed === 1 ? "" : "s"} could not be delivered.`] : []),
+                              ].join(" "));
+                            } else {
+                              setPostApprovePrompt(null);
+                            }
+                          } catch (notificationError) {
+                            await props.onReimbursementsExported?.();
+                            setReimbursementExportError(notificationError instanceof Error ? notificationError.message : "The costs reached Xero, but the reimbursement email could not be sent.");
+                          } finally {
+                            setXeroCostsPublishing(false);
+                          }
+                        }}
+                      >
+                        {xeroCostsPublishing ? "Publishing costs to Xero..." : "Publish costs to Xero"}
+                      </button>
+                    ) : null}
                     <button
                       className="secondary-action"
                       type="button"
-                      disabled={reimbursementExporting}
+                      disabled={reimbursementExporting || xeroCostsPublishing}
                       onClick={async () => {
                         setReimbursementExporting(true);
                         setReimbursementExportError(null);

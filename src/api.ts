@@ -515,12 +515,14 @@ export async function exportMasterExpenses(
 
 export async function exportEmployeeReimbursements(
   token: string,
+  options?: { receiptIds?: number[] },
 ): Promise<{
   rows: EmployeeReimbursementPaymentRow[];
   notifications: { sent: number; failed: number };
 }> {
   return apiFetch('/costs/reimbursement-export', token, {
     method: 'POST',
+    body: options ? JSON.stringify(options) : undefined,
   });
 }
 
