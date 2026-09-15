@@ -88,6 +88,7 @@ import {
   publishToXero,
 } from "./api";
 import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
+import { PageTutorial } from "./PageTutorial";
 import type {
   BillingCycle,
   BillingPlanId,
@@ -1717,7 +1718,7 @@ function DashboardShell(props: {
             <img className="brand-mark" src={publicBrandMarkSrc} alt="" />
             <strong>Exdox</strong>
           </Link>
-          <nav className="sidebar-nav" aria-label="Primary">
+          <nav className="sidebar-nav" aria-label="Primary" data-tutorial="navigation">
             {dashboardNavigationLinks()}
           </nav>
         </div>
@@ -1775,17 +1776,24 @@ function DashboardShell(props: {
             type="button"
             aria-label="Open navigation menu"
             aria-expanded={mobileNavigationOpen}
+            data-tutorial="navigation"
             onClick={() => setMobileNavigationOpen(true)}
           >
             <span />
             <span />
             <span />
           </button>
-          <div>
+          <div data-tutorial="title">
             <p className="topbar-kicker">{workspaceShellKicker(location.pathname, businessAdmin)}</p>
             <h1>{businessAdmin ? routeTitle(location.pathname) : employeeRouteTitle(location.pathname)}</h1>
           </div>
-          <div className="topbar-actions">
+          <div className="topbar-actions" data-tutorial="actions">
+            <PageTutorial
+              pathname={location.pathname}
+              businessAdmin={businessAdmin}
+              userId={props.session.user.id}
+              organisationId={props.session.activeOrganisationId}
+            />
             {businessAdmin ? (
               <>
                 <select
@@ -1954,6 +1962,7 @@ function DashboardShell(props: {
           </div>
         ) : null}
 
+        <div className="workspace-page-content" data-tutorial="content">
         <Routes>
           {businessAdmin ? (
             <>
@@ -2230,6 +2239,7 @@ function DashboardShell(props: {
             </>
           )}
         </Routes>
+        </div>
       </main>
       <HelpChatWidget />
     </div>
