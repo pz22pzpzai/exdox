@@ -89,6 +89,7 @@ import {
 } from "./api";
 import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
 import { PageTutorial } from "./PageTutorial";
+import { findWorkspaceChatbotAnswer } from "./chatbotKnowledge";
 import type {
   BillingCycle,
   BillingPlanId,
@@ -2277,6 +2278,10 @@ function helpChatReply(message: string) {
   }
   if (/^(bye|goodbye|see you|see ya|talk later|that s all|thats all)\b/.test(input)) {
     return "Goodbye for now. Take care, and come back whenever you need a hand with Exdox.";
+  }
+  const knowledgeAnswer = findWorkspaceChatbotAnswer(message);
+  if (knowledgeAnswer) {
+    return knowledgeAnswer;
   }
   if (includes("register", "sign up", "create account", "open an account", "new account")) {
     return "Choose Register to start. Select A business or A sole trader to choose a plan, create the workspace, set up the card for the free trial, and then sign in. Select An employee of a business if you are joining an employer's workspace. Employees do not set up billing.";
