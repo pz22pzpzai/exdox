@@ -90,6 +90,7 @@ import {
 import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
 import { PageTutorial } from "./PageTutorial";
 import { findWorkspaceChatbotAnswer } from "./chatbotKnowledge";
+import { cookieConsentStorageKey, setGoogleAnalyticsConsent, type CookieConsentChoice } from "./googleAnalytics";
 import type {
   BillingCycle,
   BillingPlanId,
@@ -206,10 +207,6 @@ const resetPasswordPagePath = "/reset-password";
 const termsPagePath = "/terms";
 const accountDeletionPagePath = "/account-deletion";
 const termsVersion = "2026-08-31";
-const cookieConsentStorageKey = "exdox-cookie-consent-v1";
-
-type CookieConsentChoice = "essential_only" | "all_cookies";
-
 const pricingPlans: Array<{
   id: BillingPlanId;
   name: string;
@@ -10268,6 +10265,8 @@ function SiteFooterBlock() {
   }, [cookieConsent]);
 
   const setConsent = (value: CookieConsentChoice) => {
+    window.localStorage.setItem(cookieConsentStorageKey, value);
+    setGoogleAnalyticsConsent(value);
     setCookieConsent(value);
     setCookieBannerOpen(false);
   };
