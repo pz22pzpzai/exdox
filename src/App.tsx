@@ -11213,7 +11213,11 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
       <div className="section-heading">
         <div>
           <p className="section-kicker">Pricing</p>
-          {signedIn ? <h2>Choose the workflow depth that fits the business.</h2> : <h1>Choose the workflow depth that fits the business.</h1>}
+          {signedIn ? (
+            <h2>Choose the workflow depth that fits your business.<br />all price plans start with a free trial, cancel anytime</h2>
+          ) : (
+            <h1>Choose the workflow depth that fits your business.<br />all price plans start with a free trial, cancel anytime</h1>
+          )}
         </div>
         <p>
           Exdox plans are structured around document volume, users, control depth, and operational workflow coverage.
