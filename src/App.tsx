@@ -10124,7 +10124,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
               </>
             ) : (
               <>
-                <Link className="public-primary" to="/register?plan=control&billingCycle=monthly">Open Free Trial Signup</Link>
+                <Link className="public-primary" to="/pricing">Open Free Trial Signup</Link>
                 <Link className="secondary-inline-link" to="/pricing">See pricing structure</Link>
               </>
             )}
