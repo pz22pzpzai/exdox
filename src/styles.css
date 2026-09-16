@@ -3918,6 +3918,28 @@ input {
   mix-blend-mode: multiply;
 }
 
+.xero-integration-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 70px;
+  padding: 12px 24px;
+  border-top: 1px solid #e2e9f0;
+  background: #fff;
+  color: #26334c;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.xero-integration-strip img {
+  display: block;
+  width: 120px;
+  height: 40px;
+  object-fit: cover;
+}
+
 .capabilities-band {
   padding: 28px 24px 34px;
   background: #edf3f8;

@@ -10148,6 +10148,10 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
         </div>
         <img src="/branding/exdox-platform-hero.webp" alt="Connected exdox accounting workspace" />
       </section>
+      <section className="xero-integration-strip" aria-label="Integrated with Xero">
+        <span>Integrated with</span>
+        <img src="/branding/xero-logo.jpg" alt="Xero" />
+      </section>
       <PlatformCapabilitiesSection session={session} />
       <FlowSection session={session} />
       <PricingTeaserSection session={session} />
