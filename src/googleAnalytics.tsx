@@ -94,11 +94,18 @@ export function setGoogleAnalyticsConsent(choice: CookieConsentChoice) {
     return;
   }
 
+  const analyticsWasLoaded = googleAnalyticsConfigured;
   if (window.gtag) {
     window.gtag("consent", "update", { analytics_storage: "denied" });
   }
   lastTrackedPage = null;
   clearGoogleAnalyticsCookies();
+
+  // Once gtag.js has run, a reload is the only reliable way to remove its
+  // automatic event listeners after consent is withdrawn.
+  if (analyticsWasLoaded) {
+    window.location.reload();
+  }
 }
 
 function trackPage(pathname: string, search: string) {
