@@ -178,7 +178,6 @@ const privateAppRoutePrefixes = [
   "/company-cards",
   "/recycle-bin",
   "/reconciliation",
-  "/contact",
   "/settings",
   "/requisitions",
   "/billing",
@@ -10129,7 +10128,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
               </>
             )}
           </div>
-          <div className="store-badges" aria-label="Download the Exdox mobile app">
+          <div className="store-badges" aria-label="Exdox mobile app availability">
             <a
               className="store-badge store-badge-image"
               href="https://play.google.com/store/apps/details?id=uk.co.exdox.mobile"
@@ -10139,10 +10138,15 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
             >
               <img src="/branding/google-play-store-badge.jpg" alt="Get it on Google Play" />
             </a>
-            <span className="store-badge store-badge-disabled" aria-disabled="true">
+            <Link
+              className="store-badge store-badge-disabled store-badge-interest"
+              to={`/contact?subject=${encodeURIComponent("Register interest for iPhone app")}`}
+              aria-label="Register your interest in the Exdox iPhone app"
+            >
               <span className="store-badge-caption">iPhone app</span>
               <strong>Launching shortly</strong>
-            </span>
+              <span className="store-badge-interest-action">Register your interest</span>
+            </Link>
           </div>
           <span>Card details are collected up front and the first charge is taken when the trial ends unless you cancel before renewal.</span>
         </div>
@@ -11507,6 +11511,7 @@ function ContactSection({ embedded = false, session = null }: { embedded?: boole
     "Billing support",
     "Product demo",
     "Onboarding help",
+    "Register interest for iPhone app",
     "Security request",
     "Terms request",
     "Privacy request",

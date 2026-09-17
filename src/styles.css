@@ -3904,6 +3904,31 @@ input {
   color: #607089;
 }
 
+.store-badge-interest {
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.store-badge-interest:hover {
+  border-color: #16a9e2;
+  box-shadow: 0 10px 24px rgba(22, 169, 226, 0.16);
+  transform: translateY(-1px);
+}
+
+.store-badge-interest:focus-visible {
+  outline: 3px solid rgba(22, 169, 226, 0.32);
+  outline-offset: 3px;
+}
+
+.store-badge-interest-action {
+  margin-top: 3px;
+  color: #087fc1;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .public-hero-copy > span {
   display: block;
   margin: 9px 0 0 47px;
