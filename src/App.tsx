@@ -2564,11 +2564,77 @@ function HelpChatWidget() {
   );
 }
 
+type OverviewPeriod = "this_month" | "previous_month" | "this_quarter" | "this_year" | "all_time";
+
+const overviewPeriodOptions: Array<{ value: OverviewPeriod; label: string }> = [
+  { value: "this_month", label: "This month" },
+  { value: "previous_month", label: "Previous month" },
+  { value: "this_quarter", label: "This quarter" },
+  { value: "this_year", label: "This calendar year" },
+  { value: "all_time", label: "All time" },
+];
+
+function overviewPeriodRange(period: OverviewPeriod, now = new Date()) {
+  if (period === "all_time") {
+    return null;
+  }
+
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  if (period === "previous_month") {
+    return { start: new Date(year, month - 1, 1), end: new Date(year, month, 1) };
+  }
+  if (period === "this_quarter") {
+    const quarterStartMonth = Math.floor(month / 3) * 3;
+    return { start: new Date(year, quarterStartMonth, 1), end: new Date(year, quarterStartMonth + 3, 1) };
+  }
+  if (period === "this_year") {
+    return { start: new Date(year, 0, 1), end: new Date(year + 1, 0, 1) };
+  }
+  return { start: new Date(year, month, 1), end: new Date(year, month + 1, 1) };
+}
+
+function localDateValue(value: string | null | undefined) {
+  const dateParts = value?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!dateParts) {
+    return null;
+  }
+  const date = new Date(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3]));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isInOverviewPeriod(value: string | null | undefined, range: ReturnType<typeof overviewPeriodRange>) {
+  if (!range) {
+    return true;
+  }
+  const date = localDateValue(value);
+  return Boolean(date && date >= range.start && date < range.end);
+}
+
+function overviewAccountingDate(record: ReceiptRecord) {
+  return localDateValue(record.invoiceDate) ? record.invoiceDate : record.createdAt;
+}
+
 function OverviewPage({ session, store }: { session: SessionState; store: AppStore }) {
   const navigate = useNavigate();
-  const totalCosts = sumGross(store.costs);
-  const totalSales = sumGross(store.sales);
-  const vaultDocuments = store.vault.length;
+  const [overviewPeriod, setOverviewPeriod] = useState<OverviewPeriod>("this_month");
+  const periodRange = useMemo(() => overviewPeriodRange(overviewPeriod), [overviewPeriod]);
+  const periodLabel = overviewPeriodOptions.find((option) => option.value === overviewPeriod)?.label ?? "This month";
+  const periodCosts = useMemo(
+    () => store.costs.filter((record) => isInOverviewPeriod(overviewAccountingDate(record), periodRange)),
+    [periodRange, store.costs],
+  );
+  const periodSales = useMemo(
+    () => store.sales.filter((record) => isInOverviewPeriod(overviewAccountingDate(record), periodRange)),
+    [periodRange, store.sales],
+  );
+  const periodVault = useMemo(
+    () => store.vault.filter((record) => isInOverviewPeriod(record.createdAt, periodRange)),
+    [periodRange, store.vault],
+  );
+  const totalCosts = sumGross(periodCosts);
+  const totalSales = sumGross(periodSales);
+  const vaultDocuments = periodVault.length;
   const pendingClaims = pendingClaimsNeedingAction(store.claims).length;
   const monthlyDocumentUsage = Math.max(0, session.billing?.monthlyDocumentUsage ?? 0);
   const monthlyDocumentLimit = session.billing?.monthlyDocumentLimit ?? null;
@@ -2623,11 +2689,26 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
         </section>
       ) : null}
 
+      <div className="overview-period-filter">
+        <div>
+          <strong>Overview period</strong>
+          <span>Filters accounting totals and archive activity. Workload cards remain live.</span>
+        </div>
+        <label>
+          <span className="sr-only">Choose overview period</span>
+          <select value={overviewPeriod} onChange={(event) => setOverviewPeriod(event.target.value as OverviewPeriod)}>
+            {overviewPeriodOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <section className="metrics-grid">
-        <MetricCard label="Costs ledger" value={currency(totalCosts)} detail={`${store.costs.length} documents`} to="/costs" />
-        <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${store.sales.length} invoices`} to="/sales" />
-        <MetricCard label="Vault archive" value={String(vaultDocuments)} detail="Stored reference files" to="/vault" />
-        <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Approval workload" to={firstPendingClaimsRoute(store)} />
+        <MetricCard label="Costs ledger" value={currency(totalCosts)} detail={`${periodCosts.length} documents · ${periodLabel}`} to="/costs" />
+        <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${periodSales.length} invoices · ${periodLabel}`} to="/sales" />
+        <MetricCard label="Vault archive" value={String(vaultDocuments)} detail={`Files added · ${periodLabel}`} to="/vault" />
+        <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Current approval workload" to={firstPendingClaimsRoute(store)} />
         <UsageAllowanceCard
           usage={monthlyDocumentUsage}
           limit={monthlyDocumentLimit}
@@ -2642,7 +2723,7 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
           detail={
             duplicateInsights.groups.length
               ? `${duplicateInsights.receiptIds.size} receipts need a duplicate check`
-              : "No likely duplicate uploads detected"
+              : "No current duplicate uploads detected"
           }
           to={firstInboxRouteForDuplicateReview(store)}
         />
