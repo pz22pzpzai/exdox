@@ -167,6 +167,10 @@ const navItems = [
   { to: "/recycle-bin", label: "Recycle Bin", icon: "recycle" },
 ];
 
+// These areas are included at every current price. An older server session can
+// temporarily omit their routes while the entitlement deployment is pending.
+const newlyIncludedNavigationRoutes = new Set(["/rules", "/customer-rules", "/vault", "/employee/vault"]);
+
 const privateAppRoutePrefixes = [
   "/overview",
   "/costs",
@@ -214,6 +218,7 @@ const includedPricingFeatures = [
   "Document Vault and protected file retrieval",
   "VAT fields, CSV exports, and data health follow-up",
 ];
+
 const includedPricingWorkspaces = ["Costs", "Sales", "Vault", "Claims", "Supplier Rules", "Customer Rules"];
 
 const pricingSliderSteps: Array<{
@@ -1561,14 +1566,25 @@ function DashboardShell(props: {
   const visibleNavItems = businessAdmin
     ? navItems
       .filter((item) => props.session.user.isOwner || item.to !== "/billing")
-      .map((item) => ({
-        ...item,
-        locked: !isRouteAllowed(props.session, item.to),
-      }))
+      .map((item) => {
+        const allowed = isRouteAllowed(props.session, item.to);
+        const activating = !allowed
+          && newlyIncludedNavigationRoutes.has(item.to)
+          && isBillingStatusActive(props.session.billing?.status ?? "inactive");
+        return { ...item, locked: !allowed && !activating, activating };
+      })
     : [
         { to: "/dropbox", label: "My Costs", icon: "costs" },
         ...(isRouteAllowed(props.session, "/employee/sales") ? [{ to: "/employee/sales", label: "My Sales", icon: "sales" }] : []),
-        { to: "/employee/vault", label: "My Vault", icon: "claims", locked: !isRouteAllowed(props.session, "/employee/vault") },
+        {
+          to: "/employee/vault",
+          label: "My Vault",
+          icon: "claims",
+          locked: !isRouteAllowed(props.session, "/employee/vault")
+            && !isBillingStatusActive(props.session.billing?.status ?? "inactive"),
+          activating: !isRouteAllowed(props.session, "/employee/vault")
+            && isBillingStatusActive(props.session.billing?.status ?? "inactive"),
+        },
         { to: "/claims", label: "My Claims", icon: "claims" },
         { to: "/employee/reports", label: "My Reports", icon: "analytics" },
         { to: "/contact", label: "Contact", icon: "contact" },
@@ -1576,6 +1592,20 @@ function DashboardShell(props: {
   const defaultRoute = getDefaultRoute(props.session);
   const dashboardNavigationLinks = (onNavigate?: () => void) => visibleNavItems.map((item) => {
     const locked = "locked" in item && item.locked;
+    const activating = "activating" in item && item.activating;
+    if (activating) {
+      return (
+        <span
+          key={item.to}
+          className="sidebar-link sidebar-link-activating"
+          aria-disabled="true"
+          title="Included with your subscription. Available after the server update; refresh this page then."
+        >
+          <NavIcon name={item.icon} />
+          {item.label}
+        </span>
+      );
+    }
     const destination = locked && businessAdmin ? `/billing?locked=${encodeURIComponent(item.to)}` : item.to;
     return (
       <NavLink
@@ -1778,8 +1808,8 @@ function DashboardShell(props: {
                   <button
                     className="primary-action"
                     type="button"
-                    title="View plans that include the Vault workspace"
-                    onClick={() => navigate(`/billing?locked=${encodeURIComponent("/vault")}`)}
+                    title="Vault is included. Uploads become available after the server update; refresh this page then."
+                    disabled
                   >
                     Upload Vault
                   </button>

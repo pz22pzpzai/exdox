@@ -1680,6 +1680,14 @@ body {
   box-shadow: inset 3px 0 #19a8ea;
 }
 
+.sidebar-link-activating {
+  cursor: default;
+}
+
+.sidebar-link-activating:hover {
+  background: transparent;
+}
+
 .nav-icon {
   width: 20px;
   height: 20px;
