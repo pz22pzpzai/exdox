@@ -206,105 +206,15 @@ const resetPasswordPagePath = "/reset-password";
 const termsPagePath = "/terms";
 const accountDeletionPagePath = "/account-deletion";
 const termsVersion = "2026-08-31";
-const pricingPlans: Array<{
-  id: BillingPlanId;
-  name: string;
-  tagline: string;
-  monthlyDocuments: string;
-  users: string;
-  cta: string;
-  trialLabel: string;
-  monthlyPrice?: number;
-  annualMonthlyPrice?: number;
-  unlockedWorkspaces?: string[];
-  monthlyDocumentLimit?: number;
-  includedUsers?: number;
-  features: string[];
-}> = [
-  {
-    id: "capture",
-    name: "Capture",
-    tagline: "Receipt capture and review for solo users and lean teams",
-    monthlyDocuments: "100 documents / month",
-    users: "1 user included",
-    cta: "Open Capture Trial Signup",
-    trialLabel: "14-day trial",
-    monthlyPrice: 10,
-    annualMonthlyPrice: 8,
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
-    monthlyDocumentLimit: 100,
-    includedUsers: 1,
-    features: [
-      "Mobile receipt and invoice capture",
-      "Sales inbox",
-      "Web upload for finance review",
-      "Employee drop box",
-      "Expense claims",
-      "Approve expenses and claims",
-      "Employee reimbursement payment summary",
-      "VAT fields and manual edits",
-      "Data health follow-up",
-    ],
-  },
-  {
-    id: "control",
-    name: "Control",
-    tagline: "Costs, sales, claims, and approval-ready workflows",
-    monthlyDocuments: "1,500 documents / month",
-    users: "30 users included",
-    cta: "Open Control Trial Signup",
-    trialLabel: "14-day trial",
-    monthlyPrice: 89,
-    annualMonthlyPrice: 71.2,
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
-    monthlyDocumentLimit: 1500,
-    includedUsers: 30,
-    features: [
-      "Everything in Capture",
-      "Sales inbox",
-      "Approval-oriented review queues",
-      "Queue CSV exports",
-      "Shared web and mobile workspace",
-      "Business-admin finance controls",
-    ],
-  },
-  {
-    id: "operations",
-    name: "Operations",
-    tagline: "Rules, vault storage, and expanded workflow controls",
-    monthlyDocuments: "3,000 documents / month",
-    users: "60 users included",
-    cta: "Open Operations Trial Signup",
-    trialLabel: "14-day trial",
-    monthlyPrice: 173,
-    annualMonthlyPrice: 138.4,
-    unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims"],
-    monthlyDocumentLimit: 3000,
-    includedUsers: 60,
-    features: [
-      "Everything in Control",
-      "Supplier rules",
-      "Vault archive workspace",
-      "Expanded review workflows",
-      "Advanced queue controls",
-      "Archive-safe evidence retrieval",
-    ],
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    tagline: "Future enterprise rollout",
-    monthlyDocuments: "Capacity to be confirmed",
-    users: "Availability to be confirmed",
-    cta: "Coming soon",
-    trialLabel: "Coming soon",
-    unlockedWorkspaces: [],
-    features: [
-      "Not currently available for purchase",
-      "Capacity and onboarding will be announced after validation",
-    ],
-  },
+const includedPricingFeatures = [
+  "Mobile receipt and invoice capture",
+  "Costs and Sales inboxes with web review",
+  "Expense claims and approval workflows",
+  "Supplier Rules and Customer Rules",
+  "Document Vault and protected file retrieval",
+  "VAT fields, CSV exports, and data health follow-up",
 ];
+const includedPricingWorkspaces = ["Costs", "Sales", "Vault", "Claims", "Supplier Rules", "Customer Rules"];
 
 const pricingSliderSteps: Array<{
   label: string;
@@ -314,10 +224,6 @@ const pricingSliderSteps: Array<{
   monthlyPrice: number;
   annualMonthlyPrice: number;
   planId: BillingPlanId;
-  accessBand: string;
-  tagline: string;
-  unlockedWorkspaces: string[];
-  lockedWorkspaces: string[];
 }> = [
   {
     label: "1 user",
@@ -327,10 +233,6 @@ const pricingSliderSteps: Array<{
     monthlyPrice: 10,
     annualMonthlyPrice: 8,
     planId: "capture",
-    accessBand: "Capture",
-    tagline: "Receipt capture and review for one-person businesses",
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
-    lockedWorkspaces: ["Vault", "Multi-entity"],
   },
   {
     label: "5 users",
@@ -340,10 +242,6 @@ const pricingSliderSteps: Array<{
     monthlyPrice: 15,
     annualMonthlyPrice: 12,
     planId: "capture",
-    accessBand: "Capture",
-    tagline: "Receipt capture and review for lean teams",
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
-    lockedWorkspaces: ["Vault", "Multi-entity"],
   },
   {
     label: "10 users",
@@ -353,10 +251,6 @@ const pricingSliderSteps: Array<{
     monthlyPrice: 30,
     annualMonthlyPrice: 24,
     planId: "capture",
-    accessBand: "Capture",
-    tagline: "Expanded capture allowance for growing receipt volume",
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
-    lockedWorkspaces: ["Vault", "Multi-entity"],
   },
   {
     label: "15 users",
@@ -366,10 +260,6 @@ const pricingSliderSteps: Array<{
     monthlyPrice: 45,
     annualMonthlyPrice: 36,
     planId: "capture",
-    accessBand: "Capture",
-    tagline: "Scaled capture capacity for broader team usage",
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
-    lockedWorkspaces: ["Vault", "Multi-entity"],
   },
   {
     label: "20 users",
@@ -379,10 +269,6 @@ const pricingSliderSteps: Array<{
     monthlyPrice: 60,
     annualMonthlyPrice: 48,
     planId: "capture",
-    accessBand: "Capture",
-    tagline: "Higher user allowance inside the capture package band",
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
-    lockedWorkspaces: ["Vault", "Multi-entity"],
   },
   {
     label: "25 users",
@@ -392,10 +278,6 @@ const pricingSliderSteps: Array<{
     monthlyPrice: 75,
     annualMonthlyPrice: 60,
     planId: "capture",
-    accessBand: "Capture",
-    tagline: "Top end of the capture package range",
-    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
-    lockedWorkspaces: ["Vault", "Multi-entity"],
   },
   ...Array.from({ length: 14 }, (_, index) => {
     const users = 30 + index * 5;
@@ -419,27 +301,16 @@ const pricingSliderSteps: Array<{
       monthlyPrice,
       annualMonthlyPrice,
       planId: (users >= 60 ? "operations" : "control") as BillingPlanId,
-      accessBand: users >= 60 ? "Operations" : "Control",
-      tagline:
-        users >= 60
-          ? "Rules, vault storage, and expanded workflow controls"
-          : "Costs, sales, claims, and approval-ready workflows",
-      unlockedWorkspaces: users >= 60 ? ["Costs", "Sales", "Vault", "Claims"] : ["Costs", "Sales", "Claims"],
-      lockedWorkspaces: users >= 60 ? ["Multi-entity"] : ["Vault", "Multi-entity"],
     };
   }),
   {
     label: "100 users",
-    markerLabel: "Operations",
+    markerLabel: "100",
     users: 100,
     documents: 5000,
     monthlyPrice: 288.24,
     annualMonthlyPrice: 230.59,
     planId: "operations",
-    accessBand: "Operations",
-    tagline: "Rules, vault storage, and expanded workflow controls",
-    unlockedWorkspaces: ["Costs", "Sales", "Vault", "Claims"],
-    lockedWorkspaces: ["Multi-entity"],
   },
 ];
 
@@ -6770,12 +6641,12 @@ function EmployeeVaultLockedPage() {
       <section className="page-hero">
         <div>
           <h2>My vault</h2>
-          <p>Securely store your own supporting documents when your organisation has Vault included in its Exdox plan.</p>
+          <p>Securely store your own supporting documents in your organisation's Vault.</p>
         </div>
       </section>
       <section className="panel empty-inline-state">
-        <strong>Vault is not included in your organisation's current plan.</strong>
-        <p>Ask a business admin if your organisation needs Vault access. Your existing costs, sales, claims, and reports remain available.</p>
+        <strong>Vault access is not available in this session.</strong>
+        <p>Vault is included at every price. Refresh your session or ask a business admin to check the workspace subscription.</p>
         <Link className="secondary-action link-action" to="/contact">Contact Exdox</Link>
       </section>
     </div>
@@ -9813,7 +9684,7 @@ function RegisterState(props: {
             ) : null}
             {enterpriseSignupRequested ? (
               <div className="success-banner">
-                Enterprise rollout is coming soon. Capture, Control, and Operations can be started online today.
+                Enterprise rollout is coming soon. Choose an available user and document allowance on Pricing to start a trial today.
               </div>
             ) : null}
             {audience !== null ? <form
@@ -9873,8 +9744,8 @@ function RegisterState(props: {
                   </label>
                   <section className="registration-plan-summary" aria-label="Selected plan summary">
                     <div>
-                      <span>Selected package</span>
-                      <strong>{selectedSignupStep.accessBand} · {selectedSignupStep.users} users</strong>
+                      <span>Selected allowance</span>
+                      <strong>{selectedSignupStep.users} {selectedSignupStep.users === 1 ? "user" : "users"} · all features included</strong>
                     </div>
                     <strong>{currency(selectedSignupPrice)} / month</strong>
                     <p>{selectedSignupStep.documents.toLocaleString()} documents per month · VAT included</p>
@@ -11080,7 +10951,7 @@ function PlatformCapabilitiesSection({ session = null, linkTarget = "/platform" 
         <CapabilityCard icon="claims" title="Document Vault" detail="Archive and retrieve source evidence fast" />
         <CapabilityCard icon="integrations" title="Mobile & Web Sync" detail="Keep submission and review status aligned" />
         <CapabilityCard icon="open-banking" title="Queue Exports" detail="CSV exports across inboxes and claims" />
-        <Link className="capability-card" to="/pricing"><NavIcon name="overview" /><strong>Pricing & Plans</strong><span>Compare plan tiers, document volumes, and included users</span></Link>
+        <Link className="capability-card" to="/pricing"><NavIcon name="overview" /><strong>Pricing</strong><span>Choose your document and user allowance; all features are included</span></Link>
       </div>
     </section>
   );
@@ -11248,42 +11119,21 @@ function PricingTeaserSection({ session = null }: { session?: SessionState | nul
       <div className="section-heading">
         <div>
           <p className="section-kicker">Pricing</p>
-          <h2>Roll out Exdox by workflow, not by disconnected tools</h2>
+          <h2>All the tools, at the capacity your business needs</h2>
         </div>
         <p>
-          Start with employee capture, then add supplier rules, claims, tax controls and
-          reconciliation as finance operations mature.
+          Every price includes receipt and invoice capture, Costs and Sales review, claims,
+          Supplier Rules, Customer Rules, and Vault. Choose only the users and monthly documents you need.
         </p>
       </div>
-      <div className="pricing-grid">
-        {pricingPlans.slice(0, 3).map((plan) => (
-          <Link
-            key={plan.id}
-            className="pricing-card pricing-link"
-            to="/pricing"
-          >
-            <span>{plan.name}</span>
-            <strong>{plan.tagline}</strong>
-            <p>{plan.monthlyPrice != null ? `${currency(priceWithVat(plan.monthlyPrice))} per month` : "Custom pricing"}</p>
-            <p>{plan.monthlyDocuments} · {plan.users}</p>
-          </Link>
-        ))}
-      </div>
+      <ul className="pricing-teaser-features">
+        {includedPricingFeatures.map((feature) => <li key={feature}>{feature}</li>)}
+      </ul>
       <div className="section-actions">
         <Link className="public-button" to="/pricing">View pricing page</Link>
-        {session ? (
-          <Link className="secondary-inline-link" to={signedInPublicPrimaryRoute(session)}>{signedInPublicPrimaryHeroLabel(session)}</Link>
-        ) : (
-          <Link
-            className="secondary-inline-link"
-            to={buildRegisterLink("control", "monthly", {
-              monthlyDocumentLimit: 1500,
-              includedUsers: 30,
-            })}
-          >
-            Open Trial Signup
-          </Link>
-        )}
+        <Link className="secondary-inline-link" to={session ? signedInPublicPrimaryRoute(session) : buildRegisterLink("capture", "monthly", { monthlyDocumentLimit: 100, includedUsers: 1 })}>
+          {session ? signedInPublicPrimaryHeroLabel(session) : "Start free trial"}
+        </Link>
       </div>
     </section>
   );
@@ -11297,17 +11147,10 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
   const signedIn = Boolean(session);
   const signedInBillingRoute = session && isRouteAllowed(session, "/billing") ? "/billing" : session ? signedInPublicPrimaryRoute(session) : null;
   const selectedStep = pricingSliderSteps[sliderIndex] ?? pricingSliderSteps[0]!;
-  const selectedPlan = pricingPlans.find((plan) => plan.id === selectedStep.planId) ?? pricingPlans[0]!;
   const selectedPrice = priceWithVat(selectedStep.monthlyPrice);
   const selectedCapacity = [
     { label: "documents processed per month", value: selectedStep.documents.toLocaleString() },
     { label: "users included", value: selectedStep.users.toLocaleString() },
-    { label: "workspace areas unlocked", value: selectedStep.unlockedWorkspaces.length.toLocaleString() },
-  ];
-  const sliderBands: Array<{ id: BillingPlanId; label: string }> = [
-    { id: "capture", label: "Capture" },
-    { id: "control", label: "Control" },
-    { id: "operations", label: "Operations" },
   ];
 
   return (
@@ -11316,13 +11159,13 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
         <div>
           <p className="section-kicker">Pricing</p>
           {signedIn ? (
-            <h2>Choose the workflow depth that fits your business.<br />all price plans start with a free trial, cancel anytime</h2>
+            <h2>Choose the allowance that fits your business.<br />all price plans start with a free trial, cancel anytime</h2>
           ) : (
-            <h1>Choose the workflow depth that fits your business.<br />all price plans start with a free trial, cancel anytime</h1>
+            <h1>Choose the allowance that fits your business.<br />all price plans start with a free trial, cancel anytime</h1>
           )}
         </div>
         <p>
-          Exdox plans are structured around document volume, users, control depth, and operational workflow coverage.
+          Every price includes the same Exdox tools. The slider changes only your user and monthly document allowance.
         </p>
       </div>
       <div className="pricing-page-layout">
@@ -11353,17 +11196,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               onChange={(event) => setSliderIndex(Number(event.target.value))}
               aria-label="Pricing allowance slider"
             />
-            <div className="slider-bands" aria-hidden="true">
-              {sliderBands.map((band) => (
-                <span
-                  key={band.id}
-                  className={selectedStep.planId === band.id ? "active" : ""}
-                >
-                  {band.label}
-                </span>
-              ))}
-            </div>
-            <p className="slider-helper">Drag the slider to increase allowance.</p>
+            <p className="slider-helper">Drag the slider to choose your users and monthly documents. All features stay included.</p>
             {signedIn && signedInBillingRoute ? (
               <Link className="public-button" to={signedInBillingRoute}>
                 {signedInBillingRoute === "/billing" ? "Open Billing" : "Back to Workspace"}
@@ -11387,100 +11220,29 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
                   audience: pricingAudience,
                 })}
               >
-                {selectedPlan.cta}
+                Start free trial
               </Link>
             )}
           </article>
-          <div className="pricing-grid pricing-grid-expanded pricing-grid-detailed">
-            {pricingPlans.map((plan) => (
-              <article
-                key={plan.id}
-                className={`pricing-card${selectedStep.planId === plan.id ? " current-plan" : ""}`}
-              >
-                <span>{plan.name}</span>
-                <strong>{plan.tagline}</strong>
-                <p>{plan.trialLabel}</p>
-                <p>
-                  {plan.id === "enterprise"
-                    ? "Custom rollout via sales"
-                    : plan.monthlyPrice != null
-                      ? `${currency(priceWithVat(plan.monthlyPrice))} per month`
-                      : "Custom pricing"}
-                </p>
-                <p>{plan.monthlyDocuments}</p>
-                <p>{plan.users}</p>
-                <ul className="pricing-feature-list">
-                  {plan.features.map((feature) => (
-                    <li key={feature}>{feature}</li>
-                  ))}
-                </ul>
-                {plan.id === "enterprise" ? (
-                  <span className="public-button public-button-disabled" aria-disabled="true">Coming soon</span>
-                ) : signedIn && signedInBillingRoute ? (
-                  <Link className="public-button" to={signedInBillingRoute}>
-                    {signedInBillingRoute === "/billing" ? "Open Billing" : "Back to Workspace"}
-                  </Link>
-                ) : (
-                  <Link
-                    className="public-button"
-                    to={buildRegisterLink(plan.id, "monthly", {
-                      monthlyDocumentLimit: plan.monthlyDocumentLimit,
-                      includedUsers: plan.includedUsers,
-                      audience: pricingAudience,
-                    })}
-                  >
-                    {plan.cta}
-                  </Link>
-                )}
-              </article>
-            ))}
-          </div>
           <div className="pricing-notes-grid">
             <article className="company-card">
-              <strong>Operational control</strong>
-              <p>Plans are structured around access depth, team capacity, and monthly document volume.</p>
+              <strong>Everything included</strong>
+              <p>Costs, Sales, claims, approvals, Supplier Rules, Customer Rules, and Vault are available at every price.</p>
             </article>
             <article className="company-card">
-              <strong>Monthly pricing</strong>
-              <p>Self-serve plans are currently shown as monthly pricing while annual billing stays hidden.</p>
+              <strong>14-day free trial</strong>
+              <p>Add a card to begin. Cancel from Billing before the trial ends if you do not want the subscription to start.</p>
             </article>
             <article className="company-card">
-              <strong>Scales with volume</strong>
-              <p>Higher tiers expand user capacity, document throughput, and finance workflow coverage.</p>
-            </article>
-          </div>
-          <div className="workflow-grid pricing-faq-grid">
-            <article className="workflow-card">
-              <strong>Free trial</strong>
-              <ul>
-                <li>Capture, Control, and Operations start with a 14-day trial</li>
-                <li>Card details are collected before the trial begins</li>
-                <li>Linking Xero during the trial costs £5 once; that payment is credited against the first subscription invoice</li>
-                <li>Cancel from Billing before renewal if you do not want the paid subscription to start</li>
-              </ul>
-            </article>
-            <article className="workflow-card">
-              <strong>Workflow coverage</strong>
-              <ul>
-                <li>Capture focuses on receipt and invoice intake</li>
-                <li>All tiers include Sales; Control adds broader approval workflow coverage</li>
-                <li>Operations adds rules, vault, and expanded workflow controls</li>
-              </ul>
-            </article>
-          <article className="workflow-card">
-              <strong>Future enterprise rollout</strong>
-              <ul>
-                <li>Not currently available for purchase</li>
-                <li>Capacity and multi-entity capability will be announced after validation</li>
-                <li>Contact Exdox for future enterprise enquiries</li>
-              </ul>
+              <strong>Xero during the trial</strong>
+              <p>Linking Xero during the trial costs £5 once. That payment is credited against your first subscription invoice.</p>
             </article>
           </div>
         </div>
         <div className="pricing-page-side">
           <div className="slider-side-stack">
             <article className="slider-info-card">
-              <h2>Included plan capacity</h2>
+              <h2>Your selected allowance</h2>
               <ul className="slider-credit-list">
                 {selectedCapacity.map((capacity) => (
                   <li key={capacity.label}>
@@ -11491,33 +11253,23 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               </ul>
             </article>
             <article className="slider-info-card slider-access-card">
-              <h2>{selectedStep.accessBand} access band</h2>
-              <p>{selectedStep.tagline}</p>
+              <h2>Included at every price</h2>
+              <p>Only your user and document limits change when you move the slider.</p>
               <div className="slider-access-group">
-                <strong>Unlocked</strong>
+                <strong>Workspace areas</strong>
                 <div className="slider-access-tags">
-                  {selectedStep.unlockedWorkspaces.map((item) => (
+                  {includedPricingWorkspaces.map((item) => (
                     <span key={item}>{item}</span>
                   ))}
                 </div>
               </div>
-              {selectedStep.lockedWorkspaces.length ? (
-                <div className="slider-access-group">
-                  <strong>Locked until next tier</strong>
-                  <div className="slider-access-tags slider-access-tags-locked">
-                    {selectedStep.lockedWorkspaces.map((item) => (
-                      <span key={item}>{item}</span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
               <ul className="slider-feature-list">
-                {selectedPlan.features.map((feature) => (
+                {includedPricingFeatures.map((feature) => (
                   <li key={feature}>{feature}</li>
                 ))}
               </ul>
               <p className="slider-enterprise-note">
-                Route access, users, and document allowance scale with the selected package band.
+                Xero connection follows the same paid-subscription and trial-unlock rules at every price.
               </p>
             </article>
           </div>
@@ -11544,12 +11296,12 @@ function CompanySection({ session = null }: { session?: SessionState | null }) {
         <article className="company-card">
           <strong>Secure operational model</strong>
           <p>Organisation-scoped routes, authenticated sessions and protected receipt asset retrieval.</p>
-          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=control&billingCycle=monthly"}>{session ? signedInPublicPrimaryHeroLabel(session) : "Open Control trial signup"}</Link>
+          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/pricing"}>{session ? signedInPublicPrimaryHeroLabel(session) : "Choose your allowance"}</Link>
         </article>
         <article className="company-card">
           <strong>Review-ready audit trail</strong>
           <p>Receipts, vault files, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
-          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register?plan=operations&billingCycle=monthly"}>{session ? signedInPublicPrimaryHeroLabel(session) : "Open Operations trial signup"}</Link>
+          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/pricing"}>{session ? signedInPublicPrimaryHeroLabel(session) : "Start a free trial"}</Link>
         </article>
         <article className="company-card">
           <strong>Built for finance teams</strong>
@@ -11871,11 +11623,11 @@ function BillingPage(props: { session: SessionState }) {
             </button>
           ) : billing.stripeSubscriptionId ? (
             <button className="primary-action" type="button" onClick={() => navigate("/billing/upgrade")}>
-              Upgrade plan
+              Increase allowance
             </button>
           ) : null}
           <button className="secondary-action" type="button" onClick={() => navigate("/pricing")}>
-            Compare plans
+            Compare allowances
           </button>
           {billing.stripeConfigured ? (
             <button
@@ -11932,13 +11684,6 @@ function BillingUpgradePage(props: { session: SessionState }) {
     (selectedStep.documents > currentDocuments || selectedStep.users > currentUsers) &&
     selectedStep.documents >= currentDocuments &&
     selectedStep.users >= currentUsers;
-  const staysOnCurrentPlan = selectedStep.planId === billing?.planId;
-  const changeActionLabel = staysOnCurrentPlan
-    ? "Increase allowance"
-    : `Upgrade to ${selectedStep.accessBand}`;
-  const selectedAccessTitle = staysOnCurrentPlan
-    ? `${selectedStep.accessBand} plan allowance`
-    : `${selectedStep.accessBand} access included`;
 
   if (!billing || !billing.stripeSubscriptionId || !billing.stripeConfigured) {
     return (
@@ -11964,7 +11709,7 @@ function BillingUpgradePage(props: { session: SessionState }) {
           </div>
           <button className="secondary-action" type="button" onClick={() => navigate("/billing")}>Back to billing</button>
         </div>
-        <p className="muted-copy">Choose more users and documents, or move to a higher workflow package when you need additional features. Exdox updates your existing Stripe subscription and applies the new limits immediately. It does not create a second subscription.</p>
+        <p className="muted-copy">Choose more users and documents. Every price includes the same Exdox features. Exdox updates your existing Stripe subscription and applies the new limits immediately; it does not create a second subscription.</p>
       </div>
 
       <div className="pricing-page-layout upgrade-plan-layout">
@@ -11995,9 +11740,6 @@ function BillingUpgradePage(props: { session: SessionState }) {
             }}
             aria-label="Upgrade allowance slider"
           />
-          <div className="slider-bands" aria-hidden="true">
-            {["Capture", "Control", "Operations"].map((label) => <span key={label} className={selectedStep.accessBand === label ? "active" : ""}>{label}</span>)}
-          </div>
           <p className="slider-helper">Drag the slider to choose your new allowance.</p>
           {isHigherAllowance ? (
             <label className="upgrade-change-confirmation">
@@ -12031,7 +11773,7 @@ function BillingUpgradePage(props: { session: SessionState }) {
               }
             }}
           >
-            {busy ? "Updating plan..." : !isHigherAllowance ? "Choose a higher allowance" : !confirmedChange ? "Confirm plan change" : changeActionLabel}
+            {busy ? "Updating allowance..." : !isHigherAllowance ? "Choose a higher allowance" : !confirmedChange ? "Confirm allowance change" : "Increase allowance"}
           </button>
           {message ? <div className="error-banner">{message}</div> : null}
         </article>
@@ -12041,16 +11783,15 @@ function BillingUpgradePage(props: { session: SessionState }) {
             <ul className="slider-credit-list">
               <li><strong>{currentDocuments.toLocaleString()}</strong><span>documents per month</span></li>
               <li><strong>{currentUsers}</strong><span>users included</span></li>
-              <li><strong>{billing.planLabel ?? billing.planId}</strong><span>current workflow plan</span></li>
             </ul>
           </article>
           <article className="slider-info-card slider-access-card">
-            <h2>{selectedAccessTitle}</h2>
-            <p>{selectedStep.tagline}</p>
+            <h2>Included at every price</h2>
+            <p>All the same Exdox features stay available as your allowance grows.</p>
             <div className="slider-access-group">
               <strong>Included workspace areas</strong>
               <div className="slider-access-tags">
-                {selectedStep.unlockedWorkspaces.map((workspace) => <span key={workspace}>{workspace}</span>)}
+                {includedPricingWorkspaces.map((workspace) => <span key={workspace}>{workspace}</span>)}
               </div>
             </div>
             <p>Stripe applies this change to the existing subscription, calculates any prorated adjustment now, and keeps the current allowance if payment cannot be completed.</p>
