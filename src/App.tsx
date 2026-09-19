@@ -197,7 +197,6 @@ function isPrivateAppPath(pathname: string) {
 const publicNavItems = [
   { to: "/", label: "Home" },
   { to: "/platform", label: "Platform" },
-  { to: "/integrations", label: "Workflows" },
   { to: "/pricing", label: "Pricing" },
   { to: "/faq", label: "FAQs" },
   { to: "/company", label: "About" },
@@ -466,7 +465,6 @@ function isSignedInPublicPage(pathname: string) {
     return true;
   }
   return pathname === "/platform"
-    || pathname === "/integrations"
     || pathname === "/faq"
     || pathname === "/company"
     || pathname === "/contact"
@@ -530,7 +528,6 @@ function syncPageSearchParams(
 function isPublicSeoPath(pathname: string) {
   return pathname === "/"
     || pathname === "/platform"
-    || pathname === "/integrations"
     || pathname === "/pricing"
     || pathname === "/faq"
     || pathname === "/company"
@@ -588,21 +585,6 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
           pageName: "Platform",
           pageDescription:
             "Explore the Exdox expense management platform for receipt capture, invoice review, VAT handling, document storage, claims, and approvals.",
-        }),
-      };
-    }
-    if (normalizedPath === "/integrations") {
-      return {
-        title: "Connected Receipt and Expense Workflows | Exdox",
-        description:
-          "See how Exdox connects mobile capture, web review, protected source evidence, approvals, and export-ready queues.",
-        canonicalPath: normalizedPath,
-        robots: "index,follow",
-        structuredData: buildPublicStructuredData({
-          path: normalizedPath,
-          pageName: "Integrations",
-          pageDescription:
-            "See how Exdox connects mobile capture, web review, protected source evidence, approvals, and export-ready queues.",
         }),
       };
     }
@@ -1134,6 +1116,10 @@ export function App() {
         </PublicLayout>
       </>
     );
+  }
+
+  if (location.pathname === "/integrations") {
+    return <Navigate to="/platform" replace />;
   }
 
   if (!session && location.pathname !== "/login") {
@@ -9983,21 +9969,6 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
     );
   }
 
-  if (location.pathname === "/integrations") {
-    return (
-      <PublicLayout activePath="/integrations" session={session}>
-        <PublicPageIntro
-          kicker="Workflows"
-          title="Keep evidence, review queues, and exports in one operational flow."
-          body="Exdox connects mobile capture, web review, approvals, protected source evidence, and export-ready queues."
-        />
-        <IntegrationSection session={session} linkTarget={null} />
-        <FlowSection session={session} />
-        <WorkflowCoverageSection session={session} />
-      </PublicLayout>
-    );
-  }
-
   if (location.pathname === "/pricing") {
     return (
       <PublicLayout activePath="/pricing" session={session}>
@@ -10288,7 +10259,6 @@ function SiteFooterBlock() {
               <strong>Product</strong>
               <Link to="/">Home</Link>
               <Link to="/platform">Platform</Link>
-              <Link to="/integrations">Integrations</Link>
               <Link to="/pricing">Pricing</Link>
             </div>
             <div>
@@ -11118,26 +11088,6 @@ function WorkflowCoverageSection({ session = null, linkTarget = "/platform" }: {
             "Live sync with the same receipt records used in mobile",
           ]}
         />
-      </div>
-    </section>
-  );
-}
-
-function IntegrationSection({ session = null, linkTarget = "/integrations" }: { session?: SessionState | null; linkTarget?: string | null }) {
-  return (
-    <section className="integration-band">
-      <div>
-        <h2>Connected Capture &amp; Review Workflows</h2>
-        <p>
-          Keep capture and review moving together with synced web and mobile workflows,
-          organisation switching, approval queues, CSV exports, and archive-safe evidence retrieval.
-        </p>
-      </div>
-      <div className="integration-names" aria-label="Connected Exdox workflows">
-        <span>Mobile capture</span>
-        <span>Web review</span>
-        <span>Expense approvals</span>
-        <span>CSV exports</span>
       </div>
     </section>
   );

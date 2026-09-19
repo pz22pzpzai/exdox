@@ -4038,7 +4038,6 @@ input {
 }
 
 .capabilities-band h2,
-.integration-band h2,
 .workflow-band h2,
 .pricing-band h2,
 .company-band h2 {
@@ -4381,45 +4380,6 @@ input {
 
 .workflow-card li + li {
   margin-top: 8px;
-}
-
-.integration-band {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 50px;
-  width: min(980px, calc(100% - 48px));
-  min-height: 190px;
-  margin: 0 auto;
-}
-
-.integration-band h2 {
-  margin-bottom: 8px;
-}
-
-.integration-band p {
-  max-width: 560px;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.integration-names {
-  display: flex;
-  align-items: center;
-  gap: 26px;
-  color: #26334c;
-  font-size: 1.35rem;
-}
-
-.integration-names a {
-  color: inherit;
-  font-weight: 700;
-  text-decoration: none;
-  transition: color 150ms ease;
-}
-
-.integration-names a:hover {
-  color: var(--blue);
 }
 
 .pricing-band,
@@ -5096,17 +5056,6 @@ input {
 
   .capabilities-grid {
     grid-template-columns: 1fr;
-  }
-
-  .integration-band {
-    align-items: flex-start;
-    flex-direction: column;
-    width: calc(100% - 28px);
-    padding: 35px 0;
-  }
-
-  .integration-names {
-    flex-wrap: wrap;
   }
 
   .workflow-band,
