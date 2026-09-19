@@ -224,16 +224,16 @@ const pricingPlans: Array<{
   {
     id: "capture",
     name: "Capture",
-    tagline: "Receipt capture and review for lean teams",
-    monthlyDocuments: "250 documents / month",
-    users: "5 users included",
+    tagline: "Receipt capture and review for solo users and lean teams",
+    monthlyDocuments: "100 documents / month",
+    users: "1 user included",
     cta: "Open Capture Trial Signup",
     trialLabel: "14-day trial",
-    monthlyPrice: 15,
-    annualMonthlyPrice: 12,
+    monthlyPrice: 10,
+    annualMonthlyPrice: 8,
     unlockedWorkspaces: ["Costs", "Sales", "Claims"],
-    monthlyDocumentLimit: 250,
-    includedUsers: 5,
+    monthlyDocumentLimit: 100,
+    includedUsers: 1,
     features: [
       "Mobile receipt and invoice capture",
       "Sales inbox",
@@ -319,6 +319,19 @@ const pricingSliderSteps: Array<{
   unlockedWorkspaces: string[];
   lockedWorkspaces: string[];
 }> = [
+  {
+    label: "1 user",
+    markerLabel: "1",
+    users: 1,
+    documents: 100,
+    monthlyPrice: 10,
+    annualMonthlyPrice: 8,
+    planId: "capture",
+    accessBand: "Capture",
+    tagline: "Receipt capture and review for one-person businesses",
+    unlockedWorkspaces: ["Costs", "Sales", "Claims"],
+    lockedWorkspaces: ["Vault", "Multi-entity"],
+  },
   {
     label: "5 users",
     markerLabel: "5",
@@ -8167,7 +8180,7 @@ function AccountingIntegrationsPage({ session }: { session: SessionState }) {
 
     <section className="panel">
       <div className="panel-heading"><div><h3>Xero accounting</h3><p>Available only to business admins for this Exdox workspace.</p></div><SignalPill tone={status?.available && status.connected ? "info" : "warning"}>{status?.available ? status.connected ? "Connected" : "Not connected" : "Locked"}</SignalPill></div>
-      {status && !status.available ? <div className="notice-banner"><strong>Accounting software integrations are locked during the free trial.</strong><span>{status.lockedReason ?? "An active paid plan is required."}</span>{status.trialUnlockEligible ? <span>For example, on the £15 monthly plan you pay £5 now, Stripe charges £10 when the trial ends, and later months return to £15.</span> : null}{session.user.isOwner && status.trialUnlockEligible ? <button className="primary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("unlock-checkout"); setError(null); setFeedback(null); void createAccountingIntegrationUnlockCheckout(session.token).then((result) => { if (result.alreadyUnlocked) return refresh(true); if (result.checkoutUrl) window.location.href = result.checkoutUrl; else throw new Error("Stripe did not return a checkout page."); }).catch((unlockError) => setError(unlockError instanceof Error ? unlockError.message : "Could not open the £5 payment checkout.")).finally(() => setBusy(null)); }}>{busy === "unlock-checkout" ? "Opening secure checkout…" : `Pay £${((status.trialUnlockPricePence || 500) / 100).toFixed(0)} once and unlock`}</button> : status.trialUnlockEligible ? <span>Ask the workspace owner to make the one-off £5 payment.</span> : session.user.isOwner ? <Link className="secondary-action link-action" to="/billing">Manage subscription</Link> : <span>Ask the workspace owner to activate the subscription.</span>}</div> : null}
+      {status && !status.available ? <div className="notice-banner"><strong>Accounting software integrations are locked during the free trial.</strong><span>{status.lockedReason ?? "An active paid plan is required."}</span>{status.trialUnlockEligible ? <span>Pay £5 now to link Xero during the trial. The £5 is credited against your first subscription payment; later months return to your selected plan price.</span> : null}{session.user.isOwner && status.trialUnlockEligible ? <button className="primary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("unlock-checkout"); setError(null); setFeedback(null); void createAccountingIntegrationUnlockCheckout(session.token).then((result) => { if (result.alreadyUnlocked) return refresh(true); if (result.checkoutUrl) window.location.href = result.checkoutUrl; else throw new Error("Stripe did not return a checkout page."); }).catch((unlockError) => setError(unlockError instanceof Error ? unlockError.message : "Could not open the £5 payment checkout.")).finally(() => setBusy(null)); }}>{busy === "unlock-checkout" ? "Opening secure checkout…" : `Pay £${((status.trialUnlockPricePence || 500) / 100).toFixed(0)} once and unlock`}</button> : status.trialUnlockEligible ? <span>Ask the workspace owner to make the one-off £5 payment.</span> : session.user.isOwner ? <Link className="secondary-action link-action" to="/billing">Manage subscription</Link> : <span>Ask the workspace owner to activate the subscription.</span>}</div> : null}
       {status?.billingStatus === "trialing" && status.trialUnlockPurchasedAt ? <div className="success-banner">Accounting integrations are unlocked for this trial. The £5 paid has been credited against the first subscription invoice.</div> : null}
       <div className="summary-list">
         <div><strong>Organisation</strong>{status?.available && status.availableTenants?.length && status.availableTenants.length > 1 ? <select value={status.tenantId ?? ""} disabled={busy !== null} onChange={(event) => { const tenantId = event.target.value; setBusy("tenant"); setError(null); setFeedback(null); void selectXeroTenant(session.token, tenantId).then((selected) => { setStatus((current) => current ? { ...current, tenantId: selected.tenantId, tenantName: selected.tenantName } : current); setReferenceData(null); return refresh(true); }).then(() => setFeedback("Connected Xero organisation changed and its lists refreshed.")).catch((tenantError) => setError(tenantError instanceof Error ? tenantError.message : "Could not change Xero organisation.")).finally(() => setBusy(null)); }}>{status.availableTenants.map((tenant) => <option key={tenant.tenantId} value={tenant.tenantId}>{tenant.tenantName}</option>)}</select> : <span>{status?.available ? status.tenantName ?? "Connect a Xero organisation" : "Unlock with an active paid plan"}</span>}</div>
@@ -11442,6 +11455,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               <ul>
                 <li>Capture, Control, and Operations start with a 14-day trial</li>
                 <li>Card details are collected before the trial begins</li>
+                <li>Linking Xero during the trial costs £5 once; that payment is credited against the first subscription invoice</li>
                 <li>Cancel from Billing before renewal if you do not want the paid subscription to start</li>
               </ul>
             </article>
