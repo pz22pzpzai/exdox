@@ -10122,6 +10122,27 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
         <span>Integrated with</span>
         <img src="/branding/xero-logo.jpg" alt="Xero" />
       </section>
+      <section className="receipt-demo-band" aria-labelledby="receipt-demo-title">
+        <div className="receipt-demo-inner">
+          <div className="receipt-demo-copy">
+            <span className="eyebrow">See Exdox in action</span>
+            <h2 id="receipt-demo-title">Exdox realtime receipt scanning, fast, itemized and precise.</h2>
+            <p>Watch Exdox capture and read a receipt in real time.</p>
+          </div>
+          <video
+            className="receipt-demo-video"
+            controls
+            playsInline
+            preload="metadata"
+            width="592"
+            height="1280"
+            aria-label="Exdox realtime receipt scanning demonstration"
+          >
+            <source src="/videos/exdox-realtime-receipt-scanning.mp4" type="video/mp4" />
+            Your browser does not support video playback.
+          </video>
+        </div>
+      </section>
       <PlatformCapabilitiesSection session={session} />
       <FlowSection session={session} />
       <PricingTeaserSection session={session} />

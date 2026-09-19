@@ -4030,6 +4030,48 @@ input {
   object-fit: cover;
 }
 
+.receipt-demo-band {
+  padding: 48px 24px;
+  border-top: 1px solid #e2e9f0;
+  background: #f5f9fc;
+}
+
+.receipt-demo-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+  align-items: center;
+  gap: clamp(32px, 7vw, 96px);
+  width: min(980px, 100%);
+  margin: 0 auto;
+}
+
+.receipt-demo-copy h2 {
+  max-width: 550px;
+  margin: 12px 0 16px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  line-height: 1.14;
+  letter-spacing: -0.04em;
+}
+
+.receipt-demo-copy p {
+  max-width: 480px;
+  margin: 0;
+  color: #44516a;
+  font-size: 1.03rem;
+  line-height: 1.5;
+}
+
+.receipt-demo-video {
+  display: block;
+  width: min(100%, 260px);
+  height: auto;
+  margin: 0 auto;
+  border-radius: 18px;
+  background: #15223a;
+  box-shadow: 0 18px 42px rgba(17, 28, 56, 0.18);
+}
+
 .capabilities-band {
   padding: 28px 24px 34px;
   background: #edf3f8;
@@ -5052,6 +5094,15 @@ input {
   .public-hero > img {
     width: 100%;
     margin: 12px 0 0;
+  }
+
+  .receipt-demo-band {
+    padding: 36px 14px;
+  }
+
+  .receipt-demo-inner {
+    grid-template-columns: 1fr;
+    gap: 24px;
   }
 
   .capabilities-grid {
