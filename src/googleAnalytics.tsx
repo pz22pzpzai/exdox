@@ -8,7 +8,7 @@ export type CookieConsentChoice = "essential_only" | "all_cookies";
 
 declare global {
   interface Window {
-    dataLayer?: unknown[][];
+    dataLayer?: IArguments[];
     gtag?: (...args: unknown[]) => void;
   }
 }
@@ -45,7 +45,11 @@ function isPrivateWorkspacePage(pathname: string) {
 
 function ensureGoogleTagQueue() {
   window.dataLayer = window.dataLayer || [];
-  window.gtag = window.gtag || ((...args: unknown[]) => window.dataLayer?.push(args));
+  // Match Google's gtag bootstrap: its command queue contains Arguments
+  // objects, not arrays constructed by a rest-parameter wrapper.
+  window.gtag = window.gtag || function () {
+    window.dataLayer?.push(arguments);
+  };
 }
 
 function configureGoogleAnalytics() {
