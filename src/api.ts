@@ -52,6 +52,13 @@ type AuthResponse =
       checkoutUrl?: string | null;
     }
   | {
+      success: true;
+      requiresBillingCheckout: true;
+      message: string;
+      user: SessionState["user"];
+      checkoutUrl?: string | null;
+    }
+  | {
       success: false;
       message?: string;
     };
@@ -75,6 +82,12 @@ export type LoginResult =
     }
   | {
       kind: "pending_confirmation";
+      message: string;
+      email: string;
+      checkoutUrl: string | null;
+    }
+  | {
+      kind: "billing_required";
       message: string;
       email: string;
       checkoutUrl: string | null;
@@ -134,6 +147,15 @@ export async function loginWithEmail(input: { email: string; password: string })
     };
   }
 
+  if ("requiresBillingCheckout" in payload && payload.requiresBillingCheckout) {
+    return {
+      kind: "billing_required",
+      message: payload.message,
+      email: payload.user.email,
+      checkoutUrl: payload.checkoutUrl ?? null,
+    };
+  }
+
   if (!("token" in payload)) {
     throw new Error("Authentication failed.");
   }
@@ -142,7 +164,8 @@ export async function loginWithEmail(input: { email: string; password: string })
   try {
     const session = await fetchSession(payload.token);
     hydrated = { ...session, token: payload.token };
-  } catch {
+  } catch (error) {
+    if (isBillingAccessError(error)) throw error;
     hydrated = buildFallbackSession(payload.token, payload.user);
   }
 
@@ -862,10 +885,16 @@ async function apiFetch<T = Record<string, never>>(
     if (response.status === 401) {
       clearStoredSession();
     }
-    throw new Error(payload.message || "API request failed.");
+    const error = new Error(payload.message || "API request failed.") as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
 
   return payload;
+}
+
+export function isBillingAccessError(error: unknown) {
+  return error instanceof Error && (error as Error & { status?: number }).status === 402;
 }
 
 export function buildFallbackSession(token: string, user: SessionUser): SessionState {

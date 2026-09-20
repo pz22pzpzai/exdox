@@ -338,7 +338,7 @@ export type SessionState = {
 };
 
 export type BillingPlanId = "capture" | "control" | "operations" | "enterprise" | "legacy";
-export type BillingStatus = "trialing" | "active" | "past_due" | "canceled" | "inactive" | "legacy";
+export type BillingStatus = "trialing" | "active" | "past_due" | "paused" | "canceled" | "inactive" | "legacy";
 export type BillingCycle = "monthly" | "annual" | "custom";
 
 export type BillingSummary = {

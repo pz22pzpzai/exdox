@@ -77,6 +77,7 @@ import {
   getSalesWorkspace,
   importSalesCustomers,
   importXeroCustomers,
+  isBillingAccessError,
   issueSalesDocument,
   rotateSalesSubmissionAddress,
   saveSalesCustomer,
@@ -906,6 +907,7 @@ export function App() {
 
   const loadWorkspace = async (token: string, fallbackSession?: SessionState | null) => {
     const nextSession = await fetchSession(token).catch((error) => {
+      if (isBillingAccessError(error)) throw error;
       if (fallbackSession) {
         return fallbackSession;
       }
@@ -960,7 +962,7 @@ export function App() {
       billingCycle: billing.billingCycle,
     });
     if (!checkout.checkoutUrl) {
-      throw new Error("Payment setup is not available yet. Please try again shortly or contact contact@exdox.co.uk.");
+      throw new Error("Trial setup is not available yet. Please try again shortly or contact contact@exdox.co.uk.");
     }
 
     window.location.assign(checkout.checkoutUrl);
@@ -1210,7 +1212,7 @@ export function App() {
               setError(null);
               try {
                 const loginResult = await loginWithEmail({ email, password });
-                if (loginResult.kind === "pending_confirmation") {
+                if (loginResult.kind === "pending_confirmation" || loginResult.kind === "billing_required") {
                   if (loginResult.checkoutUrl) {
                     window.location.assign(loginResult.checkoutUrl);
                     return;
@@ -1819,7 +1821,7 @@ function DashboardShell(props: {
             <div>
               <strong>Confirm your email within three days</strong>
               <span>
-                Your card setup is complete and your workspace is available now. Confirm {props.session.user.email}
+                Your trial or paid subscription is ready and your workspace is available now. Confirm {props.session.user.email}
                 {props.session.user.emailConfirmationDueAt
                   ? ` by ${new Date(props.session.user.emailConfirmationDueAt).toLocaleString("en-GB", {
                       dateStyle: "medium",
@@ -2180,7 +2182,7 @@ function helpChatReply(message: string) {
     return knowledgeAnswer;
   }
   if (includes("register", "sign up", "create account", "open an account", "new account")) {
-    return "Choose Register to start. Select A business or A sole trader to choose a plan, create the workspace, set up the card for the free trial, and then sign in. Select An employee of a business if you are joining an employer's workspace. Employees do not set up billing.";
+    return "Choose Register to start. Select A business or A sole trader to choose an allowance, create the workspace, and start the 14-day trial without payment details. Sign in after confirming the trial in Stripe. Employees join their employer's workspace without setting up billing.";
   }
   if (includes("business or sole trader", "sole trader", "business owner", "which account type", "account type")) {
     return "Businesses and sole traders follow the same plan and billing flow. A business can use its company name; a sole trader can use a trading name or continue with a personal email address. Both become the workspace owner and control billing. Employees use the separate employee route.";
@@ -2201,7 +2203,7 @@ function helpChatReply(message: string) {
     return "Use the newest confirmation email from Exdox and open its link on any device. The link confirms the email, then takes you to the Exdox login page so you can sign in normally. If it has expired or does not work, use Resend confirmation email from the workspace or contact Access support.";
   }
   if (includes("free trial", "card setup", "card details", "stripe checkout", "first charge", "charged")) {
-    return "For a business or sole-trader workspace, card setup is completed securely in Stripe Checkout. The 14-day trial starts after checkout. The first subscription charge is taken only when the trial ends, unless the workspace owner cancels before renewal. Employees never enter the business card details.";
+    return "A business or sole trader can start the 14-day trial in Stripe without payment details. If no payment method is added, access pauses when the trial ends. The owner can then pay for the first month in Stripe; monthly billing starts on that payment date. Employees never enter the business card details.";
   }
   if (includes("google play", "play store", "download app", "android app", "install app")) {
     return "The Exdox Android app is available through Google Play. Use the app for capture on the move and the website for wider review, team, billing, and administration tasks. Sign in with the same Exdox email address on both.";
@@ -9340,12 +9342,12 @@ function LoginState(props: {
             ) : null}
             {props.checkoutStatus === "success" ? (
               <div className="success-banner">
-                Card setup complete. Log in now to open your workspace, then confirm your email within three days to keep access.
+                Checkout complete. Log in to open your workspace. If this was a new trial, confirm your email within three days to keep access.
               </div>
             ) : null}
             {props.checkoutStatus === "cancelled" ? (
               <div className="error-banner">
-                Card setup was cancelled. Confirm your email and log in when you are ready to restart it.
+                Checkout was cancelled. Log in when you are ready to start the trial or complete monthly payment.
               </div>
             ) : null}
             <form
@@ -9680,7 +9682,7 @@ function RegisterState(props: {
                   ? "Use your company email address to join its existing Exdox workspace. No card setup is required."
                   : soleTraderFlow
                     ? "Set up your own workspace and subscription using either a personal or business email address."
-                    : "Create your company workspace, choose its plan, and complete secure card setup as the business owner."}
+                    : "Create your company workspace, choose its allowance, and start the 14-day trial without payment details."}
             </p>
             {!invitedFlow && audience === null ? (
               <div className="registration-audience-grid" role="group" aria-label="Choose account type">
@@ -9813,13 +9815,13 @@ function RegisterState(props: {
                     required
                   />
                   <span>
-                    I agree to the <Link to={termsPagePath}>Terms and Conditions</Link> and understand that my card will be charged automatically when the free trial ends unless I cancel before renewal.
+                    I agree to the <Link to={termsPagePath}>Terms and Conditions</Link> and understand that the free trial ends after 14 days. Monthly billing begins only if I choose to provide payment details and the first payment succeeds.
                   </span>
                 </label>
               ) : null}
               {!invitedFlow && !employeeFlow ? (
                 <div className="muted-copy">
-                  Secure card setup is the next step. We will send your confirmation email at the same time. Once card setup is complete, you can use the workspace immediately and have three days to confirm your email. Your selected {currency(selectedSignupPrice)} monthly package starts as a free trial and can be cancelled from Billing before renewal.
+                  Next, confirm your card-free 14-day trial in Stripe. We will send your confirmation email at the same time. Once the trial starts, you can use the workspace immediately and have three days to confirm your email. If you do not pay for your selected {currency(selectedSignupPrice)} monthly package, access pauses when the trial ends; monthly billing starts on your first payment date.
                 </div>
               ) : null}
               {successMessage ? <div className="success-banner">{successMessage}</div> : null}
@@ -10114,7 +10116,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
               <span className="store-badge-interest-action">Register your interest</span>
             </Link>
           </div>
-          <span>Card details are collected up front and the first charge is taken when the trial ends unless you cancel before renewal.</span>
+          <span>No payment details are needed to start. After 14 days, pay for your first month only if you choose to continue.</span>
         </div>
         <img src="/branding/exdox-platform-hero.webp" alt="Connected exdox accounting workspace" />
       </section>
@@ -10638,11 +10640,11 @@ function TermsSection() {
           ),
         },
         {
-          heading: "Free trial and card authorisation",
+          heading: "Free trial and monthly billing",
           body: (
             <>
-              <p>Eligible self-serve plans may include a free trial period. When you start a trial, you must provide valid payment details.</p>
-              <p>Your card is not charged immediately for the trial itself unless stated otherwise at checkout. By starting the trial, you authorise Exdox and its payment processor to charge the selected subscription price automatically when the trial ends unless you cancel before renewal.</p>
+              <p>Eligible self-serve plans include a 14-day free trial. New trials can start without payment details. If no payment method is provided, workspace access pauses when the trial ends and no subscription invoice is created.</p>
+              <p>To continue after the trial, the owner must complete the first monthly payment in secure Stripe Checkout. The monthly billing cycle starts on that payment date and renews monthly until cancelled. If the owner voluntarily adds a payment method during the trial, the first charge may be attempted when the trial ends; access continues only after payment succeeds. Earlier card-authorised trials remain subject to the payment terms accepted when they began.</p>
             </>
           ),
         },
@@ -10651,7 +10653,7 @@ function TermsSection() {
           body: (
             <>
               <p>Paid subscriptions renew automatically on the billing cycle shown at checkout unless cancelled before the next renewal date.</p>
-              <p>You can manage or cancel your trial or subscription from the billing area of the Exdox website, including the linked billing portal where available. If you cancel during the trial, the subscription should not renew into a paid billing period.</p>
+              <p>You can manage or cancel your trial or subscription from the billing area of the Exdox website, including the linked billing portal where available. Cancelling during the trial prevents it from becoming a paid billing period.</p>
               <p>Cancellation stops future renewal charges. Unless we tell you otherwise, access continues until the end of the current trial or paid billing period.</p>
             </>
           ),
@@ -10660,7 +10662,7 @@ function TermsSection() {
           heading: "Accidental renewal and refunds",
           body: (
             <>
-              <p>If you believe your first paid charge after a free trial was accidental, contact us within 14 calendar days of that charge. We will review the request and will normally provide a refund where the workspace has had no material use after the trial converted.</p>
+              <p>If you believe your first paid charge after a free trial was accidental, contact us within 14 calendar days of that charge. We will review the request and will normally provide a refund where the workspace has had no material use after the charge.</p>
               <p>For later renewals or where the service has been materially used, refunds are considered case by case. Cancelling a subscription does not automatically refund charges already taken.</p>
               <p>Nothing in this policy limits any cancellation or refund right you have under applicable law. If you are signing up as a consumer, your statutory rights apply in addition to these terms.</p>
             </>
@@ -11232,7 +11234,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
             </article>
             <article className="company-card">
               <strong>14-day free trial</strong>
-              <p>Add a card to begin. Cancel from Billing before the trial ends if you do not want the subscription to start.</p>
+              <p>No card needed to start. After 14 days, pay for the first month to continue; monthly billing starts on that payment date.</p>
             </article>
             <article className="company-card">
               <strong>Xero during the trial</strong>
@@ -11564,7 +11566,7 @@ function BillingPage(props: { session: SessionState }) {
           </div>
           <div className="metric-card">
             <span>{billing.status === "trialing" ? "Trial ends" : "Next billing event"}</span>
-            <strong>{trialSetupRequired ? "Awaiting card setup" : trialDateLabel ?? "Managed in portal"}</strong>
+            <strong>{trialSetupRequired ? "Trial not started" : trialDateLabel ?? "Managed in portal"}</strong>
           </div>
           <div className="metric-card">
             <span>Cancellation</span>
@@ -11590,8 +11592,10 @@ function BillingPage(props: { session: SessionState }) {
             ? `Cancellation is scheduled for ${cancellationDateLabel}. Access remains available until then unless the billing portal shows a different end date.`
             : billing.stripeConfigured
             ? trialSetupRequired
-              ? "Add your card to begin the free trial. The first charge is taken automatically when the trial ends unless you cancel before renewal."
-              : "Use Billing to manage your subscription, update payment details, or cancel before the next renewal."
+              ? "Start the 14-day trial without payment details. Access pauses at the end unless your first monthly payment succeeds."
+              : billing.status === "trialing"
+                ? "No payment details were needed to start. If you do not add a payment method, access pauses when the trial ends. If you choose to add one now, Stripe can charge the first month at the trial end; monthly renewal then follows that payment date."
+                : "Use Billing to manage your subscription, update payment details, or cancel before the next renewal."
             : "Online billing is not live in this workspace yet. Use billing support to coordinate trial setup, cancellation, or plan changes."}
         </p>
         <div className="section-actions">
