@@ -1204,6 +1204,7 @@ export function App() {
             confirmationComplete={new URLSearchParams(location.search).get("confirmed") === "1"}
             confirmationStatus={new URLSearchParams(location.search).get("confirmation")}
             checkoutStatus={new URLSearchParams(location.search).get("checkout")}
+            trialReminder={new URLSearchParams(location.search).get("trial")}
             accountDeleted={new URLSearchParams(location.search).get("accountDeleted") === "1"}
             embeddedInPublicShell
             onLogin={async (email, password) => {
@@ -9286,6 +9287,7 @@ function LoginState(props: {
   confirmationComplete?: boolean;
   confirmationStatus?: string | null;
   checkoutStatus?: string | null;
+  trialReminder?: string | null;
   accountDeleted?: boolean;
   embeddedInPublicShell?: boolean;
   onLogin: (email: string, password: string) => Promise<void>;
@@ -9350,6 +9352,16 @@ function LoginState(props: {
                 Checkout was cancelled. Log in when you are ready to start the trial or complete monthly payment.
               </div>
             ) : null}
+            {props.trialReminder === "ending" ? (
+              <div className="notice-banner">
+                Your free trial is ending. Log in, then open Billing to add payment details if you want your subscription to continue when the trial ends.
+              </div>
+            ) : props.trialReminder === "ended" ? (
+              <div className="notice-banner">
+                Your trial has ended. The workspace owner can log in below to continue to secure payment. You do not need to register again.
+              </div>
+            ) : null}
+            {!props.trialReminder ? <p className="muted-copy">If your trial has ended, the workspace owner can sign in here to continue to secure subscription payment.</p> : null}
             <form
               className="login-form"
               onSubmit={async (event) => {
@@ -9381,7 +9393,7 @@ function LoginState(props: {
               </label>
               {props.error ? <div className="error-banner">{props.error}</div> : null}
               <button className="primary-action login-submit" type="submit" disabled={props.busy}>
-                {props.busy ? "Signing in..." : "Log in"}
+                {props.busy ? "Signing in..." : props.trialReminder === "ended" ? "Continue to payment" : "Log in"}
               </button>
             </form>
             <div className="login-links">
@@ -11626,7 +11638,7 @@ function BillingPage(props: { session: SessionState }) {
             >
               {busyPlan === "checkout" ? "Opening checkout..." : "Start free trial"}
             </button>
-          ) : billing.stripeSubscriptionId ? (
+          ) : billing.status === "trialing" && billing.stripeSubscriptionId ? null : billing.stripeSubscriptionId ? (
             <button className="primary-action" type="button" onClick={() => navigate("/billing/upgrade")}>
               Increase allowance
             </button>
@@ -11636,7 +11648,7 @@ function BillingPage(props: { session: SessionState }) {
           </button>
           {billing.stripeConfigured ? (
             <button
-              className="secondary-action"
+              className={billing.status === "trialing" ? "primary-action" : "secondary-action"}
               type="button"
               disabled={!billing.stripeCustomerId || busyPlan !== null}
               onClick={async () => {
@@ -11656,7 +11668,7 @@ function BillingPage(props: { session: SessionState }) {
                 }
               }}
             >
-              Manage or cancel in billing portal
+              {billing.status === "trialing" ? "Add payment details for after the trial" : "Manage or cancel in billing portal"}
             </button>
           ) : (
             <button className="secondary-action" type="button" onClick={() => navigate(`${supportPagePath}?subject=${encodeURIComponent("Billing support")}`)}>
