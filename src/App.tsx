@@ -9833,7 +9833,7 @@ function RegisterState(props: {
               ) : null}
               {!invitedFlow && !employeeFlow ? (
                 <div className="muted-copy">
-                  Next, confirm your card-free 14-day trial in Stripe. We will send your confirmation email at the same time. Once the trial starts, you can use the workspace immediately and have three days to confirm your email. If you do not pay for your selected {currency(selectedSignupPrice)} monthly package, access pauses when the trial ends; monthly billing starts on your first payment date.
+                  Next, confirm your free trial in Stripe. No card details are needed. We will send your confirmation email at the same time. Once the trial starts, you can use the workspace immediately and have three days to confirm your email. If you do not pay for your selected {currency(selectedSignupPrice)} monthly package, access pauses when the trial ends; monthly billing starts on your first payment date.
                 </div>
               ) : null}
               {successMessage ? <div className="success-banner">{successMessage}</div> : null}
