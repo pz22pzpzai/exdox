@@ -26,13 +26,31 @@
   </url>
   <url>
     <loc>https://www.exdox.co.uk/privacy</loc>
-    <lastmod>2026-07-17</lastmod>
+    <lastmod>2026-09-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://www.exdox.co.uk/data-processing-agreement</loc>
+    <lastmod>2026-09-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://www.exdox.co.uk/subprocessors</loc>
+    <lastmod>2026-09-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://www.exdox.co.uk/data-retention</loc>
+    <lastmod>2026-09-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://www.exdox.co.uk/account-deletion</loc>
-    <lastmod>2026-07-27</lastmod>
+    <lastmod>2026-09-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

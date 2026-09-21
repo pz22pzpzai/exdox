@@ -471,6 +471,9 @@ function isSignedInPublicPage(pathname: string) {
     || pathname === "/contact"
     || pathname === "/terms"
     || pathname === "/privacy"
+    || pathname === "/data-processing-agreement"
+    || pathname === "/subprocessors"
+    || pathname === "/data-retention"
     || pathname === "/cookies";
 }
 
@@ -535,6 +538,9 @@ function isPublicSeoPath(pathname: string) {
     || pathname === "/contact"
     || pathname === "/terms"
     || pathname === "/privacy"
+    || pathname === "/data-processing-agreement"
+    || pathname === "/subprocessors"
+    || pathname === "/data-retention"
     || pathname === "/cookies"
     || pathname === "/account-deletion"
     || pathname === "/login"
@@ -676,6 +682,45 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
           pageName: "Privacy Policy",
           pageDescription:
             "Read the Exdox privacy policy, including how we use cookies, analytics, contact data, and Google advertising services.",
+        }),
+      };
+    }
+    if (normalizedPath === "/data-processing-agreement") {
+      return {
+        title: "Data Processing Agreement | Exdox",
+        description: "Read the Exdox customer Data Processing Agreement for UK GDPR controller and processor responsibilities.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Data Processing Agreement",
+          pageDescription: "Read the Exdox customer Data Processing Agreement for UK GDPR controller and processor responsibilities.",
+        }),
+      };
+    }
+    if (normalizedPath === "/subprocessors") {
+      return {
+        title: "Subprocessors | Exdox",
+        description: "Review the service providers and optional integrations used to deliver Exdox.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Subprocessors",
+          pageDescription: "Review the service providers and optional integrations used to deliver Exdox.",
+        }),
+      };
+    }
+    if (normalizedPath === "/data-retention") {
+      return {
+        title: "Data Retention | Exdox",
+        description: "Read how long Exdox keeps workspace, billing, support, security, and website information.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Data Retention",
+          pageDescription: "Read how long Exdox keeps workspace, billing, support, security, and website information.",
         }),
       };
     }
@@ -9015,14 +9060,16 @@ function DeleteAccountPage({ session }: { session: SessionState }) {
           <strong>This cannot be undone</strong>
           <p>
             Deleting {organisation?.name ?? 'this workspace'} immediately cancels its Stripe trial or subscription,
-            removes its saved Stripe customer and payment details, and permanently deletes every user, receipt,
-            invoice, claim, vault file, supplier rule, and workspace setting.
+            requests deletion of its Stripe customer profile, and permanently deletes its users and Exdox-hosted
+            operational workspace data, including receipts, invoices, claims, sales records, evidence, vault and incoming files,
+            rules, cards, departments, integrations, and settings. Limited records required by law or held within a provider&apos;s
+            documented deletion cycle may remain as explained in the Data Retention Policy.
           </p>
         </div>
 
         <div className="summary-list account-deletion-summary">
           <div><strong>Subscription</strong><span>Cancelled immediately with no future renewal</span></div>
-          <div><strong>Payment profile</strong><span>Removed from Stripe</span></div>
+          <div><strong>Payment profile</strong><span>Deletion requested from Stripe</span></div>
           <div><strong>Workspace data</strong><span>Permanently deleted for all users</span></div>
           <div><strong>Access</strong><span>All users are signed out and cannot recover this workspace</span></div>
         </div>
@@ -10048,10 +10095,49 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
       <PublicLayout activePath="" session={session}>
         <PublicPageIntro
           kicker="Privacy"
-          title="Privacy policy for Exdox website and marketing pages."
-          body="This page explains what information we collect on the Exdox public website, how we use it, and how advertising and consent tools may operate on the site."
+          title="Privacy policy for the complete Exdox service."
+          body="This page explains how Exdox handles information across the website, authenticated workspace, Android app, support, billing, document processing, and optional integrations."
         />
         <PrivacyPolicySection />
+      </PublicLayout>
+    );
+  }
+
+  if (location.pathname === "/data-processing-agreement") {
+    return (
+      <PublicLayout activePath="" session={session}>
+        <PublicPageIntro
+          kicker="Data protection"
+          title="Customer Data Processing Agreement."
+          body="These processor terms explain how Exdox handles personal data on behalf of a subscribing organisation."
+        />
+        <DataProcessingAgreementSection />
+      </PublicLayout>
+    );
+  }
+
+  if (location.pathname === "/subprocessors") {
+    return (
+      <PublicLayout activePath="" session={session}>
+        <PublicPageIntro
+          kicker="Data protection"
+          title="Exdox subprocessors and connected services."
+          body="This page identifies the principal providers used to operate Exdox and distinguishes optional customer-directed integrations."
+        />
+        <SubprocessorsSection />
+      </PublicLayout>
+    );
+  }
+
+  if (location.pathname === "/data-retention") {
+    return (
+      <PublicLayout activePath="" session={session}>
+        <PublicPageIntro
+          kicker="Data protection"
+          title="Exdox data-retention schedule."
+          body="This page explains the periods or criteria used to retain and delete information handled by Exdox."
+        />
+        <DataRetentionSection />
       </PublicLayout>
     );
   }
@@ -10309,6 +10395,9 @@ function SiteFooterBlock() {
               <strong>Legal</strong>
               <Link to={termsPagePath}>Terms</Link>
               <Link to="/privacy">Privacy</Link>
+              <Link to="/data-processing-agreement">Data processing agreement</Link>
+              <Link to="/subprocessors">Subprocessors</Link>
+              <Link to="/data-retention">Data retention</Link>
               <Link to="/cookies">Cookies</Link>
               <Link to={accountDeletionPagePath}>Account deletion</Link>
             </div>
@@ -10640,7 +10729,7 @@ function TermsSection() {
   return (
     <PolicyLayout
       title="Exdox Terms and Conditions"
-      updatedOn="31 August 2026"
+      updatedOn="21 September 2026"
       sections={[
         {
           heading: "Who these terms apply to",
@@ -10699,6 +10788,15 @@ function TermsSection() {
           ),
         },
         {
+          heading: "Data processing",
+          body: (
+            <>
+              <p>When a customer organisation uses Exdox to process personal data in receipts, invoices, claims, mileage records, contacts, or other workspace content, the customer is the controller and Exdox acts as its processor.</p>
+              <p>The <Link to="/data-processing-agreement">Exdox Data Processing Agreement</Link> forms part of these terms for that processing. It includes the subject matter and duration of processing, confidentiality and security duties, subprocessor controls, assistance with data rights and incidents, international-transfer safeguards, and deletion or return of customer data.</p>
+            </>
+          ),
+        },
+        {
           heading: "Service availability and changes",
           body: (
             <>
@@ -10744,81 +10842,224 @@ function PrivacyPolicySection() {
   return (
     <PolicyLayout
       title="Exdox Privacy Policy"
-      updatedOn="17 July 2026"
+      updatedOn="21 September 2026"
       sections={[
         {
-          heading: "Who this policy applies to",
+          heading: "Who we are and when this policy applies",
           body: (
             <>
-              <p>This policy applies to the public Exdox website at <strong>exdox.co.uk</strong>, including marketing pages, contact routes, login, registration, and related public information pages.</p>
-              <p>If you use an authenticated Exdox product workspace, additional operational data may be processed as part of the service you sign up for.</p>
+              <p>Exdox is operated by Terry Reed in the United Kingdom. For account, billing, security, support, website, and direct marketing data, Exdox is the data controller. Contact us at <a href="mailto:contact@exdox.co.uk">contact@exdox.co.uk</a> or through the contact form.</p>
+              <p>This policy applies to the Exdox website, Android app, authenticated workspace, support service, billing journey, and connected integrations.</p>
+              <p>For personal data that a customer organisation uploads or creates in its workspace, the customer is normally the controller and Exdox processes that data on the customer&apos;s instructions. Our <Link to="/data-processing-agreement">Data Processing Agreement</Link> covers that relationship.</p>
             </>
           ),
         },
         {
-          heading: "Information we may collect",
+          heading: "Personal data we process",
           body: (
             <>
-              <p>We may collect information that you provide directly, such as your name, business name, email address, and any details you submit through registration, demo requests, or support contact.</p>
-              <p>We may also collect technical information such as IP address, browser type, device information, page views, referring pages, and interactions with consent tools, site analytics, or advertising components.</p>
+              <p>We process account and contact details; organisation, role, and team information; uploaded receipts, invoices and attachments; extracted document fields; expenses, claims and mileage records; supplier and customer details; approval history; and support correspondence.</p>
+              <p>We also process subscription and billing identifiers supplied by Stripe, optional Xero connection and publication data, security and audit events, IP address, browser or device information, page interactions, and consent choices. Exdox does not receive or store full payment-card details from Stripe.</p>
+              <p>Data comes from users and their organisations, uploaded documents, invited team members, connected services, and the device or browser used to access Exdox.</p>
             </>
           ),
         },
         {
-          heading: "How we use information",
+          heading: "Purposes and lawful bases",
           body: (
             <>
-              <p>We use information to operate the website, respond to enquiries, create and manage trial accounts, protect the site, measure performance, and improve content, routing, and commercial messaging.</p>
-              <p>Where advertising services are enabled, information may also be used to support ad delivery, frequency management, measurement, fraud prevention, and, where permitted, personalised advertising.</p>
+              <p>We use personal data to create and operate accounts, provide document extraction and expense workflows, deliver support, administer trials and subscriptions, connect requested integrations, secure the service, prevent abuse, keep business records, and improve reliability.</p>
+              <p>Our lawful bases are performance of a contract, our legitimate interests in operating and protecting Exdox and responding to business enquiries, compliance with legal obligations, and consent where required for non-essential analytics, advertising, or electronic marketing. You can withdraw consent at any time without affecting earlier lawful processing.</p>
             </>
           ),
         },
         {
-          heading: "Google AdSense and advertising disclosures",
+          heading: "AI-assisted extraction and human review",
           body: (
             <>
-              <p>Exdox may use Google AdSense or other Google advertising products on public pages. Third-party vendors, including Google, may use cookies to serve ads based on a user&apos;s prior visits to this site or other websites.</p>
-              <p>Google&apos;s use of advertising cookies enables Google and its partners to serve ads based on visits to this site and other sites on the internet. Users can learn more about how Google uses data in advertising and manage ad personalisation through Google&apos;s Ad Settings.</p>
-              <p>If additional third-party ad networks or providers are used, their cookies or similar technologies may also be used for ad delivery and measurement. Where legally required, we ask for consent before non-essential advertising cookies are used.</p>
+              <p>Exdox uses OpenAI&apos;s API to assist with extracting information from documents. The result is a suggested record for review: users remain responsible for checking it before approval, reimbursement, or publication to an accounting system.</p>
+              <p>Exdox does not use this extraction to make solely automated decisions that produce legal or similarly significant effects about an individual.</p>
             </>
           ),
         },
         {
-          heading: "EEA, UK, and Switzerland consent",
+          heading: "Who receives data",
           body: (
             <>
-              <p>For users in the EEA, the UK, and Switzerland, we may use a consent management platform to request consent for cookies or similar storage and for the collection, sharing, and use of personal data for advertising or measurement where required by law.</p>
-              <p>You can withdraw or update your choices through the consent options made available on the site or through your browser settings, subject to the limitations of browser-based controls.</p>
+              <p>We use carefully selected providers for cloud hosting and storage, AI-assisted extraction, email delivery, billing, and consent-based analytics. Customer-directed integrations may also receive data when an authorised user connects and uses them.</p>
+              <p>Our current providers, their purposes, and the data involved are listed on the <Link to="/subprocessors">Subprocessors page</Link>. We may also disclose information where required by law, to protect users and the service, or as part of a legitimate business transfer subject to appropriate safeguards.</p>
+              <p>We do not sell customer workspace data.</p>
             </>
           ),
         },
         {
-          heading: "Sharing information",
+          heading: "International transfers",
           body: (
             <>
-              <p>We may share information with service providers that support hosting, analytics, consent management, communications, security, or advertising. We may also share information where required for legal compliance, fraud prevention, or business protection.</p>
-              <p>We do not sell customer account data in the ordinary meaning of that term. Advertising and analytics providers may, however, process data as independent controllers for their own platform operations where their services are used.</p>
+              <p>Exdox&apos;s primary service infrastructure is hosted in the United Kingdom. Some providers may process data in other countries. Where UK personal data is transferred internationally, we require an applicable UK adequacy regulation or appropriate contractual safeguards, such as the UK International Data Transfer Agreement or UK Addendum, together with risk assessment where required.</p>
             </>
           ),
         },
         {
-          heading: "Retention and security",
+          heading: "Retention, deletion, and security",
           body: (
             <>
-              <p>We keep information for as long as reasonably necessary for the purposes described in this policy, including account setup, support, security, legal compliance, and commercial record keeping.</p>
-              <p>We use technical and organisational measures intended to protect information against unauthorised access, loss, misuse, or disclosure, but no internet transmission or storage system is completely secure.</p>
+              <p>We retain data only for as long as needed for the service, the customer&apos;s instructions, security, disputes, or legal record-keeping. Specific periods and deletion rules are set out in our <Link to="/data-retention">Data Retention Policy</Link>.</p>
+              <p>Workspace owners can close their account through the authenticated deletion screen. We use access controls, encryption in transit and at rest, password hashing, audit and security controls, restricted production access, and tested deletion procedures. No online service can guarantee absolute security.</p>
             </>
           ),
         },
         {
-          heading: "Your choices and contact",
+          heading: "Your data-protection rights",
           body: (
             <>
-              <p>You may be able to control cookies through our consent tools, your browser settings, and Google&apos;s advertising controls. You may also contact us to ask about access, correction, or deletion requests relating to information you have provided directly.</p>
-              <p>For privacy enquiries, use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Privacy request")}`}>contact form</Link>.</p>
+              <p>Depending on the circumstances, you may have rights to access, correct, erase, restrict, or object to processing, receive portable data, withdraw consent, and complain to a regulator. Where your organisation controls workspace data, we may refer your request to that organisation or help it respond.</p>
+              <p>Send requests to <a href="mailto:contact@exdox.co.uk">contact@exdox.co.uk</a> or use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Data rights request")}`}>contact form</Link>. We may verify your identity and normally respond within one month, subject to lawful extensions.</p>
+              <p>You can complain to the UK Information Commissioner&apos;s Office at <a href="https://ico.org.uk/make-a-complaint/" target="_blank" rel="noreferrer">ico.org.uk/make-a-complaint</a>.</p>
             </>
           ),
         },
+        {
+          heading: "Cookies, children, and policy changes",
+          body: (
+            <>
+              <p>Non-essential analytics and advertising technologies are used only in line with the choices presented through our consent tools. See the <Link to="/cookies">Cookie Policy</Link> for details.</p>
+              <p>Exdox is a business service and is not intended for children. We may update this policy when the service, providers, or legal requirements change and will publish the revised date here.</p>
+            </>
+          ),
+        },
+      ]}
+    />
+  );
+}
+
+function DataProcessingAgreementSection() {
+  return (
+    <PolicyLayout
+      title="Exdox Data Processing Agreement"
+      updatedOn="21 September 2026"
+      sections={[
+        {
+          heading: "Status and parties",
+          body: (
+            <>
+              <p>This Data Processing Agreement (DPA) forms part of the Exdox Terms and applies automatically where a customer uses Exdox to process personal data. The customer is the controller and Exdox, operated by Terry Reed, is the processor unless the parties&apos; roles are different under data-protection law.</p>
+              <p>It lasts for as long as Exdox processes customer personal data under the service agreement.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Processing details",
+          body: (
+            <>
+              <p>The subject matter is the provision of Exdox&apos;s receipt, invoice, expense, mileage, approval, reporting, AI-assisted extraction, storage, support, billing, and customer-directed integration services.</p>
+              <p>Data subjects may include the customer&apos;s staff, contractors, suppliers, customers, and people named in business documents. Data may include identity and contact details, employment or role information, transaction and expense data, location or journey information entered for mileage, document images and contents, approval activity, and account or device identifiers. Customers must not submit special-category or criminal-offence data unless lawful, necessary, and expressly agreed.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Exdox obligations",
+          body: (
+            <>
+              <p>Exdox will process customer personal data only on documented instructions, including the customer&apos;s configuration and authorised use of the service, unless UK law requires otherwise. Exdox will ensure authorised personnel are bound by confidentiality and will maintain appropriate technical and organisational security measures.</p>
+              <p>Exdox will reasonably assist the customer with data-subject requests, security obligations, breach response, data-protection impact assessments, and regulator enquiries, taking account of the nature of processing and information available to Exdox. Exdox will notify the customer without undue delay after becoming aware of a personal-data breach affecting customer data.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Subprocessors and transfers",
+          body: (
+            <>
+              <p>The customer gives general authorisation for the providers listed on the <Link to="/subprocessors">Subprocessors page</Link>. Exdox will impose data-protection obligations that provide materially equivalent protection and remains responsible for subprocessor performance as required by law.</p>
+              <p>Exdox will publish material new subprocessors before they begin relevant processing. A customer with a reasonable data-protection objection should contact Exdox promptly so the parties can seek a practical solution. Restricted international transfers will use a lawful UK transfer mechanism and any required supplementary safeguards.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Deletion, return, and audit information",
+          body: (
+            <>
+              <p>At the end of the service, Exdox will delete customer personal data in line with the <Link to="/data-retention">Data Retention Policy</Link>, unless the customer requests an available export before deletion or UK law requires retention.</p>
+              <p>Exdox will provide information reasonably necessary to demonstrate compliance with this DPA. Audits must be proportionate, protect other customers and security, use existing independent evidence first where available, and be arranged on reasonable notice.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Customer obligations and contact",
+          body: (
+            <>
+              <p>The customer is responsible for lawful instructions, transparency to data subjects, a valid lawful basis, appropriate user permissions, data accuracy, and deciding what data is submitted, retained, exported, or deleted.</p>
+              <p>Questions or requests about this DPA can be sent to <a href="mailto:contact@exdox.co.uk">contact@exdox.co.uk</a> or through the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Data processing agreement request")}`}>contact form</Link>.</p>
+            </>
+          ),
+        },
+      ]}
+    />
+  );
+}
+
+function SubprocessorsSection() {
+  return (
+    <PolicyLayout
+      title="Exdox Subprocessors"
+      updatedOn="21 September 2026"
+      sections={[
+        { heading: "Amazon Web Services", body: <p>Amazon Web Services provides primary UK-region cloud hosting, compute, encrypted object storage, database functions, and transactional email delivery. Data can include account details, workspace records, uploaded files, audit information, and email delivery details.</p> },
+        { heading: "OpenAI", body: <p>OpenAI&apos;s API supports AI-assisted extraction from uploaded business documents. Data can include the document content and instructions needed to produce extracted fields. Users must review extracted results before relying on them.</p> },
+        { heading: "Stripe", body: <p>Stripe provides hosted checkout, subscription billing, invoices, and the customer billing portal. Stripe receives billing contact and transaction details and stores payment-card details itself; Exdox receives only billing identifiers and status information needed to manage access.</p> },
+        {
+          heading: "Customer-directed and public-site services",
+          body: (
+            <>
+              <p>Xero receives accounting data only when an authorised customer connects Xero and directs Exdox to publish records. Xero acts under its own terms for the connected accounting service.</p>
+              <p>Google Analytics may process public-site usage data only after the relevant non-essential cookie consent. Consent can be withdrawn through the site&apos;s cookie controls.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Changes and objections",
+          body: <p>We update this list before a material new provider begins processing customer personal data. Customers should review this page periodically and can raise a reasonable data-protection objection through the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Data processing agreement request")}`}>contact form</Link>.</p>,
+        },
+      ]}
+    />
+  );
+}
+
+function DataRetentionSection() {
+  return (
+    <PolicyLayout
+      title="Exdox Data Retention Policy"
+      updatedOn="21 September 2026"
+      sections={[
+        { heading: "Active workspaces", body: <p>Account and workspace information is kept while the service is active and as needed to deliver requested features. Authorised users can delete individual operational records, and workspace owners can close the whole account from the authenticated deletion screen.</p> },
+        {
+          heading: "Recycle bin and account closure",
+          body: (
+            <>
+              <p>Records placed in the Exdox recycle bin are scheduled for permanent removal after three days unless restored first.</p>
+              <p>Closing a workspace removes active user access and purges Exdox-hosted operational data, including stored object versions, across receipts, claims, mileage evidence, sales documents, vault and incoming files, rules, cards, departments, integrations, and related workspace settings. Linked billing access is cancelled and the Stripe customer profile is requested for deletion.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Limited records kept after closure",
+          body: (
+            <>
+              <p>Exdox may retain a minimal record where required for tax, accounting, fraud prevention, disputes, security, or another legal obligation. UK accounting and tax evidence may be retained for up to six years where that obligation applies.</p>
+              <p>Support and privacy-request correspondence may be kept for up to 24 months after resolution where reasonably needed to evidence the response or handle a dispute. A legal hold overrides ordinary deletion only for the affected information and for as long as necessary.</p>
+            </>
+          ),
+        },
+        {
+          heading: "Providers, logs, and backups",
+          body: (
+            <>
+              <p>Service providers may retain limited data under their documented deletion cycles or independent legal obligations. Security and operational logs are kept only for configured security, diagnostic, and incident-response needs. Consent-based analytics data follows the relevant Google retention settings and the user&apos;s cookie choices.</p>
+              <p>Residual backup copies are isolated from ordinary use and age out through the applicable backup lifecycle. They are not restored to active service except for genuine disaster recovery.</p>
+            </>
+          ),
+        },
+        { heading: "Requests", body: <p>To request deletion, correction, access, or more detail about an applicable period, use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Data rights request")}`}>contact form</Link>. We will explain any legal reason that prevents immediate deletion.</p> },
       ]}
     />
   );
@@ -10904,7 +11145,7 @@ function AccountDeletionSection() {
   return (
     <PolicyLayout
       title="Exdox Account Deletion"
-      updatedOn="27 July 2026"
+      updatedOn="21 September 2026"
       sections={[
         {
           heading: "Who can request deletion",
@@ -10929,8 +11170,8 @@ function AccountDeletionSection() {
           heading: "What is deleted",
           body: (
             <>
-              <p>When an account deletion request is approved, we aim to remove or disable the user&apos;s login access, profile-level account details, and app access associated with that user.</p>
-              <p>Where deletion applies to an entire workspace, we also aim to remove active workspace access and operational records that no longer need to be retained.</p>
+              <p>Owner-confirmed workspace deletion removes user access and Exdox-hosted operational data across receipts, invoices, expense and mileage claims, evidence, sales records, incoming and vault files, rules, company-card records, departments, integrations, and workspace settings.</p>
+              <p>Stored object versions are purged, the subscription is cancelled, and deletion of the linked Stripe customer profile is requested. This action cannot be undone.</p>
             </>
           ),
         },
@@ -10939,7 +11180,8 @@ function AccountDeletionSection() {
           body: (
             <>
               <p>Some records may need to be retained for a limited period where required for legal compliance, fraud prevention, dispute handling, security investigations, backup recovery, or bookkeeping and tax record obligations.</p>
-              <p>This may include finance evidence such as receipts, invoices, claim history, billing events, audit logs, and support correspondence where retention is reasonably required to protect the service or comply with applicable obligations.</p>
+              <p>This may include limited billing or tax evidence, security or fraud records, and support correspondence where retention is reasonably required. External providers may also retain records under their own legal duties or documented deletion cycles.</p>
+              <p>See the <Link to="/data-retention">Data Retention Policy</Link> for the applicable rules.</p>
             </>
           ),
         },
@@ -10947,7 +11189,7 @@ function AccountDeletionSection() {
           heading: "Deletion timing",
           body: (
             <>
-              <p>We aim to begin handling verified deletion requests promptly. In normal cases, active account access is removed first and the remaining deletion work is usually completed within 30 days.</p>
+              <p>The authenticated owner deletion process starts immediately. If a deletion request is made through support, we verify authority and normally respond within one month.</p>
               <p>Backups or legally required retained records may remain for longer where necessary, but are kept only for the limited retention purpose that applies to them.</p>
             </>
           ),
@@ -11377,6 +11619,8 @@ function ContactSection({ embedded = false, session = null }: { embedded?: boole
     "Security request",
     "Terms request",
     "Privacy request",
+    "Data rights request",
+    "Data processing agreement request",
     "Cookie policy request",
     "Account deletion request",
   ];
