@@ -9373,7 +9373,7 @@ function LoginState(props: {
             <p>Secure access for finance teams, approvers, and employee expense users.</p>
             {props.confirmationComplete ? (
               <div className="success-banner">
-                Email confirmed. Log in to continue with your selected trial.
+                Email confirmed. Log in to continue.
               </div>
             ) : null}
             {props.accountDeleted ? (
@@ -9578,8 +9578,8 @@ function ResetPasswordState(props: {
                   setLocalError("This reset link is incomplete. Request a new one.");
                   return;
                 }
-                if (password.length < 8) {
-                  setLocalError("Use a password with at least 8 characters.");
+                if (!meetsPasswordRequirements(password)) {
+                  setLocalError(passwordRequirementsMessage);
                   return;
                 }
                 if (password !== confirmPassword) {
@@ -9601,11 +9601,12 @@ function ResetPasswordState(props: {
                   autoComplete="new-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="At least 8 characters"
+                  placeholder="Create a strong password"
                   minLength={8}
                   required
                 />
               </label>
+              <PasswordRequirements password={password} />
               <label>
                 Confirm new password
                 <input
@@ -9637,6 +9638,33 @@ function ResetPasswordState(props: {
   );
 }
 
+const passwordRequirementsMessage = "Use at least 8 characters, one capital letter, and one special character.";
+
+function meetsPasswordRequirements(password: string) {
+  return password.length >= 8 && /[A-Z]/.test(password) && /[\p{P}\p{S}]/u.test(password);
+}
+
+function PasswordRequirements({ password }: { password: string }) {
+  const requirements = [
+    { label: "At least 8 characters", met: password.length >= 8 },
+    { label: "One capital letter (A–Z)", met: /[A-Z]/.test(password) },
+    { label: "One special character (for example, ! or #)", met: /[\p{P}\p{S}]/u.test(password) },
+  ];
+
+  return (
+    <div className="password-requirements" aria-label="Password requirements">
+      <span>Your password needs:</span>
+      <ul>
+        {requirements.map(({ label, met }) => (
+          <li key={label} className={password && met ? "requirement-met" : ""}>
+            <span aria-hidden="true">{password && met ? "✓" : "○"}</span> {label}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function RegisterState(props: {
   busy: boolean;
   error: string | null;
@@ -9651,6 +9679,7 @@ function RegisterState(props: {
   onRegister: (input: {
     accountType?: "owner" | "sole_trader" | "employee";
     email: string;
+    confirmEmail: string;
     password: string;
     confirmPassword: string;
     fullName?: string;
@@ -9668,6 +9697,7 @@ function RegisterState(props: {
   const [fullName, setFullName] = useState("");
   const [organisationName, setOrganisationName] = useState("");
   const [email, setEmail] = useState(props.initialEmail);
+  const [confirmEmail, setConfirmEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
@@ -9769,6 +9799,14 @@ function RegisterState(props: {
               onSubmit={async (event) => {
                 event.preventDefault();
                 setPasswordError(null);
+                if (email.trim().toLowerCase() !== confirmEmail.trim().toLowerCase()) {
+                  setPasswordError("The email addresses do not match. Enter the same email address in both fields.");
+                  return;
+                }
+                if (!meetsPasswordRequirements(password)) {
+                  setPasswordError(passwordRequirementsMessage);
+                  return;
+                }
                 if (password !== confirmPassword) {
                   setPasswordError("The passwords do not match. Enter the same password in both fields.");
                   return;
@@ -9776,6 +9814,7 @@ function RegisterState(props: {
                 const nextSuccessMessage = await props.onRegister({
                   accountType: invitedFlow ? undefined : employeeFlow ? "employee" : soleTraderFlow ? "sole_trader" : "owner",
                   email,
+                  confirmEmail,
                   password,
                   confirmPassword,
                   fullName: fullName || undefined,
@@ -9842,17 +9881,29 @@ function RegisterState(props: {
                 />
               </label>
               <label>
+                Confirm email address
+                <input
+                  type="email"
+                  autoComplete="off"
+                  value={confirmEmail}
+                  onChange={(event) => setConfirmEmail(event.target.value)}
+                  placeholder="Enter your email address again"
+                  required
+                />
+              </label>
+              <label>
                 Password
                 <input
                   type="password"
                   autoComplete="new-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="At least 8 characters"
+                  placeholder="Create a strong password"
                   minLength={8}
                   required
                 />
               </label>
+              <PasswordRequirements password={password} />
               <label>
                 Confirm password
                 <input

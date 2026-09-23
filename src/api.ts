@@ -178,6 +178,7 @@ export async function loginWithEmail(input: { email: string; password: string })
 export async function registerWithEmail(input: {
   accountType?: "owner" | "sole_trader" | "employee";
   email: string;
+  confirmEmail: string;
   password: string;
   confirmPassword: string;
   fullName?: string;

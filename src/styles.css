@@ -313,6 +313,33 @@ a {
   font-size: 0.94rem;
 }
 
+.password-requirements {
+  padding: 10px 12px;
+  border: 1px solid #d7e3ee;
+  border-radius: 10px;
+  background: #f6f9fc;
+  color: #455b73;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.password-requirements > span {
+  font-weight: 700;
+}
+
+.password-requirements ul {
+  display: grid;
+  gap: 3px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.password-requirements .requirement-met {
+  color: #15734f;
+  font-weight: 700;
+}
+
 .checkbox-field {
   grid-template-columns: auto 1fr;
   align-items: start;
