@@ -659,14 +659,14 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
       return {
         title: "Terms and Conditions | Exdox",
         description:
-          "Read the Exdox Terms and Conditions for free trials, billing, cancellation, acceptable use, account access, and service responsibilities.",
+          "Read the Exdox Terms and Conditions for UK and international customers, including trials, billing, account access, and service responsibilities.",
         canonicalPath: normalizedPath,
         robots: "index,follow",
         structuredData: buildPublicStructuredData({
           path: normalizedPath,
           pageName: "Terms and Conditions",
           pageDescription:
-            "Read the Exdox Terms and Conditions for free trials, billing, cancellation, acceptable use, account access, and service responsibilities.",
+            "Read the Exdox Terms and Conditions for UK and international customers, including trials, billing, account access, and service responsibilities.",
         }),
       };
     }
@@ -674,27 +674,27 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
       return {
         title: "Privacy Policy | Exdox",
         description:
-          "Read the Exdox privacy policy, including how we use cookies, analytics, contact data, and Google advertising services.",
+          "Read how Exdox handles account and workspace data for customers in the UK, EU, US, Australia, and Canada.",
         canonicalPath: normalizedPath,
         robots: "index,follow",
         structuredData: buildPublicStructuredData({
           path: normalizedPath,
           pageName: "Privacy Policy",
           pageDescription:
-            "Read the Exdox privacy policy, including how we use cookies, analytics, contact data, and Google advertising services.",
+            "Read how Exdox handles account and workspace data for customers in the UK, EU, US, Australia, and Canada.",
         }),
       };
     }
     if (normalizedPath === "/data-processing-agreement") {
       return {
         title: "Data Processing Agreement | Exdox",
-        description: "Read the Exdox customer Data Processing Agreement for UK GDPR controller and processor responsibilities.",
+        description: "Read the Exdox customer Data Processing Agreement for data handling across the UK, EU, US, Australia, and Canada.",
         canonicalPath: normalizedPath,
         robots: "index,follow",
         structuredData: buildPublicStructuredData({
           path: normalizedPath,
           pageName: "Data Processing Agreement",
-          pageDescription: "Read the Exdox customer Data Processing Agreement for UK GDPR controller and processor responsibilities.",
+          pageDescription: "Read the Exdox customer Data Processing Agreement for data handling across the UK, EU, US, Australia, and Canada.",
         }),
       };
     }
@@ -10792,7 +10792,7 @@ function TermsSection() {
   return (
     <PolicyLayout
       title="Exdox Terms and Conditions"
-      updatedOn="21 September 2026"
+      updatedOn="23 September 2026"
       sections={[
         {
           heading: "Who these terms apply to",
@@ -10851,6 +10851,16 @@ function TermsSection() {
           ),
         },
         {
+          heading: "Customers outside the UK",
+          body: (
+            <>
+              <p>Exdox is operated from the United Kingdom and may be used by business customers in the UK, European Union, United States, Australia, and Canada. The service is currently priced and billed in GBP; your bank or payment provider may convert the charge or apply its own fees. Check the price and billing details presented before confirming a subscription.</p>
+              <p>Tax rules for an Exdox subscription and for documents recorded in a workspace can differ by country or region. Exdox provides document capture and workflow tools, not a determination that a particular tax, accounting, mileage, or reimbursement treatment is correct for your business. You are responsible for reviewing records and applying the rules relevant to your organisation.</p>
+              <p>Nothing in these terms removes consumer or other rights that cannot be excluded under a law that applies to you.</p>
+            </>
+          ),
+        },
+        {
           heading: "Data processing",
           body: (
             <>
@@ -10905,14 +10915,14 @@ function PrivacyPolicySection() {
   return (
     <PolicyLayout
       title="Exdox Privacy Policy"
-      updatedOn="21 September 2026"
+      updatedOn="23 September 2026"
       sections={[
         {
           heading: "Who we are and when this policy applies",
           body: (
             <>
               <p>Exdox is operated by Terry Reed in the United Kingdom. For account, billing, security, support, website, and direct marketing data, Exdox is the data controller. Contact us at <a href="mailto:contact@exdox.co.uk">contact@exdox.co.uk</a> or through the contact form.</p>
-              <p>This policy applies to the Exdox website, Android app, authenticated workspace, support service, billing journey, and connected integrations.</p>
+              <p>This policy applies to the Exdox website, Android app, authenticated workspace, support service, billing journey, and connected integrations, including when they are used by people in the UK, European Union, United States, Australia, or Canada.</p>
               <p>For personal data that a customer organisation uploads or creates in its workspace, the customer is normally the controller and Exdox processes that data on the customer&apos;s instructions. Our <Link to="/data-processing-agreement">Data Processing Agreement</Link> covers that relationship.</p>
             </>
           ),
@@ -10959,7 +10969,8 @@ function PrivacyPolicySection() {
           heading: "International transfers",
           body: (
             <>
-              <p>Exdox&apos;s primary service infrastructure is hosted in the United Kingdom. Some providers may process data in other countries. Where UK personal data is transferred internationally, we require an applicable UK adequacy regulation or appropriate contractual safeguards, such as the UK International Data Transfer Agreement or UK Addendum, together with risk assessment where required.</p>
+              <p>Exdox&apos;s primary service infrastructure is hosted in the United Kingdom. Using Exdox from another country does not move your workspace into a local data centre. Some providers may process data in other countries; the current providers and their purposes are listed on our <Link to="/subprocessors">Subprocessors page</Link>.</p>
+              <p>Where a restricted transfer of UK or EU personal data occurs, we use an applicable adequacy decision or appropriate contractual safeguards and any required transfer assessment. Information processed outside your country may also be subject to the laws of the country where it is processed.</p>
             </>
           ),
         },
@@ -10977,8 +10988,9 @@ function PrivacyPolicySection() {
           body: (
             <>
               <p>Depending on the circumstances, you may have rights to access, correct, erase, restrict, or object to processing, receive portable data, withdraw consent, and complain to a regulator. Where your organisation controls workspace data, we may refer your request to that organisation or help it respond.</p>
-              <p>Send requests to <a href="mailto:contact@exdox.co.uk">contact@exdox.co.uk</a> or use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Data rights request")}`}>contact form</Link>. We may verify your identity and normally respond within one month, subject to lawful extensions.</p>
-              <p>You can complain to the UK Information Commissioner&apos;s Office at <a href="https://ico.org.uk/make-a-complaint/" target="_blank" rel="noreferrer">ico.org.uk/make-a-complaint</a>.</p>
+              <p>For people in the UK or EU, rights may arise under the UK GDPR or EU GDPR. In the United States, applicable state privacy laws may provide additional rights. Australian and Canadian privacy laws may provide rights to access or correct information and to raise a privacy complaint. The available rights and response deadlines depend on the law that applies to the request.</p>
+              <p>Send access, correction, deletion, or privacy-complaint requests to <a href="mailto:contact@exdox.co.uk">contact@exdox.co.uk</a> or use the <Link to={`${contactPagePath}?subject=${encodeURIComponent("Data rights request")}`}>contact form</Link>. Please describe your request and country or region. We may verify your identity, acknowledge the complaint, investigate it, and respond within the applicable legal timeframe.</p>
+              <p>If you remain dissatisfied, you may contact the relevant authority, such as the <a href="https://ico.org.uk/make-a-complaint/" target="_blank" rel="noreferrer">UK Information Commissioner</a>, an <a href="https://www.edpb.europa.eu/about-edpb/our-members_en" target="_blank" rel="noreferrer">EU data-protection authority</a>, the <a href="https://www.oaic.gov.au/privacy/privacy-complaints" target="_blank" rel="noreferrer">Australian Information Commissioner</a>, the <a href="https://www.priv.gc.ca/en/report-a-concern/" target="_blank" rel="noreferrer">Privacy Commissioner of Canada</a> or a relevant provincial authority, or an applicable US state privacy authority.</p>
             </>
           ),
         },
@@ -11000,13 +11012,13 @@ function DataProcessingAgreementSection() {
   return (
     <PolicyLayout
       title="Exdox Data Processing Agreement"
-      updatedOn="21 September 2026"
+      updatedOn="23 September 2026"
       sections={[
         {
           heading: "Status and parties",
           body: (
             <>
-              <p>This Data Processing Agreement (DPA) forms part of the Exdox Terms and applies automatically where a customer uses Exdox to process personal data. The customer is the controller and Exdox, operated by Terry Reed, is the processor unless the parties&apos; roles are different under data-protection law.</p>
+              <p>This Data Processing Agreement (DPA) forms part of the Exdox Terms and applies automatically where a customer uses Exdox to process personal data. Under UK and EU data-protection law, the customer is normally the controller and Exdox, operated by Terry Reed, is the processor unless the parties&apos; roles are different under the applicable law. For customers elsewhere, Exdox handles workspace data on the customer&apos;s instructions, subject to the privacy law that applies.</p>
               <p>It lasts for as long as Exdox processes customer personal data under the service agreement.</p>
             </>
           ),
@@ -11024,7 +11036,7 @@ function DataProcessingAgreementSection() {
           heading: "Exdox obligations",
           body: (
             <>
-              <p>Exdox will process customer personal data only on documented instructions, including the customer&apos;s configuration and authorised use of the service, unless UK law requires otherwise. Exdox will ensure authorised personnel are bound by confidentiality and will maintain appropriate technical and organisational security measures.</p>
+              <p>Exdox will process customer personal data only on documented instructions, including the customer&apos;s configuration and authorised use of the service, unless applicable law requires otherwise. Exdox will ensure authorised personnel are bound by confidentiality and will maintain appropriate technical and organisational security measures.</p>
               <p>Exdox will reasonably assist the customer with data-subject requests, security obligations, breach response, data-protection impact assessments, and regulator enquiries, taking account of the nature of processing and information available to Exdox. Exdox will notify the customer without undue delay after becoming aware of a personal-data breach affecting customer data.</p>
             </>
           ),
@@ -11033,8 +11045,8 @@ function DataProcessingAgreementSection() {
           heading: "Subprocessors and transfers",
           body: (
             <>
-              <p>The customer gives general authorisation for the providers listed on the <Link to="/subprocessors">Subprocessors page</Link>. Exdox will impose data-protection obligations that provide materially equivalent protection and remains responsible for subprocessor performance as required by law.</p>
-              <p>Exdox will publish material new subprocessors before they begin relevant processing. A customer with a reasonable data-protection objection should contact Exdox promptly so the parties can seek a practical solution. Restricted international transfers will use a lawful UK transfer mechanism and any required supplementary safeguards.</p>
+              <p>The customer gives general authorisation for the providers listed on the <Link to="/subprocessors">Subprocessors page</Link>. Exdox will impose data-protection obligations that provide materially equivalent protection and remains responsible for their performance as required by applicable law.</p>
+              <p>Exdox will publish material new subprocessors before they begin relevant processing. A customer with a reasonable data-protection objection should contact Exdox promptly so the parties can seek a practical solution. Restricted international transfers of UK or EU personal data will use an applicable adequacy decision or appropriate contractual safeguards and any required supplementary measures.</p>
             </>
           ),
         },
@@ -11042,7 +11054,7 @@ function DataProcessingAgreementSection() {
           heading: "Deletion, return, and audit information",
           body: (
             <>
-              <p>At the end of the service, Exdox will delete customer personal data in line with the <Link to="/data-retention">Data Retention Policy</Link>, unless the customer requests an available export before deletion or UK law requires retention.</p>
+              <p>At the end of the service, Exdox will delete customer personal data in line with the <Link to="/data-retention">Data Retention Policy</Link>, unless the customer requests an available export before deletion or applicable law requires retention.</p>
               <p>Exdox will provide information reasonably necessary to demonstrate compliance with this DPA. Audits must be proportionate, protect other customers and security, use existing independent evidence first where available, and be arranged on reasonable notice.</p>
             </>
           ),
@@ -11092,7 +11104,7 @@ function DataRetentionSection() {
   return (
     <PolicyLayout
       title="Exdox Data Retention Policy"
-      updatedOn="21 September 2026"
+      updatedOn="23 September 2026"
       sections={[
         { heading: "Active workspaces", body: <p>Account and workspace information is kept while the service is active and as needed to deliver requested features. Authorised users can delete individual operational records, and workspace owners can close the whole account from the authenticated deletion screen.</p> },
         {
@@ -11108,7 +11120,7 @@ function DataRetentionSection() {
           heading: "Limited records kept after closure",
           body: (
             <>
-              <p>Exdox may retain a minimal record where required for tax, accounting, fraud prevention, disputes, security, or another legal obligation. UK accounting and tax evidence may be retained for up to six years where that obligation applies.</p>
+              <p>Exdox may retain a minimal record where required for tax, accounting, fraud prevention, disputes, security, or another legal obligation. UK accounting and tax evidence may be retained for up to six years where that obligation applies; a different applicable law may require another period.</p>
               <p>Support and privacy-request correspondence may be kept for up to 24 months after resolution where reasonably needed to evidence the response or handle a dispute. A legal hold overrides ordinary deletion only for the affected information and for as long as necessary.</p>
             </>
           ),
@@ -11132,7 +11144,7 @@ function CookiePolicySection() {
   return (
     <PolicyLayout
       title="Exdox Cookie Policy"
-      updatedOn="17 July 2026"
+      updatedOn="23 September 2026"
       sections={[
         {
           heading: "What cookies are",
@@ -11179,7 +11191,7 @@ function CookiePolicySection() {
           heading: "Consent and withdrawal",
           body: (
             <>
-              <p>For users in the EEA, the UK, and Switzerland, we may present a consent interface that allows acceptance, rejection, or configuration of non-essential cookies. You can change your choices later through available consent settings or browser controls.</p>
+              <p>Visitors in the UK, EU, United States, Australia, Canada, and elsewhere can choose Essential only or Accept all cookies on the public website. Non-essential analytics are enabled only after Accept all cookies. You can change your choice later through Cookie preferences in the footer or your browser controls.</p>
             </>
           ),
         },
@@ -11208,7 +11220,7 @@ function AccountDeletionSection() {
   return (
     <PolicyLayout
       title="Exdox Account Deletion"
-      updatedOn="21 September 2026"
+      updatedOn="23 September 2026"
       sections={[
         {
           heading: "Who can request deletion",
@@ -11252,7 +11264,7 @@ function AccountDeletionSection() {
           heading: "Deletion timing",
           body: (
             <>
-              <p>The authenticated owner deletion process starts immediately. If a deletion request is made through support, we verify authority and normally respond within one month.</p>
+              <p>The authenticated owner deletion process starts immediately. If a deletion request is made through support, we verify authority and respond within the period required by the applicable privacy law.</p>
               <p>Backups or legally required retained records may remain for longer where necessary, but are kept only for the limited retention purpose that applies to them.</p>
             </>
           ),
