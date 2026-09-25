@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, startTransition, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   Link,
   NavLink,
@@ -89,8 +89,6 @@ import {
   publishToXero,
 } from "./api";
 import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
-import { PageTutorial } from "./PageTutorial";
-import { findWorkspaceChatbotAnswer } from "./chatbotKnowledge";
 import { cookieConsentStorageKey, setGoogleAnalyticsConsent, type CookieConsentChoice } from "./googleAnalytics";
 import type {
   BillingCycle,
@@ -337,6 +335,7 @@ function resolvePricingSliderStep(
 const brandLogoSrc = "/branding/exdox-logo.webp";
 const brandMarkSrc = "/branding/exdox-mark.webp";
 const publicBrandMarkSrc = "/branding/exdox-mark-header-v2-96.webp";
+const PageTutorial = lazy(() => import("./PageTutorial").then(({ PageTutorial }) => ({ default: PageTutorial })));
 const websiteOrigin = "https://www.exdox.co.uk";
 
 type SeoConfig = {
@@ -950,8 +949,8 @@ export function App() {
     setStore((current) => ({ ...current, costs, sales, vault, claims, reconciliation }));
   };
 
-  const loadWorkspace = async (token: string, fallbackSession?: SessionState | null) => {
-    const nextSession = await fetchSession(token).catch((error) => {
+  const loadWorkspace = async (token: string, fallbackSession?: SessionState | null, sessionHydrated = false) => {
+    const nextSession = sessionHydrated && fallbackSession ? fallbackSession : await fetchSession(token).catch((error) => {
       if (isBillingAccessError(error)) throw error;
       if (fallbackSession) {
         return fallbackSession;
@@ -1046,7 +1045,12 @@ export function App() {
     if (!session || !workspaceFreshRef.current) {
       return;
     }
-    void writeWorkspaceCache(workspaceCacheScope(session), store).catch(() => undefined);
+    // A refresh can update several queues in quick succession. Save their final
+    // snapshot once, after React has had a chance to render the new workspace.
+    const timeout = window.setTimeout(() => {
+      void writeWorkspaceCache(workspaceCacheScope(session), store).catch(() => undefined);
+    }, 500);
+    return () => window.clearTimeout(timeout);
   }, [session, store]);
 
   if (loading && !session) {
@@ -1201,7 +1205,7 @@ export function App() {
                 try {
                   const result = await registerWithEmail(input);
                   if (result.kind === "confirmed") {
-                    await loadWorkspace(result.session.token, result.session);
+                    await loadWorkspace(result.session.token, result.session, result.sessionHydrated);
                     return null;
                   }
                   if (result.checkoutUrl) {
@@ -1270,7 +1274,7 @@ export function App() {
                 if (await startPendingTrialCheckout(nextSession)) {
                   return;
                 }
-                await loadWorkspace(nextSession.token, nextSession);
+                await loadWorkspace(nextSession.token, nextSession, loginResult.sessionHydrated);
               } catch (loginError) {
                 setSession(null);
                 setAuthError(loginError instanceof Error ? loginError.message : "Sign in failed.");
@@ -1733,12 +1737,14 @@ function DashboardShell(props: {
             <h1>{businessAdmin ? routeTitle(location.pathname) : employeeRouteTitle(location.pathname)}</h1>
           </div>
           <div className="topbar-actions" data-tutorial="actions">
-            <PageTutorial
-              pathname={location.pathname}
-              businessAdmin={businessAdmin}
-              userId={props.session.user.id}
-              organisationId={props.session.activeOrganisationId}
-            />
+            <Suspense fallback={null}>
+              <PageTutorial
+                pathname={location.pathname}
+                businessAdmin={businessAdmin}
+                userId={props.session.user.id}
+                organisationId={props.session.activeOrganisationId}
+              />
+            </Suspense>
             {businessAdmin ? (
               <>
                 <select
@@ -2204,7 +2210,7 @@ const helpChatQuickPrompts = [
   "How do I invite a manager?",
 ];
 
-function helpChatReply(message: string) {
+function helpChatReply(message: string, findKnowledgeAnswer: (message: string) => string | null) {
   const input = message.toLowerCase().replace(/[^a-z0-9£@]+/g, " ").trim();
   const includes = (...terms: string[]) => terms.some((term) => input.includes(term));
 
@@ -2223,7 +2229,7 @@ function helpChatReply(message: string) {
   if (/^(bye|goodbye|see you|see ya|talk later|that s all|thats all)\b/.test(input)) {
     return "Goodbye for now. Take care, and come back whenever you need a hand with Exdox.";
   }
-  const knowledgeAnswer = findWorkspaceChatbotAnswer(message);
+  const knowledgeAnswer = findKnowledgeAnswer(message);
   if (knowledgeAnswer) {
     return knowledgeAnswer;
   }
@@ -2439,8 +2445,13 @@ function HelpChatWidget() {
     setDraft("");
     setIsReplying(true);
     window.setTimeout(() => {
-      setMessages((current) => [...current, { id: Date.now() + 1, sender: "assistant", text: helpChatReply(text) }]);
-      setIsReplying(false);
+      void import("./chatbotKnowledge")
+        .then(({ findWorkspaceChatbotAnswer }) => helpChatReply(text, findWorkspaceChatbotAnswer))
+        .catch(() => helpChatReply(text, () => null))
+        .then((reply) => {
+          setMessages((current) => [...current, { id: Date.now() + 1, sender: "assistant", text: reply }]);
+          setIsReplying(false);
+        });
     }, 420);
   };
 
@@ -9364,7 +9375,7 @@ function LoginState(props: {
         )}
         <main className="login-main">
           <section className="login-visual" aria-label="Secure receipt capture">
-            <img src="/branding/exdox-login-hero.webp" alt="Cafe owner capturing a receipt with exdox" />
+            <img src="/branding/exdox-login-hero-1400.webp" srcSet="/branding/exdox-login-hero-720.webp 720w, /branding/exdox-login-hero-1400.webp 1400w" sizes="(max-width: 720px) calc(100vw - 48px), 700px" width="1693" height="929" fetchPriority="high" alt="Cafe owner capturing a receipt with exdox" />
             <span className="login-callout callout-snap">Snap &amp; Sync</span>
             <span className="login-callout callout-total">Total Expense View</span>
           </section>
@@ -9483,7 +9494,7 @@ function ForgotPasswordState(props: {
       <div className={loginShellClassName}>
         <main className="login-main">
           <section className="login-visual" aria-label="Password reset request">
-            <img src="/branding/exdox-login-hero.webp" alt="Cafe owner capturing a receipt with exdox" />
+            <img src="/branding/exdox-login-hero-1400.webp" srcSet="/branding/exdox-login-hero-720.webp 720w, /branding/exdox-login-hero-1400.webp 1400w" sizes="(max-width: 720px) calc(100vw - 48px), 700px" width="1693" height="929" fetchPriority="high" alt="Cafe owner capturing a receipt with exdox" />
             <span className="login-callout callout-snap">Password Reset</span>
             <span className="login-callout callout-hmrc">Secure Account Recovery</span>
             <span className="login-callout callout-total">Email Link Delivery</span>
@@ -9557,7 +9568,7 @@ function ResetPasswordState(props: {
       <div className={loginShellClassName}>
         <main className="login-main">
           <section className="login-visual" aria-label="Choose a new Exdox password">
-            <img src="/branding/exdox-platform-hero.webp" alt="Exdox finance workspace with synced receipt controls" />
+            <img src="/branding/exdox-platform-hero-1400.webp" srcSet="/branding/exdox-platform-hero-720.webp 720w, /branding/exdox-platform-hero-1400.webp 1400w" sizes="(max-width: 720px) calc(100vw - 48px), 700px" width="1717" height="916" fetchPriority="high" alt="Exdox finance workspace with synced receipt controls" />
             <span className="login-callout callout-snap">Set New Password</span>
             <span className="login-callout callout-hmrc">Secure Link Check</span>
             <span className="login-callout callout-total">Account Update</span>
@@ -9745,7 +9756,7 @@ function RegisterState(props: {
         )}
         <main className="login-main">
           <section className="login-visual" aria-label="Receipt capture and finance review">
-            <img src="/branding/exdox-platform-hero.webp" alt="Exdox finance workspace with synced receipt controls" />
+            <img src="/branding/exdox-platform-hero-1400.webp" srcSet="/branding/exdox-platform-hero-720.webp 720w, /branding/exdox-platform-hero-1400.webp 1400w" sizes="(max-width: 720px) calc(100vw - 48px), 700px" width="1717" height="916" fetchPriority="high" alt="Exdox finance workspace with synced receipt controls" />
             <span className="login-callout callout-snap">Invite &amp; Onboard</span>
             <span className="login-callout callout-hmrc">Web + Mobile Sync</span>
             <span className="login-callout callout-total">Receipt Review Ready</span>
@@ -10011,7 +10022,7 @@ function ConfirmEmailState(props: {
       <div className={loginShellClassName}>
         <main className="login-main">
           <section className="login-visual" aria-label="Email confirmation and workspace activation">
-            <img src="/branding/exdox-platform-hero.webp" alt="Exdox finance workspace with synced receipt controls" />
+            <img src="/branding/exdox-platform-hero-1400.webp" srcSet="/branding/exdox-platform-hero-720.webp 720w, /branding/exdox-platform-hero-1400.webp 1400w" sizes="(max-width: 720px) calc(100vw - 48px), 700px" width="1717" height="916" fetchPriority="high" alt="Exdox finance workspace with synced receipt controls" />
             <span className="login-callout callout-snap">Email Confirmation</span>
             <span className="login-callout callout-hmrc">Workspace Activation</span>
             <span className="login-callout callout-total">Secure Sign-Up</span>
@@ -10279,7 +10290,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
       </section>
       <section className="xero-integration-strip" aria-label="Integrated with Xero">
         <span>Integrated with</span>
-        <img src="/branding/xero-logo-240.webp" alt="Xero" width="240" height="135" />
+        <img src="/branding/xero-logo-240x80.webp" alt="Xero" width="240" height="80" />
       </section>
       <section className="receipt-demo-band" aria-labelledby="receipt-demo-title">
         <div className="receipt-demo-inner">

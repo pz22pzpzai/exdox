@@ -67,6 +67,7 @@ export type RegisterResult =
   | {
       kind: "confirmed";
       session: SessionState;
+      sessionHydrated: boolean;
     }
   | {
       kind: "pending_confirmation";
@@ -79,6 +80,7 @@ export type LoginResult =
   | {
       kind: "confirmed";
       session: SessionState;
+      sessionHydrated: boolean;
     }
   | {
       kind: "pending_confirmation";
@@ -161,9 +163,11 @@ export async function loginWithEmail(input: { email: string; password: string })
   }
 
   let hydrated: SessionState;
+  let sessionHydrated = false;
   try {
     const session = await fetchSession(payload.token);
     hydrated = { ...session, token: payload.token };
+    sessionHydrated = true;
   } catch (error) {
     if (isBillingAccessError(error)) throw error;
     hydrated = buildFallbackSession(payload.token, payload.user);
@@ -172,6 +176,7 @@ export async function loginWithEmail(input: { email: string; password: string })
   return {
     kind: "confirmed",
     session: hydrated,
+    sessionHydrated,
   };
 }
 
@@ -218,9 +223,11 @@ export async function registerWithEmail(input: {
   }
 
   let hydrated: SessionState;
+  let sessionHydrated = false;
   try {
     const session = await fetchSession(payload.token);
     hydrated = { ...session, token: payload.token };
+    sessionHydrated = true;
   } catch {
     hydrated = buildFallbackSession(payload.token, payload.user);
   }
@@ -229,6 +236,7 @@ export async function registerWithEmail(input: {
   return {
     kind: "confirmed",
     session: hydrated,
+    sessionHydrated,
   };
 }
 
