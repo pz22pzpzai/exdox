@@ -5146,6 +5146,7 @@ input {
 
   .public-hero > img {
     width: 100%;
+    height: auto;
     margin: 12px 0 0;
   }
 
