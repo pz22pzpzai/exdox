@@ -336,7 +336,7 @@ function resolvePricingSliderStep(
 
 const brandLogoSrc = "/branding/exdox-logo.webp";
 const brandMarkSrc = "/branding/exdox-mark.webp";
-const publicBrandMarkSrc = "/branding/exdox-mark-header-v2.webp";
+const publicBrandMarkSrc = "/branding/exdox-mark-header-v2-96.webp";
 const websiteOrigin = "https://www.exdox.co.uk";
 
 type SeoConfig = {
@@ -10253,7 +10253,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
               rel="noreferrer"
               aria-label="Download Exdox on Google Play"
             >
-              <img src="/branding/google-play-store-badge.jpg" alt="Get it on Google Play" />
+              <img src="/branding/google-play-store-badge-480.webp" alt="Get it on Google Play" width="480" height="144" />
             </a>
             <Link
               className="store-badge store-badge-disabled store-badge-interest"
@@ -10267,11 +10267,19 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
           </div>
           <span>No payment details are needed to start. After 14 days, pay for your first month only if you choose to continue.</span>
         </div>
-        <img src="/branding/exdox-platform-hero.webp" alt="Connected exdox accounting workspace" />
+        <img
+          src="/branding/exdox-platform-hero-1400.webp"
+          srcSet="/branding/exdox-platform-hero-720.webp 720w, /branding/exdox-platform-hero-1400.webp 1400w"
+          sizes="(max-width: 650px) calc(100vw - 28px), (max-width: 1050px) 55vw, 672px"
+          width="1717"
+          height="916"
+          fetchPriority="high"
+          alt="Connected exdox accounting workspace"
+        />
       </section>
       <section className="xero-integration-strip" aria-label="Integrated with Xero">
         <span>Integrated with</span>
-        <img src="/branding/xero-logo.jpg" alt="Xero" />
+        <img src="/branding/xero-logo-240.webp" alt="Xero" width="240" height="135" />
       </section>
       <section className="receipt-demo-band" aria-labelledby="receipt-demo-title">
         <div className="receipt-demo-inner">
@@ -10284,7 +10292,8 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
             className="receipt-demo-video"
             controls
             playsInline
-            preload="metadata"
+            preload="none"
+            poster="/videos/exdox-receipt-demo-poster.webp"
             width="592"
             height="1280"
             aria-label="Exdox realtime receipt scanning demonstration"
