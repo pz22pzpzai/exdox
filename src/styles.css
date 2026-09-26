@@ -5747,6 +5747,67 @@ input {
   }
 }
 
+.mileage-route-picker {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #d8e4e3;
+  border-radius: 12px;
+  background: #f7fbfa;
+}
+
+.mileage-route-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mileage-route-heading p,
+.mileage-route-picker .field-hint {
+  margin: 5px 0 0;
+  color: #516562;
+  font-size: 0.9rem;
+}
+
+.mileage-route-options {
+  display: grid;
+  gap: 8px;
+}
+
+.mileage-route-option {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cbdcd9;
+  border-radius: 9px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mileage-route-option.selected {
+  border-color: #0d8575;
+  background: #e9f7f3;
+}
+
+.mileage-route-option span {
+  font-size: 0.85rem;
+  color: #516562;
+}
+
+.mileage-route-error {
+  color: #a32d2d !important;
+}
+
+@media (max-width: 640px) {
+  .mileage-route-heading {
+    flex-direction: column;
+  }
+}
+
 /* Give the authenticated workspace a roomier 80% presentation on full desktop displays. */
 @media (min-width: 981px) and (hover: hover) and (pointer: fine) {
   .dashboard-shell {

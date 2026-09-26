@@ -447,6 +447,25 @@ export async function listClaims(token: string): Promise<ClaimRecord[]> {
   return response.claims;
 }
 
+export type MileageRouteOption = {
+  miles: number;
+  durationMinutes: number;
+  via: string[];
+};
+
+export type MileageRouteResult = {
+  startPostcode: string;
+  endPostcode: string;
+  routes: MileageRouteOption[];
+};
+
+export async function calculateMileageRoute(token: string, startPostcode: string, endPostcode: string): Promise<MileageRouteResult> {
+  return apiFetch<MileageRouteResult>("/mileage/route", token, {
+    method: "POST",
+    body: JSON.stringify({ startPostcode, endPostcode }),
+  });
+}
+
 export async function createClaim(
   token: string,
   payload: { name?: string; description?: string; currency?: string; claimType?: 'standard' | 'mileage'; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number },

@@ -30,3 +30,9 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 - The login and other authentication illustrations now use responsive WebP assets. Page tutorial code loads only on authenticated pages, and chatbot answers load when a visitor sends a message. After successful login or registration, an already hydrated session is reused for workspace loading to avoid a duplicate `/session` request; fallback sessions still trigger a fresh request. Workspace cache writes are delayed by 500 ms and coalesced across quick updates.
 - A signed-in browser spot check before push opened Overview, Workflows, Analytics, Costs, Settings, and Sales Workspace. These pages rendered, but the warmed browser check cannot quantify cold-start or individual API latency. Do not attribute remaining delay to a particular endpoint without a request timing trace.
 - Never delete or move a mobile app keystore or signing details. Those belong to the separate app project.
+
+## Mileage routing (2026-09-26)
+
+- `src/MileageRoutePicker.tsx` calculates driving routes from complete UK postcodes on the new mileage claim form, offers Mapbox alternatives, and keeps Total miles editable for the actual journey. Pending admin mileage review forms also allow recalculation on demand.
+- `src/api.ts` calls the authenticated server `POST /mileage/route` endpoint. The Mapbox token belongs only in the server's protected environment secret; never add it to Vite variables, browser code, or this repository.
+- This change is website-only. The Android mileage form is unchanged.

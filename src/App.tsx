@@ -89,6 +89,7 @@ import {
   publishToXero,
 } from "./api";
 import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
+import { MileageRoutePicker } from "./MileageRoutePicker";
 import { cookieConsentStorageKey, setGoogleAnalyticsConsent, type CookieConsentChoice } from "./googleAnalytics";
 import type {
   BillingCycle,
@@ -2081,7 +2082,7 @@ function DashboardShell(props: {
                 <Route path="/claims/new" element={<CreateClaimPage onCreateClaim={props.onClaimCreate} />} />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
-                <Route path="/claims/new/mileage" element={<CreateClaimPage onCreateClaim={props.onClaimCreate} claimType="mileage" />} />
+                <Route path="/claims/new/mileage" element={<CreateClaimPage onCreateClaim={props.onClaimCreate} claimType="mileage" sessionToken={props.session.token} />} />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route
@@ -2163,7 +2164,7 @@ function DashboardShell(props: {
               />
               <Route
                 path="/claims/new/mileage"
-                element={<CreateClaimPage onCreateClaim={props.onClaimCreate} claimType="mileage" employeeMode />}
+                element={<CreateClaimPage onCreateClaim={props.onClaimCreate} claimType="mileage" sessionToken={props.session.token} employeeMode />}
               />
               <Route
                 path="/claims/:id"
@@ -5040,6 +5041,7 @@ function MileageCostReviewPage(props: {
         <label>Start postcode<input value={claim.mileageStartPostcode ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageStartPostcode: event.target.value })} /></label>
         <label>End postcode<input value={claim.mileageEndPostcode ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageEndPostcode: event.target.value })} /></label>
         <label>Total miles<input type="number" min="0" step="0.1" value={claim.mileageTotalMiles ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageTotalMiles: Number(event.target.value) })} /></label>
+        {claim.status === "pending" ? <MileageRoutePicker token={props.sessionToken} startPostcode={claim.mileageStartPostcode ?? ""} endPostcode={claim.mileageEndPostcode ?? ""} totalMiles={claim.mileageTotalMiles ?? null} disabled={saving} onSelect={(miles, startPostcode, endPostcode) => setClaim((current) => current ? { ...current, mileageStartPostcode: startPostcode, mileageEndPostcode: endPostcode, mileageTotalMiles: miles } : current)} /> : null}
         <label>Rate per mile<input type="number" min="0" step="0.0001" value={claim.mileageRate ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageRate: Number(event.target.value) })} /></label>
         <label>Calculated total<input value={currency(total, claim.currency)} readOnly /></label>
         <label>Status<input value={claimStatusLabel(claim.status)} readOnly /></label>
@@ -6294,10 +6296,12 @@ function ClaimsPage({
 function CreateClaimPage({
   onCreateClaim,
   claimType = "standard",
+  sessionToken = "",
   employeeMode,
 }: {
   onCreateClaim: (payload: { name?: string; description?: string; currency?: string; claimType?: 'standard' | 'mileage'; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
   claimType?: "standard" | "mileage";
+  sessionToken?: string;
   employeeMode?: boolean;
 }) {
   const navigate = useNavigate();
@@ -6374,6 +6378,7 @@ function CreateClaimPage({
               <label>Start postcode<input autoFocus value={mileageDraft.startPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, startPostcode: event.target.value })} /></label>
               <label>End postcode<input value={mileageDraft.endPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, endPostcode: event.target.value })} /></label>
               <label>Total miles<input type="number" min="0.1" step="0.1" value={mileageDraft.totalMiles} onChange={(event) => setMileageDraft({ ...mileageDraft, totalMiles: event.target.value })} /></label>
+              <MileageRoutePicker token={sessionToken} startPostcode={mileageDraft.startPostcode} endPostcode={mileageDraft.endPostcode} totalMiles={mileageDraft.totalMiles} disabled={busy} autoCalculate onSelect={(miles, startPostcode, endPostcode) => setMileageDraft((current) => ({ ...current, startPostcode, endPostcode, totalMiles: String(miles) }))} />
               <label>Rate per mile<input type="number" min="0.01" step="0.01" value={mileageDraft.mileageRate} onChange={(event) => setMileageDraft({ ...mileageDraft, mileageRate: event.target.value })} /></label>
             </>
           ) : (
@@ -7049,6 +7054,7 @@ function ClaimDetailPage(props: {
               <label>Start postcode<input value={claim.mileageStartPostcode ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageStartPostcode: event.target.value })} /></label>
               <label>End postcode<input value={claim.mileageEndPostcode ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageEndPostcode: event.target.value })} /></label>
               <label>Total miles<input type="number" min="0.1" step="0.1" value={claim.mileageTotalMiles ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageTotalMiles: event.target.value === "" ? null : Number(event.target.value) })} /></label>
+              {!props.employeeMode && claim.status === "pending" ? <MileageRoutePicker token={props.sessionToken} startPostcode={claim.mileageStartPostcode ?? ""} endPostcode={claim.mileageEndPostcode ?? ""} totalMiles={claim.mileageTotalMiles ?? null} disabled={savingDetails} onSelect={(miles, startPostcode, endPostcode) => setClaim((current) => current ? { ...current, mileageStartPostcode: startPostcode, mileageEndPostcode: endPostcode, mileageTotalMiles: miles } : current)} /> : null}
               <label>Mileage rate<input type="number" min="0" step="0.01" value={claim.mileageRate ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageRate: event.target.value === "" ? null : Number(event.target.value) })} /></label>
               <label>Claim total<input value={currency(mileageTotal, claim.currency)} readOnly /></label>
               <label>Approval status<input value={claimStatusLabel(claim.status)} readOnly /></label>
