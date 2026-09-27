@@ -35,4 +35,8 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 
 - `src/MileageRoutePicker.tsx` calculates driving routes from complete UK postcodes on the new mileage claim form, offers Mapbox alternatives, and keeps Total miles editable for the actual journey. Pending admin mileage review forms also allow recalculation on demand.
 - `src/api.ts` calls the authenticated server `POST /mileage/route` endpoint. The Mapbox token belongs only in the server's protected environment secret; never add it to Vite variables, browser code, or this repository.
-- This change is website-only. The Android mileage form is unchanged.
+- The initial postcode routing change was website-only; the Android mileage form gained the shared route preview on 2026-09-27.
+
+## Mileage map preview (2026-09-27)
+
+- The existing mileage picker also displays the selected Mapbox route image, using `includeMap: true` on the shared authenticated API. The same route result is used by the Android mileage sheet. Mapbox credentials remain server-side, and Total miles stays editable.

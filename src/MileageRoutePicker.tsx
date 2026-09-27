@@ -30,6 +30,7 @@ export function MileageRoutePicker({
   const [result, setResult] = useState<MileageRouteResult | null>(null);
   const [calculatedKey, setCalculatedKey] = useState("");
   const [busy, setBusy] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
   const currentKey = routeKey(startPostcode, endPostcode);
@@ -46,6 +47,7 @@ export function MileageRoutePicker({
       if (id !== requestId.current) return;
       setResult(next);
       setCalculatedKey(routeKey(next.startPostcode, next.endPostcode));
+      setSelectedIndex(0);
       onSelect(next.routes[0].miles, next.startPostcode, next.endPostcode);
     } catch (routeError) {
       if (id !== requestId.current) return;
@@ -85,19 +87,27 @@ export function MileageRoutePicker({
           <div className="mileage-route-options" role="group" aria-label="Driving routes">
             {currentResult.routes.map((route, index) => (
               <button
-                className={`mileage-route-option${Number(totalMiles) === route.miles ? " selected" : ""}`}
+                className={`mileage-route-option${selectedIndex === index ? " selected" : ""}`}
                 key={`${index}-${route.miles}`}
                 type="button"
                 disabled={disabled}
-                aria-pressed={Number(totalMiles) === route.miles}
-                onClick={() => onSelect(route.miles, currentResult.startPostcode, currentResult.endPostcode)}
+                aria-pressed={selectedIndex === index}
+                onClick={() => { setSelectedIndex(index); onSelect(route.miles, currentResult.startPostcode, currentResult.endPostcode); }}
               >
                 <strong>{index === 0 ? "Suggested route" : `Alternative ${index}`}: {route.miles.toFixed(1)} miles</strong>
                 <span>About {route.durationMinutes} min{route.via.length ? ` · Main roads: ${route.via.join(", ")}` : ""}</span>
               </button>
             ))}
           </div>
-          <p className="field-hint">Calculated from postcode centres; check the route and adjust Total miles if your actual journey differed. Routes powered by <a href="https://www.mapbox.com/" target="_blank" rel="noreferrer">Mapbox</a>.</p>
+          {currentResult.routes[selectedIndex]?.mapImage ? (
+            <img
+              className="mileage-route-map"
+              src={currentResult.routes[selectedIndex].mapImage}
+              alt={`Driving route from ${currentResult.startPostcode} to ${currentResult.endPostcode}`}
+            />
+          ) : null}
+          {Number(totalMiles) !== currentResult.routes[selectedIndex]?.miles ? <p className="field-hint">Total miles has been adjusted manually.</p> : null}
+          <p className="field-hint">Calculated from postcode centres; check the route and adjust Total miles if your actual journey differed. Map data © <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noreferrer">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>.</p>
         </>
       ) : !error && valid && !busy && !autoCalculate ? <p className="field-hint">Calculate the route to fill in Total miles, or enter the distance yourself.</p> : null}
     </div>

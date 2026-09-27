@@ -451,6 +451,7 @@ export type MileageRouteOption = {
   miles: number;
   durationMinutes: number;
   via: string[];
+  mapImage?: string;
 };
 
 export type MileageRouteResult = {
@@ -462,7 +463,7 @@ export type MileageRouteResult = {
 export async function calculateMileageRoute(token: string, startPostcode: string, endPostcode: string): Promise<MileageRouteResult> {
   return apiFetch<MileageRouteResult>("/mileage/route", token, {
     method: "POST",
-    body: JSON.stringify({ startPostcode, endPostcode }),
+    body: JSON.stringify({ startPostcode, endPostcode, includeMap: true }),
   });
 }
 

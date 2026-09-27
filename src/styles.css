@@ -5798,6 +5798,14 @@ input {
   color: #516562;
 }
 
+.mileage-route-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #cbdcd9;
+  border-radius: 9px;
+}
+
 .mileage-route-error {
   color: #a32d2d !important;
 }
