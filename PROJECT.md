@@ -31,6 +31,8 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 
 ## Performance and release notes
 
+- Authenticator QR setup (2026-09-29): The Security panel renders the server-provided `otpauth://` setup URI as a browser-local SVG QR code using `qrcode.react`, with the same setup key retained beside it for manual entry. The QR component loads only when setup is opened. Both owner/admin Settings and employee Login security use the shared panel. Keep setup codes private; do not send them to an external QR service. Website build/push is separate from the owner's live-site test.
+
 - Security chatbot guidance (2026-09-29): `src/chatbotKnowledge.ts` now answers where owners/admins and employees find their 2FA controls, how to enable email or authenticator codes, and how to use or disable them safely. The help chat also offers a visible 2FA question. All 103 canonical Q&As and representative 2FA paraphrases were checked locally; this does not verify the live site.
 
 - Two-factor login (2026-09-29): Dashboard Profile/Settings > Security lets admins enable email codes, a Google Authenticator compatible app, or both; employees use Login security. When both are enabled, either method can complete login after the password. The client calls `/two-factor` for setup and `/login` for the challenge; it does not receive a session token before successful verification. Deploy the server update before this website version. Authenticator setup uses a manual key and shows eight one-time recovery codes once. The owner checks live deployment and email delivery; never delete or move mobile signing keystores or signing details.

@@ -334,6 +334,7 @@ const brandLogoSrc = "/branding/exdox-logo.webp";
 const brandMarkSrc = "/branding/exdox-mark.webp";
 const publicBrandMarkSrc = "/branding/exdox-mark-header-v2-96.webp";
 const PageTutorial = lazy(() => import("./PageTutorial").then(({ PageTutorial }) => ({ default: PageTutorial })));
+const AuthenticatorQrCode = lazy(() => import("./AuthenticatorQrCode"));
 const websiteOrigin = "https://www.exdox.co.uk";
 
 type SeoConfig = {
@@ -8216,6 +8217,7 @@ function AccountingIntegrationsPage({ session, workspaceSettings }: { session: S
 function TwoFactorSettings({ session }: { session: SessionState }) {
   const [status, setStatus] = useState<TwoFactorStatus | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
+  const [setupUri, setSetupUri] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [codeMethod, setCodeMethod] = useState<"email" | "authenticator" | "recovery">("email");
@@ -8233,9 +8235,9 @@ function TwoFactorSettings({ session }: { session: SessionState }) {
     try {
       const next = await changeTwoFactor(session.token, input);
       if (typeof next.emailEnabled === "boolean") { setStatus(next); setCodeMethod(next.emailEnabled ? "email" : "authenticator"); }
-      if (next.secret) setSecret(next.secret);
+      if (next.secret) { setSecret(next.secret); setSetupUri(next.uri ?? null); }
       if (next.recoveryCodes) setRecoveryCodes(next.recoveryCodes);
-      if (input.action === "enable_authenticator") setSecret(null);
+      if (input.action === "enable_authenticator") { setSecret(null); setSetupUri(null); }
       if (input.action === "disable" && input.method === "authenticator") setRecoveryCodes(null);
       setCode(""); setPassword(""); setMessage(next.message ?? success);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not update 2FA."); }
@@ -8253,10 +8255,12 @@ function TwoFactorSettings({ session }: { session: SessionState }) {
       <button className="primary-action" type="button" disabled={busy || code.length !== 6} onClick={() => void change({ action: "enable_email", code }, "Email 2FA is on.")}>Turn on email 2FA</button>
     </div> : null}
     {!status.authenticatorEnabled ? <div className="two-factor-option">
-      <h3>Google Authenticator</h3><p>Set up Exdox in Google Authenticator or another authenticator app.</p>
+      <h3>Authenticator app</h3><p>Scan the QR code with Google Authenticator or another TOTP app, or enter the setup key manually.</p>
       <label>Account password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-      <button className="secondary-action" type="button" disabled={busy || !password} onClick={() => void change({ action: "begin_authenticator", password }, "Enter this key in your authenticator app, then confirm its code.")}>Show setup key</button>
-      {secret ? <><p>In your app, choose to enter a setup key. Account: {session.user.email}</p><code className="two-factor-secret">{secret}</code><p>Keep this key private. It is shown here only during setup.</p>
+      <button className="secondary-action" type="button" disabled={busy || !password} onClick={() => void change({ action: "begin_authenticator", password }, "Scan the QR code or enter the setup key, then confirm the code from your app.")}>Show setup QR code and key</button>
+      {secret ? <>
+        {setupUri ? <Suspense fallback={<p>Preparing QR code...</p>}><AuthenticatorQrCode uri={setupUri} /></Suspense> : null}
+        <p>To enter the key manually, use account {session.user.email} and this setup key:</p><code className="two-factor-secret">{secret}</code><p>Keep the QR code and key private. They are shown only during setup.</p>
         <label>Code from authenticator<input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label>
         <button className="primary-action" type="button" disabled={busy || code.length !== 6} onClick={() => void change({ action: "enable_authenticator", code }, "Authenticator 2FA is on.")}>Turn on authenticator 2FA</button></> : null}
     </div> : null}
