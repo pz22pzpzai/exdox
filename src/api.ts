@@ -38,6 +38,13 @@ const SESSION_STORAGE_KEY = "exdox-auth-session-v1";
 type AuthResponse =
   | {
       success: true;
+      requiresTwoFactor: true;
+      emailEnabled: boolean;
+      authenticatorEnabled: boolean;
+      message: string;
+    }
+  | {
+      success: true;
       token: string;
       user: SessionState["user"];
       requiresEmailConfirmation?: false;
@@ -77,6 +84,12 @@ export type RegisterResult =
     };
 
 export type LoginResult =
+  | {
+      kind: "two_factor";
+      emailEnabled: boolean;
+      authenticatorEnabled: boolean;
+      message: string;
+    }
   | {
       kind: "confirmed";
       session: SessionState;
@@ -126,7 +139,7 @@ export function clearStoredSession() {
   window.localStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
-export async function loginWithEmail(input: { email: string; password: string }): Promise<LoginResult> {
+export async function loginWithEmail(input: { email: string; password: string; twoFactorCode?: string; twoFactorMethod?: "email" | "authenticator" }): Promise<LoginResult> {
   const response = await fetch(`${API_BASE_URL}/login`, {
     method: "POST",
     headers: {
@@ -138,6 +151,10 @@ export async function loginWithEmail(input: { email: string; password: string })
   const payload = (await response.json()) as AuthResponse;
   if (!response.ok || !payload.success) {
     throw new Error(("message" in payload && payload.message) || "Authentication failed.");
+  }
+
+  if ("requiresTwoFactor" in payload && payload.requiresTwoFactor) {
+    return { kind: "two_factor", emailEnabled: payload.emailEnabled, authenticatorEnabled: payload.authenticatorEnabled, message: payload.message };
   }
 
   if ("requiresEmailConfirmation" in payload && payload.requiresEmailConfirmation) {
@@ -178,6 +195,20 @@ export async function loginWithEmail(input: { email: string; password: string })
     session: hydrated,
     sessionHydrated,
   };
+}
+
+export type TwoFactorStatus = { emailEnabled: boolean; authenticatorEnabled: boolean };
+export async function getTwoFactorStatus(token: string): Promise<TwoFactorStatus> {
+  return apiFetch<TwoFactorStatus>("/two-factor", token);
+}
+export async function changeTwoFactor(token: string, input: {
+  action: "begin_authenticator" | "enable_authenticator" | "send_email_code" | "enable_email" | "disable";
+  code?: string;
+  method?: "email" | "authenticator";
+  codeMethod?: "email" | "authenticator";
+  password?: string;
+}): Promise<TwoFactorStatus & { secret?: string; uri?: string; message?: string }> {
+  return apiFetch<TwoFactorStatus & { secret?: string; uri?: string; message?: string }>("/two-factor", token, { method: "POST", body: JSON.stringify(input) });
 }
 
 export async function registerWithEmail(input: {

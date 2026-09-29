@@ -37,6 +37,8 @@ import {
   getReceipt,
   getReceiptAssetUrl,
   getSettings,
+  getTwoFactorStatus,
+  changeTwoFactor,
   getXeroIntegrationStatus,
   getXeroReferenceData,
   listClaims,
@@ -87,6 +89,7 @@ import {
   startXeroConnection,
   syncXeroCustomers,
   publishToXero,
+  type TwoFactorStatus,
 } from "./api";
 import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
 import { MileageRoutePicker } from "./MileageRoutePicker";
@@ -176,6 +179,7 @@ const privateAppRoutePrefixes = [
   "/recycle-bin",
   "/reconciliation",
   "/settings",
+  "/security",
   "/requisitions",
   "/billing",
   "/dropbox",
@@ -1251,12 +1255,13 @@ export function App() {
             trialReminder={new URLSearchParams(location.search).get("trial")}
             accountDeleted={new URLSearchParams(location.search).get("accountDeleted") === "1"}
             embeddedInPublicShell
-            onLogin={async (email, password) => {
+            onLogin={async (email, password, twoFactorCode, twoFactorMethod) => {
               setAuthBusy(true);
               setAuthError(null);
               setError(null);
               try {
-                const loginResult = await loginWithEmail({ email, password });
+                const loginResult = await loginWithEmail({ email, password, twoFactorCode, twoFactorMethod });
+                if (loginResult.kind === "two_factor") return loginResult;
                 if (loginResult.kind === "pending_confirmation" || loginResult.kind === "billing_required") {
                   if (loginResult.checkoutUrl) {
                     window.location.assign(loginResult.checkoutUrl);
@@ -1621,6 +1626,7 @@ function DashboardShell(props: {
         { to: "/claims", label: "My Claims", icon: "claims" },
         { to: "/employee/reports", label: "My Reports", icon: "analytics" },
         { to: "/contact", label: "Contact", icon: "contact" },
+        { to: "/security", label: "Login security", icon: "settings" },
       ];
   const defaultRoute = getDefaultRoute(props.session);
   const dashboardNavigationLinks = (onNavigate?: () => void) => visibleNavItems.map((item) => {
@@ -1790,7 +1796,7 @@ function DashboardShell(props: {
               <button className="secondary-action" type="button" onClick={() => navigate("/settings")}>
                 Profile/Settings
               </button>
-            ) : null}
+            ) : <button className="secondary-action" type="button" onClick={() => navigate("/security")}>Login security</button>}
             <button className="secondary-action" type="button" onClick={props.onSignOut}>
               Sign out
             </button>
@@ -2119,6 +2125,7 @@ function DashboardShell(props: {
                   }
                 />
               ) : null}
+              <Route path="/security" element={<div className="stack-page"><section className="panel settings-panel"><div className="panel-heading"><h2>Login security</h2><span>Manage your own two-factor authentication</span></div><TwoFactorSettings session={props.session} /></section></div>} />
               {isRouteAllowed(props.session, "/settings") ? (
                 <Route path="/settings/delete-account" element={<DeleteAccountPage session={props.session} />} />
               ) : null}
@@ -2313,7 +2320,7 @@ function helpChatReply(message: string, findKnowledgeAnswer: (message: string) =
     return "Email-address changes are handled through Profile/Settings using Open email change request. This protects the workspace from an unauthorised account change. Use Access support if you cannot sign in to submit the request.";
   }
   if (includes("two factor", "2fa", "authenticator", "google authenticator")) {
-    return "Two-factor authentication is not self-serve yet. You can request it from Profile/Settings using Open 2FA request, or contact the Exdox security team. Never share a password, verification code, or recovery code in this chat.";
+    return "You can turn on email codes, an authenticator app, or both in Dashboard Settings under Security. If both are on, either method can verify a login. Never share a password or verification code in this chat.";
   }
   if (includes("browser preferences", "start page", "date format", "compact tables", "alerts", "notifications")) {
     return "Profile/Settings lets each user choose their default landing page, date format, compact table view, and browser-specific upload, review, and claim alerts. These preferences apply only to the browser where you save them, not to every person in the workspace.";
@@ -8205,6 +8212,64 @@ function AccountingIntegrationsPage({ session, workspaceSettings }: { session: S
   </div>;
 }
 
+function TwoFactorSettings({ session }: { session: SessionState }) {
+  const [status, setStatus] = useState<TwoFactorStatus | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [codeMethod, setCodeMethod] = useState<"email" | "authenticator">("email");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let current = true;
+    void getTwoFactorStatus(session.token).then((next) => { if (current) setStatus(next); }).catch((cause) => { if (current) setError(cause instanceof Error ? cause.message : "Could not load 2FA settings."); });
+    return () => { current = false; };
+  }, [session.token]);
+  const change = async (input: Parameters<typeof changeTwoFactor>[1], success: string) => {
+    setBusy(true); setError(null); setMessage(null);
+    try {
+      const next = await changeTwoFactor(session.token, input);
+      if (typeof next.emailEnabled === "boolean") setStatus(next);
+      if (next.secret) setSecret(next.secret);
+      if (input.action === "enable_authenticator") setSecret(null);
+      setCode(""); setPassword(""); setMessage(next.message ?? success);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not update 2FA."); }
+    finally { setBusy(false); }
+  };
+  if (!status) return <p className="muted-copy">{error ?? "Loading 2FA settings..."}</p>;
+  return <div className="two-factor-settings">
+    <p><strong>Email code:</strong> {status.emailEnabled ? "On" : "Off"} · <strong>Authenticator app:</strong> {status.authenticatorEnabled ? "On" : "Off"}</p>
+    {error ? <div className="error-banner">{error}</div> : null}
+    {message ? <div className="success-banner">{message}</div> : null}
+    {!status.emailEnabled ? <div className="two-factor-option">
+      <h3>Email codes</h3><p>A six-digit code goes to {session.user.email} after you enter your password.</p>
+      <button className="secondary-action" type="button" disabled={busy} onClick={() => void change({ action: "send_email_code" }, "Check your email for the setup code.")}>Send setup code</button>
+      <label>Code from email<input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label>
+      <button className="primary-action" type="button" disabled={busy || code.length !== 6} onClick={() => void change({ action: "enable_email", code }, "Email 2FA is on.")}>Turn on email 2FA</button>
+    </div> : null}
+    {!status.authenticatorEnabled ? <div className="two-factor-option">
+      <h3>Google Authenticator</h3><p>Set up Exdox in Google Authenticator or another authenticator app.</p>
+      <label>Account password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+      <button className="secondary-action" type="button" disabled={busy || !password} onClick={() => void change({ action: "begin_authenticator", password }, "Enter this key in your authenticator app, then confirm its code.")}>Show setup key</button>
+      {secret ? <><p>In your app, choose to enter a setup key. Account: {session.user.email}</p><code className="two-factor-secret">{secret}</code><p>Keep this key private. It is shown here only during setup.</p>
+        <label>Code from authenticator<input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label>
+        <button className="primary-action" type="button" disabled={busy || code.length !== 6} onClick={() => void change({ action: "enable_authenticator", code }, "Authenticator 2FA is on.")}>Turn on authenticator 2FA</button></> : null}
+    </div> : null}
+    {status.emailEnabled || status.authenticatorEnabled ? <div className="two-factor-option">
+      <h3>Turn off a method</h3><p>Enter your password and a current code from either enabled method.</p>
+      {status.emailEnabled && status.authenticatorEnabled ? <label>Code method<select value={codeMethod} onChange={(event) => setCodeMethod(event.target.value as "email" | "authenticator")}><option value="email">Email</option><option value="authenticator">Authenticator</option></select></label> : null}
+      {status.emailEnabled ? <button className="secondary-action" type="button" disabled={busy} onClick={() => void change({ action: "send_email_code" }, "Check your email for a code.")}>Send email code</button> : null}
+      <label>Password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+      <label>Verification code<input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label>
+      <div className="toolbar">
+        {status.emailEnabled ? <button className="secondary-action" type="button" disabled={busy || !password || code.length !== 6} onClick={() => void change({ action: "disable", method: "email", codeMethod: status.authenticatorEnabled ? codeMethod : "email", code, password }, "Email 2FA is off.")}>Turn off email 2FA</button> : null}
+        {status.authenticatorEnabled ? <button className="secondary-action" type="button" disabled={busy || !password || code.length !== 6} onClick={() => void change({ action: "disable", method: "authenticator", codeMethod: status.emailEnabled ? codeMethod : "authenticator", code, password }, "Authenticator 2FA is off.")}>Turn off authenticator 2FA</button> : null}
+      </div>
+    </div> : null}
+  </div>;
+}
+
 function SettingsPage(props: {
   session: SessionState;
   settings: OrganisationSettings | null;
@@ -8919,7 +8984,7 @@ function SettingsPage(props: {
             </div>
             <div>
               <strong>Two-factor authentication</strong>
-              <span>Available on request during the next security rollout</span>
+              <span>Choose email codes, an authenticator app, or both. If both are on, either code works at login.</span>
             </div>
             <div>
               <strong>Security contact</strong>
@@ -8930,12 +8995,10 @@ function SettingsPage(props: {
               <span>Document review, billing access, and workspace administration stay inside the signed-in account scope.</span>
             </div>
           </div>
+          <TwoFactorSettings session={props.session} />
           <div className="toolbar">
             <button className="secondary-action" type="button" onClick={() => openContactRoute("Security request")}>
               Open security contact
-            </button>
-            <button className="secondary-action" type="button" onClick={() => openContactRoute("Two-factor authentication request")}>
-              Open 2FA request
             </button>
           </div>
         </div>
@@ -9384,10 +9447,13 @@ function LoginState(props: {
   trialReminder?: string | null;
   accountDeleted?: boolean;
   embeddedInPublicShell?: boolean;
-  onLogin: (email: string, password: string) => Promise<void>;
+  onLogin: (email: string, password: string, code?: string, method?: "email" | "authenticator") => Promise<{ kind: "two_factor"; emailEnabled: boolean; authenticatorEnabled: boolean; message: string } | void>;
 }) {
   const [email, setEmail] = useState(props.initialEmail);
   const [password, setPassword] = useState("");
+  const [twoFactor, setTwoFactor] = useState<{ emailEnabled: boolean; authenticatorEnabled: boolean; message: string } | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorMethod, setTwoFactorMethod] = useState<"email" | "authenticator">("email");
   const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
   const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
   const needsEmailConfirmation =
@@ -9460,7 +9526,12 @@ function LoginState(props: {
               className="login-form"
               onSubmit={async (event) => {
                 event.preventDefault();
-                await props.onLogin(email, password);
+                const result = await props.onLogin(email, password, twoFactor ? twoFactorCode : undefined, twoFactor ? twoFactorMethod : undefined);
+                if (result?.kind === "two_factor") {
+                  setTwoFactor(result);
+                  setTwoFactorMethod(result.emailEnabled ? "email" : "authenticator");
+                  setTwoFactorCode("");
+                }
               }}
             >
               <label>
@@ -9469,7 +9540,7 @@ function LoginState(props: {
                   type="email"
                   autoComplete="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => { setEmail(event.target.value); setTwoFactor(null); }}
                   placeholder="Enter email address"
                   required
                 />
@@ -9480,14 +9551,30 @@ function LoginState(props: {
                   type="password"
                   autoComplete="current-password"
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => { setPassword(event.target.value); setTwoFactor(null); }}
                   placeholder="Enter your password"
                   required
                 />
               </label>
+              {twoFactor ? (
+                <div className="two-factor-login">
+                  <p>{twoFactor.message}</p>
+                  {twoFactor.emailEnabled && twoFactor.authenticatorEnabled ? (
+                    <label>Verification method
+                      <select value={twoFactorMethod} onChange={(event) => setTwoFactorMethod(event.target.value as "email" | "authenticator")}>
+                        <option value="email">Email code</option><option value="authenticator">Authenticator app</option>
+                      </select>
+                    </label>
+                  ) : null}
+                  <label>Six-digit verification code
+                    <input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" value={twoFactorCode} onChange={(event) => setTwoFactorCode(event.target.value.replace(/\D/g, ""))} required />
+                  </label>
+                  {twoFactor.emailEnabled ? <button className="secondary-action" type="button" disabled={props.busy} onClick={() => { void props.onLogin(email, password).then((result) => { if (result?.kind === "two_factor") setTwoFactor(result); }); }}>Send email code again</button> : null}
+                </div>
+              ) : null}
               {props.error ? <div className="error-banner">{props.error}</div> : null}
               <button className="primary-action login-submit" type="submit" disabled={props.busy}>
-                {props.busy ? "Signing in..." : props.trialReminder === "ended" ? "Continue to payment" : "Log in"}
+                {props.busy ? "Signing in..." : twoFactor ? "Verify and log in" : props.trialReminder === "ended" ? "Continue to payment" : "Log in"}
               </button>
             </form>
             <div className="login-links">
@@ -13444,6 +13531,7 @@ function hasSessionFeature(session: SessionState, feature: string) {
 }
 
 function isRouteAllowed(session: SessionState, pathname: string) {
+  if (pathname === "/security") return true;
   if (pathname === "/contact" || pathname.startsWith("/contact/")) {
     return true;
   }
@@ -13555,6 +13643,9 @@ function routeTitle(pathname: string) {
   }
   if (pathname.startsWith("/settings")) {
     return "Profile/Settings";
+  }
+  if (pathname.startsWith("/security")) {
+    return "Login security";
   }
   if (pathname.startsWith("/pricing")) {
     return "Pricing";

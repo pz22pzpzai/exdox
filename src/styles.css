@@ -5892,3 +5892,10 @@ input {
   font-display: swap;
   src: url("/fonts/space-grotesk-latin.woff2") format("woff2");
 }
+.two-factor-settings { display: grid; gap: 1rem; margin-top: 1rem; }
+.two-factor-option { display: grid; gap: .65rem; padding: 1rem; border: 1px solid var(--border-color, #d9e0e7); border-radius: 12px; }
+.two-factor-option h3, .two-factor-option p { margin: 0; }
+.two-factor-option label, .two-factor-login label { display: grid; gap: .35rem; }
+.two-factor-option input, .two-factor-option select, .two-factor-login input, .two-factor-login select { width: 100%; max-width: 420px; }
+.two-factor-secret { display: block; overflow-wrap: anywhere; padding: .75rem; background: #f2f6fb; border-radius: 8px; font-size: 1rem; letter-spacing: .08em; }
+.two-factor-login { display: grid; gap: .75rem; }
