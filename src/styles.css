@@ -3648,7 +3648,7 @@ input {
   top: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: 220px 1fr 220px;
+  grid-template-columns: 170px 1fr auto;
   align-items: center;
   width: min(1120px, calc(100% - 48px));
   min-height: 82px;
@@ -3885,7 +3885,7 @@ input {
 
 .public-actions {
   justify-content: flex-end;
-  gap: 20px;
+  gap: 12px;
   font-size: 0.9rem;
   font-weight: 600;
 }
@@ -4020,6 +4020,22 @@ input {
 
 .store-badge-disabled .store-badge-caption {
   color: #607089;
+}
+
+.public-country-picker {
+  display: grid;
+  gap: 2px;
+  font-size: 0.72rem;
+  color: var(--ink);
+}
+
+.public-country-picker select {
+  max-width: 170px;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: white;
+  color: var(--ink);
 }
 
 .store-badge-interest {

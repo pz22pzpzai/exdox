@@ -181,6 +181,7 @@ export async function loginWithEmail(input: { email: string; password: string })
 }
 
 export async function registerWithEmail(input: {
+  country?: import('./region').Country;
   accountType?: "owner" | "sole_trader" | "employee";
   email: string;
   confirmEmail: string;
@@ -730,7 +731,7 @@ export async function publishToXero(token: string, sourceType: XeroPublication["
 
 export async function saveSettings(
   token: string,
-  payload: Pick<OrganisationSettings, "baseCurrency" | "isVatRegistered" | "defaultTaxRate">,
+  payload: Pick<OrganisationSettings, "country" | "baseCurrency" | "isVatRegistered" | "defaultTaxRate">,
 ): Promise<OrganisationSettings> {
   const response = await apiFetch<{ settings: OrganisationSettings }>("/settings", token, {
     method: "PUT",

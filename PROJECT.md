@@ -18,6 +18,13 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 - Do not inspect the live website or deployment workflow after a push; the project owner does those checks.
 - Preserve unrelated working-tree edits. Do not commit build output, local machine settings, or temporary packages.
 
+## Country and currency support (2026-09-29)
+
+- `src/region.ts` lists GB, US, AU, CA, and 27 EUR-using countries and territories. The public selector persists locally and signup sends the chosen country to the API. Public pricing and signup show a dated reference conversion from GBP where available; Stripe billing remains GBP and the issuer sets the final conversion.
+- A workspace's Settings country and reporting currency move together and replace the tax review choices and guidance. Non-UK tax rates are review aids, not automatic tax determination or filing; US state/local, Canadian provincial, and EUR territory rules still require a local review. The UK defaults and existing UK VAT choices remain unchanged.
+- Non-UK mileage uses manual miles and a local rate. UK postcode route suggestions remain available only for UK workspaces. Existing historical documents are not revalued when a workspace changes country or currency; check reports spanning a country change before relying on totals.
+- The server must be deployed before this website version because registration and settings now send `country`. The Android and iPhone app code was not changed and may still display UK-oriented labels. Never delete or move a mobile app keystore or signing details.
+
 ## Performance and release notes
 
 - Pricing headline (2026-09-29): the public pricing page now gives “Free trial no card details needed” a larger highlighted line beneath the allowance headline, with “Cancel anytime” immediately below. The same content appears in the signed-in pricing view. Website TypeScript/Vite build passed; the live site and deployment workflow are for the owner to check.

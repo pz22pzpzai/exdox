@@ -207,6 +207,7 @@ export type BankRequisition = {
 };
 
 export type OrganisationSettings = {
+  country: import('./region').Country;
   organisationId: number;
   organisationName: string;
   baseCurrency: string;

@@ -90,6 +90,7 @@ import {
 } from "./api";
 import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
 import { MileageRoutePicker } from "./MileageRoutePicker";
+import { countries, countryCurrency, countryDefaultTax, countryTaxChoices, countryTaxGuidance, countryTaxLabel, selectCountry, useGbpReferenceRate, useSelectedCountry, type Country } from './region';
 import { cookieConsentStorageKey, setGoogleAnalyticsConsent, type CookieConsentChoice } from "./googleAnalytics";
 import type {
   BillingCycle,
@@ -109,7 +110,6 @@ import type {
   SupplierRule,
   CompanyCard,
   CompanyCardEmployeeException,
-  TaxRate,
   SalesCustomer,
   SalesDocument,
   SalesWorkspace,
@@ -118,13 +118,6 @@ import type {
   XeroReferenceData,
 } from "./types";
 
-const taxRates: TaxRate[] = [
-  "20% Standard",
-  "5% Reduced",
-  "0% Zero",
-  "Exempt",
-  "No VAT",
-];
 const costCategoryOptions = [
   "Staff Welfare",
   "1 - Taxi",
@@ -379,6 +372,7 @@ function buildFallbackOrganisationSettings(session: SessionState): OrganisationS
     organisationId: activeOrganisation?.id ?? session.activeOrganisationId ?? session.user.organisationId,
     organisationName: customerFacingOrganisationName(activeOrganisation?.name),
     baseCurrency: "GBP",
+    country: 'GB',
     isVatRegistered: true,
     defaultTaxRate: "20% Standard",
     mileageRate: 0.45,
@@ -1559,7 +1553,7 @@ function DashboardShell(props: {
     requisitionId?: string | null;
     consentId?: string | null;
   }) => Promise<{ linked: boolean; state: string; externalRequisitionId: string | null }>;
-  onSettingsSave: (payload: Pick<OrganisationSettings, "baseCurrency" | "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
+  onSettingsSave: (payload: Pick<OrganisationSettings, "country" | "baseCurrency" | "isVatRegistered" | "defaultTaxRate">) => Promise<void>;
   onInviteEmployee: (payload: {
     email: string;
     fullName?: string;
@@ -1943,7 +1937,7 @@ function DashboardShell(props: {
                 <Route path="/overview/automation" element={<AutomationPage store={props.store} />} />
               ) : null}
               {isRouteAllowed(props.session, "/settings") ? (
-                <Route path="/settings/integrations" element={<AccountingIntegrationsPage session={props.session} />} />
+                <Route path="/settings/integrations" element={<AccountingIntegrationsPage session={props.session} workspaceSettings={props.store.settings} />} />
               ) : null}
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview/attention" element={<AttentionPage session={props.session} store={props.store} />} />
@@ -1978,7 +1972,7 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
                   path="/costs/mileage/:id"
-                  element={<MileageCostReviewPage sessionToken={props.session.token} loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} onStatusChange={props.onClaimStatusChange} onSave={props.onClaimSave} onDelete={props.onClaimDelete} records={props.store.costs} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
+                  element={<MileageCostReviewPage sessionToken={props.session.token} settings={props.store.settings} loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} onStatusChange={props.onClaimStatusChange} onSave={props.onClaimSave} onDelete={props.onClaimDelete} records={props.store.costs} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
                 />
               ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
@@ -2018,10 +2012,10 @@ function DashboardShell(props: {
                 />
               ) : null}
               {isRouteAllowed(props.session, "/sales") ? (
-                <Route path="/sales/manage" element={<SalesOperationsPage sessionToken={props.session.token} />} />
+                <Route path="/sales/manage" element={<SalesOperationsPage sessionToken={props.session.token} settings={props.store.settings} />} />
               ) : null}
               {isRouteAllowed(props.session, "/sales") ? (
-                <Route path="/sales/customers" element={<SalesCustomersPage sessionToken={props.session.token} />} />
+                <Route path="/sales/customers" element={<SalesCustomersPage sessionToken={props.session.token} settings={props.store.settings} />} />
               ) : null}
               {isRouteAllowed(props.session, "/sales") ? (
                 <Route path="/sales/submissions" element={<SalesSubmissionsPage sessionToken={props.session.token} />} />
@@ -2079,10 +2073,10 @@ function DashboardShell(props: {
                 <Route path="/claims" element={<ClaimsPage session={props.session} claims={props.store.claims.filter((claim) => claim.claimType !== "mileage")} />} />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
-                <Route path="/claims/new" element={<CreateClaimPage onCreateClaim={props.onClaimCreate} />} />
+                <Route path="/claims/new" element={<CreateClaimPage onCreateClaim={props.onClaimCreate} settings={props.store.settings} />} />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
-                <Route path="/claims/new/mileage" element={<CreateClaimPage onCreateClaim={props.onClaimCreate} claimType="mileage" sessionToken={props.session.token} />} />
+                <Route path="/claims/new/mileage" element={<CreateClaimPage onCreateClaim={props.onClaimCreate} settings={props.store.settings} claimType="mileage" sessionToken={props.session.token} />} />
               ) : null}
               {isRouteAllowed(props.session, "/claims") ? (
                 <Route
@@ -2096,7 +2090,7 @@ function DashboardShell(props: {
                 <Route
                   path="/rules"
                   element={
-                    <RulesPage rules={props.store.rules} onSave={props.onRuleSave} onDelete={props.onRuleDelete} />
+                    <RulesPage rules={props.store.rules} settings={props.store.settings} onSave={props.onRuleSave} onDelete={props.onRuleDelete} />
                   }
                 />
               ) : null}
@@ -2104,7 +2098,7 @@ function DashboardShell(props: {
                 <Route
                   path="/customer-rules"
                   element={
-                    <RulesPage rules={props.store.rules} onSave={props.onRuleSave} onDelete={props.onRuleDelete} mode="customer" />
+                    <RulesPage rules={props.store.rules} settings={props.store.settings} onSave={props.onRuleSave} onDelete={props.onRuleDelete} mode="customer" />
                   }
                 />
               ) : null}
@@ -2160,11 +2154,11 @@ function DashboardShell(props: {
               />
               <Route
                 path="/claims/new"
-                element={<CreateClaimPage onCreateClaim={props.onClaimCreate} employeeMode />}
+                element={<CreateClaimPage onCreateClaim={props.onClaimCreate} settings={props.store.settings} employeeMode />}
               />
               <Route
                 path="/claims/new/mileage"
-                element={<CreateClaimPage onCreateClaim={props.onClaimCreate} claimType="mileage" sessionToken={props.session.token} employeeMode />}
+                element={<CreateClaimPage onCreateClaim={props.onClaimCreate} settings={props.store.settings} claimType="mileage" sessionToken={props.session.token} employeeMode />}
               />
               <Route
                 path="/claims/:id"
@@ -2665,8 +2659,8 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
       </div>
 
       <section className="metrics-grid">
-        <MetricCard label="Costs ledger" value={currency(totalCosts)} detail={`${periodCosts.length} documents · ${periodLabel}`} to="/costs" />
-        <MetricCard label="Sales ledger" value={currency(totalSales)} detail={`${periodSales.length} invoices · ${periodLabel}`} to="/sales" />
+        <MetricCard label="Costs ledger" value={currency(totalCosts, store.settings?.baseCurrency)} detail={`${periodCosts.length} documents · ${periodLabel}`} to="/costs" />
+        <MetricCard label="Sales ledger" value={currency(totalSales, store.settings?.baseCurrency)} detail={`${periodSales.length} invoices · ${periodLabel}`} to="/sales" />
         <MetricCard label="Vault archive" value={String(vaultDocuments)} detail={`Files added · ${periodLabel}`} to="/vault" />
         <MetricCard label="Pending claims" value={String(pendingClaims)} detail="Current approval workload" to={firstPendingClaimsRoute(store)} />
         <UsageAllowanceCard
@@ -2799,7 +2793,7 @@ function OverviewPage({ session, store }: { session: SessionState; store: AppSto
                     onClick={() => navigate(group.workspaceLabel === "Sales" ? `/sales/${group.records[0]!.id}` : `/costs/${group.records[0]!.id}`)}
                   >
                     <strong>
-                      {group.vendorLabel} | {currency(group.grossAmount)}
+                      {group.vendorLabel} | {currency(group.grossAmount, store.settings?.baseCurrency)}
                     </strong>
                     <span>
                       {group.documentDate} | {group.workspaceLabel} | {group.records.length} matching uploads
@@ -3093,7 +3087,7 @@ function DataHealthPage({ store }: { store: AppStore }) {
                   <button className="summary-action-row" type="button" onClick={() => navigate(recordRoute(record))}>
                     <strong>{record.vendorName?.trim() || record.sourceFilename}</strong>
                     <span>
-                      {workspaceLabel(record.workspaceContext)} | {currency(receiptGrossAmount(record))} | {record.createdAt.slice(0, 10)} | {reasons.join(", ")}
+                      {workspaceLabel(record.workspaceContext)} | {currency(receiptGrossAmount(record), store.settings?.baseCurrency)} | {record.createdAt.slice(0, 10)} | {reasons.join(", ")}
                     </span>
                   </button>
                 </li>
@@ -3357,7 +3351,7 @@ function WorkflowPage({ store }: { store: AppStore }) {
     ...pendingClaims.map((claim) => ({
       key: `claim-${claim.id}`,
       title: claim.name,
-      subtitle: `Claim approval | ${claim.documentCount} document${claim.documentCount === 1 ? "" : "s"} | ${currency(claim.totalAmount)}`,
+      subtitle: `Claim approval | ${claim.documentCount} document${claim.documentCount === 1 ? "" : "s"} | ${currency(claim.totalAmount, claim.currency)}`,
       route: `/claims/${claim.id}`,
     })),
   ]
@@ -4185,13 +4179,20 @@ function useXeroConnected(sessionToken: string) {
   return connected;
 }
 
-function SalesOperationsPage({ sessionToken }: { sessionToken: string }) {
+function SalesOperationsPage({ sessionToken, settings }: { sessionToken: string; settings: OrganisationSettings | null }) {
   const { workspace, error, setError, loading, refresh } = useSalesWorkspaceData(sessionToken);
   const [kind, setKind] = useState<SalesDocument["kind"]>("invoice");
   const [customerId, setCustomerId] = useState("");
   const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState("");
-  const [draftLines, setDraftLines] = useState([{ description: "", quantity: "1", unitPrice: "", taxRate: "20" }]);
+  const salesCountry = settings?.country ?? 'GB';
+  const initialSalesTax = salesCountry === 'GB' ? '20' : '0';
+  const [draftLines, setDraftLines] = useState([{ description: "", quantity: "1", unitPrice: "", taxRate: initialSalesTax }]);
+  useEffect(() => {
+    setDraftLines((current) => current.every((line) => !line.description && !line.unitPrice)
+      ? current.map((line) => ({ ...line, taxRate: initialSalesTax }))
+      : current);
+  }, [initialSalesTax]);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -4206,7 +4207,7 @@ function SalesOperationsPage({ sessionToken }: { sessionToken: string }) {
         kind, customerId, issueDate, dueDate: dueDate || null, notes,
         lineItems: draftLines.map((line) => ({ description: line.description, quantity: Number(line.quantity), unitPrice: Number(line.unitPrice), taxRate: Number(line.taxRate) })),
       });
-      setDraftLines([{ description: "", quantity: "1", unitPrice: "", taxRate: "20" }]); setNotes("");
+      setDraftLines([{ description: "", quantity: "1", unitPrice: "", taxRate: initialSalesTax }]); setNotes("");
       setFeedback(`${salesDocumentKindLabel(document.kind)} ${document.number} saved as a draft.`);
       await refresh();
     } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save the sales document."); }
@@ -4227,7 +4228,7 @@ function SalesOperationsPage({ sessionToken }: { sessionToken: string }) {
           <label>Customer<select value={customerId} onChange={(event) => setCustomerId(event.target.value)}><option value="">Choose customer</option>{workspace?.customers.filter((customer) => customer.active).map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select></label>
           <label>Issue date<input type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} /></label>
           <label>Due date<input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label>
-          <div className="form-span-2 sales-line-editor"><strong>Line items</strong>{draftLines.map((line, index) => <div className="sales-line-row" key={index}><label>Description<input value={line.description} onChange={(event) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, description: event.target.value } : item))} placeholder="Service or product supplied" /></label><label>Quantity<input type="number" min="0.01" step="0.01" value={line.quantity} onChange={(event) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: event.target.value } : item))} /></label><label>Unit price<input type="number" min="0" step="0.01" value={line.unitPrice} onChange={(event) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unitPrice: event.target.value } : item))} /></label><label>VAT<select value={line.taxRate} onChange={(event) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, taxRate: event.target.value } : item))}><option value="20">20%</option><option value="5">5%</option><option value="0">0%</option></select></label>{draftLines.length > 1 ? <button className="danger-action" type="button" onClick={() => setDraftLines((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</button> : null}</div>)}<button className="secondary-action" type="button" onClick={() => setDraftLines((current) => [...current, { description: "", quantity: "1", unitPrice: "", taxRate: "20" }])}>Add line item</button></div>
+          <div className="form-span-2 sales-line-editor"><strong>Line items</strong>{draftLines.map((line, index) => <div className="sales-line-row" key={index}><label>Description<input value={line.description} onChange={(event) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, description: event.target.value } : item))} placeholder="Service or product supplied" /></label><label>Quantity<input type="number" min="0.01" step="0.01" value={line.quantity} onChange={(event) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: event.target.value } : item))} /></label><label>Unit price<input type="number" min="0" step="0.01" value={line.unitPrice} onChange={(event) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unitPrice: event.target.value } : item))} /></label><SalesTaxField country={salesCountry} value={line.taxRate} onChange={(taxRate) => setDraftLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, taxRate } : item))} />{draftLines.length > 1 ? <button className="danger-action" type="button" onClick={() => setDraftLines((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</button> : null}</div>)}<button className="secondary-action" type="button" onClick={() => setDraftLines((current) => [...current, { description: "", quantity: "1", unitPrice: "", taxRate: initialSalesTax }])}>Add line item</button></div>
           <label className="form-span-2">Notes<textarea rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
         </div>
         <button className="primary-action" type="button" disabled={busy || !customerId || draftLines.some((line) => !line.description.trim() || !(Number(line.unitPrice) >= 0) || !(Number(line.quantity) > 0))} onClick={() => void createDocument()}>{busy ? "Saving..." : `Create ${salesDocumentKindLabel(kind).toLowerCase()}`}</button>
@@ -4251,19 +4252,28 @@ function SalesOperationsPage({ sessionToken }: { sessionToken: string }) {
   );
 }
 
-function SalesCustomersPage({ sessionToken }: { sessionToken: string }) {
+function SalesTaxField({ country, value, onChange }: { country: Country; value: string; onChange: (value: string) => void }) {
+  return country === 'GB' ? (
+    <label>VAT<select value={value} onChange={(event) => onChange(event.target.value)}><option value="20">20%</option><option value="5">5%</option><option value="0">0%</option></select></label>
+  ) : (
+    <label>{countryTaxLabel(country)} %<input type="number" min="0" max="100" step="0.01" value={value} onChange={(event) => onChange(event.target.value)} /></label>
+  );
+}
+
+function SalesCustomersPage({ sessionToken, settings }: { sessionToken: string; settings: OrganisationSettings | null }) {
   const { workspace, error, setError, loading, refresh } = useSalesWorkspaceData(sessionToken);
-  const [editing, setEditing] = useState<Partial<SalesCustomer>>({ name: "", currency: "GBP", paymentTermsDays: 30, active: true });
+  const [editing, setEditing] = useState<Partial<SalesCustomer>>({ name: "", currency: settings?.baseCurrency ?? "GBP", paymentTermsDays: 30, active: true });
+  useEffect(() => { if (!editing.id && settings?.baseCurrency) setEditing((current) => ({ ...current, currency: settings.baseCurrency })); }, [settings?.baseCurrency]);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const setField = (field: keyof SalesCustomer, value: unknown) => setEditing((current) => ({ ...current, [field]: value }));
   return <div className="stack-page"><section className="page-hero"><div><h2>Customers</h2><p>Maintain billing details once, then reuse them across imported and native Sales documents.</p></div></section><SalesWorkspaceNav active="customers" />
     {error ? <div className="error-banner">{error}</div> : null}{feedback ? <div className="success-banner">{feedback}</div> : null}
     <section className="panel"><div className="panel-heading"><div><h3>{editing.id ? "Edit customer" : "Add customer"}</h3><p>Names and email addresses support automatic matching suggestions during Sales review.</p></div><label className="secondary-action file-action">Import customer CSV<input type="file" accept=".csv,text/csv" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; setBusy(true); try { const rows = parseCustomerCsv(await file.text()); const imported = await importSalesCustomers(sessionToken, rows); setFeedback(`${imported.length} customer${imported.length === 1 ? "" : "s"} imported.`); await refresh(); } catch (importError) { setError(importError instanceof Error ? importError.message : "Could not import customers."); } finally { setBusy(false); event.target.value = ""; } }} /></label></div>
-      <div className="form-grid"><label>Business or customer name<input value={editing.name ?? ""} onChange={(event) => setField("name", event.target.value)} /></label><label>Contact name<input value={editing.contactName ?? ""} onChange={(event) => setField("contactName", event.target.value)} /></label><label>Email<input type="email" value={editing.email ?? ""} onChange={(event) => setField("email", event.target.value)} /></label><label>Phone<input value={editing.phone ?? ""} onChange={(event) => setField("phone", event.target.value)} /></label><label className="form-span-2">Billing address<textarea rows={3} value={editing.billingAddress ?? ""} onChange={(event) => setField("billingAddress", event.target.value)} /></label><label>Company number<input value={editing.companyNumber ?? ""} onChange={(event) => setField("companyNumber", event.target.value)} /></label><label>VAT number<input value={editing.vatNumber ?? ""} onChange={(event) => setField("vatNumber", event.target.value)} /></label><label>Payment terms (days)<input type="number" min="0" max="365" value={editing.paymentTermsDays ?? 30} onChange={(event) => setField("paymentTermsDays", Number(event.target.value))} /></label><label>Currency<input maxLength={3} value={editing.currency ?? "GBP"} onChange={(event) => setField("currency", event.target.value.toUpperCase())} /></label></div>
-      <div className="toolbar"><button className="primary-action" disabled={busy || !editing.name?.trim()} type="button" onClick={async () => { setBusy(true); try { await saveSalesCustomer(sessionToken, editing as SalesCustomer); setEditing({ name: "", currency: "GBP", paymentTermsDays: 30, active: true }); setFeedback("Customer saved."); await refresh(); } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save the customer."); } finally { setBusy(false); } }}>{busy ? "Saving..." : "Save customer"}</button>{editing.id ? <button className="secondary-action" type="button" onClick={() => setEditing({ name: "", currency: "GBP", paymentTermsDays: 30, active: true })}>Cancel edit</button> : null}</div>
+      <div className="form-grid"><label>Business or customer name<input value={editing.name ?? ""} onChange={(event) => setField("name", event.target.value)} /></label><label>Contact name<input value={editing.contactName ?? ""} onChange={(event) => setField("contactName", event.target.value)} /></label><label>Email<input type="email" value={editing.email ?? ""} onChange={(event) => setField("email", event.target.value)} /></label><label>Phone<input value={editing.phone ?? ""} onChange={(event) => setField("phone", event.target.value)} /></label><label className="form-span-2">Billing address<textarea rows={3} value={editing.billingAddress ?? ""} onChange={(event) => setField("billingAddress", event.target.value)} /></label><label>{settings?.country === "GB" || !settings ? "Company number" : "Registration number"}<input value={editing.companyNumber ?? ""} onChange={(event) => setField("companyNumber", event.target.value)} /></label><label>{settings?.country === "GB" || !settings ? "VAT number" : "Tax registration number"}<input value={editing.vatNumber ?? ""} onChange={(event) => setField("vatNumber", event.target.value)} /></label><label>Payment terms (days)<input type="number" min="0" max="365" value={editing.paymentTermsDays ?? 30} onChange={(event) => setField("paymentTermsDays", Number(event.target.value))} /></label><label>Currency<input maxLength={3} value={editing.currency ?? settings?.baseCurrency ?? "GBP"} onChange={(event) => setField("currency", event.target.value.toUpperCase())} /></label></div>
+      <div className="toolbar"><button className="primary-action" disabled={busy || !editing.name?.trim()} type="button" onClick={async () => { setBusy(true); try { await saveSalesCustomer(sessionToken, editing as SalesCustomer); setEditing({ name: "", currency: settings?.baseCurrency ?? "GBP", paymentTermsDays: 30, active: true }); setFeedback("Customer saved."); await refresh(); } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save the customer."); } finally { setBusy(false); } }}>{busy ? "Saving..." : "Save customer"}</button>{editing.id ? <button className="secondary-action" type="button" onClick={() => setEditing({ name: "", currency: settings?.baseCurrency ?? "GBP", paymentTermsDays: 30, active: true })}>Cancel edit</button> : null}</div>
     </section>
-    <section className="panel"><div className="panel-heading"><div><h3>Customer directory</h3><p>CSV columns supported: name, contactName, email, phone, billingAddress, companyNumber, vatNumber, paymentTermsDays, currency.</p></div><span>{workspace?.customers.length ?? 0} customers</span></div>{loading ? <p>Loading customers...</p> : workspace?.customers.length ? <div className="table-scroll"><table><thead><tr><th>Customer</th><th>Contact</th><th>Terms</th><th>VAT number</th><th>Status</th><th>Actions</th></tr></thead><tbody>{workspace.customers.map((customer) => <tr key={customer.id}><td><strong>{customer.name}</strong><br /><span>{customer.billingAddress}</span></td><td>{customer.contactName}<br /><span>{customer.email}</span></td><td>{customer.paymentTermsDays} days</td><td>{customer.vatNumber || "-"}</td><td>{customer.active ? "Active" : "Inactive"}</td><td><div className="table-action-cell"><button className="secondary-action" type="button" onClick={() => setEditing(customer)}>Edit</button><button className="danger-action" type="button" onClick={async () => { if (!window.confirm(`Delete ${customer.name}?`)) return; try { await deleteSalesCustomer(sessionToken, customer.id); await refresh(); } catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Could not delete the customer."); } }}>Delete</button></div></td></tr>)}</tbody></table></div> : <p>No customers have been added yet.</p>}</section>
+    <section className="panel"><div className="panel-heading"><div><h3>Customer directory</h3><p>CSV columns supported: name, contactName, email, phone, billingAddress, companyNumber, vatNumber, paymentTermsDays, currency.</p></div><span>{workspace?.customers.length ?? 0} customers</span></div>{loading ? <p>Loading customers...</p> : workspace?.customers.length ? <div className="table-scroll"><table><thead><tr><th>Customer</th><th>Contact</th><th>Terms</th><th>{settings?.country === "GB" || !settings ? "VAT number" : "Tax ID"}</th><th>Status</th><th>Actions</th></tr></thead><tbody>{workspace.customers.map((customer) => <tr key={customer.id}><td><strong>{customer.name}</strong><br /><span>{customer.billingAddress}</span></td><td>{customer.contactName}<br /><span>{customer.email}</span></td><td>{customer.paymentTermsDays} days</td><td>{customer.vatNumber || "-"}</td><td>{customer.active ? "Active" : "Inactive"}</td><td><div className="table-action-cell"><button className="secondary-action" type="button" onClick={() => setEditing(customer)}>Edit</button><button className="danger-action" type="button" onClick={async () => { if (!window.confirm(`Delete ${customer.name}?`)) return; try { await deleteSalesCustomer(sessionToken, customer.id); await refresh(); } catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Could not delete the customer."); } }}>Delete</button></div></td></tr>)}</tbody></table></div> : <p>No customers have been added yet.</p>}</section>
   </div>;
 }
 
@@ -4751,7 +4761,7 @@ function InboxPage({
                   {basePath === "/sales" ? <th>Customer</th> : null}
                   <th>Category</th>
                   {vatTrackingEnabled ? <th>Net Amount</th> : null}
-                  {vatTrackingEnabled ? <th>VAT Amount</th> : null}
+                  {vatTrackingEnabled ? <th>{countryTaxLabel(settings?.country ?? 'GB')} Amount</th> : null}
                   <th>{vatTrackingEnabled ? "Gross Total" : "Total"}</th>
                   <th>Source</th>
                   <th>Action</th>
@@ -4921,6 +4931,7 @@ function RecycleBinPage({ sessionToken, onRestore }: { sessionToken: string; onR
 
 function MileageCostReviewPage(props: {
   sessionToken: string;
+  settings: OrganisationSettings | null;
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[]; evidence?: import("./types").ClaimEvidence[] }>;
   loadClaimEvidenceAsset: (claimId: number, evidenceId: string) => Promise<string>;
   onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
@@ -4991,7 +5002,7 @@ function MileageCostReviewPage(props: {
       return;
     }
     if (!claim.mileageStartPostcode?.trim() || !claim.mileageEndPostcode?.trim() || !Number.isFinite(Number(claim.mileageTotalMiles)) || Number(claim.mileageTotalMiles) <= 0 || !Number.isFinite(Number(claim.mileageRate)) || Number(claim.mileageRate) < 0) {
-      setError("Enter both journey postcodes, a mileage total, and a valid rate before saving.");
+      setError(`Enter both journey ${props.settings?.country === 'GB' || !props.settings ? 'postcodes' : 'locations'}, a mileage total, and a valid rate before saving.`);
       return;
     }
     setSaving(true); setError(null); setFeedback(null);
@@ -5038,10 +5049,10 @@ function MileageCostReviewPage(props: {
       <div className="form-grid">
         <label>Cost name<input value={claim.name} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, name: event.target.value })} /></label>
         <label>Claimant<input value={claim.claimantName || claim.claimantEmail || "Workspace user"} readOnly /></label>
-        <label>Start postcode<input value={claim.mileageStartPostcode ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageStartPostcode: event.target.value })} /></label>
-        <label>End postcode<input value={claim.mileageEndPostcode ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageEndPostcode: event.target.value })} /></label>
+        <label>Start {props.settings?.country === 'GB' || !props.settings ? 'postcode' : 'location'}<input value={claim.mileageStartPostcode ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageStartPostcode: event.target.value })} /></label>
+        <label>End {props.settings?.country === 'GB' || !props.settings ? 'postcode' : 'location'}<input value={claim.mileageEndPostcode ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageEndPostcode: event.target.value })} /></label>
         <label>Total miles<input type="number" min="0" step="0.1" value={claim.mileageTotalMiles ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageTotalMiles: Number(event.target.value) })} /></label>
-        {claim.status === "pending" ? <MileageRoutePicker token={props.sessionToken} startPostcode={claim.mileageStartPostcode ?? ""} endPostcode={claim.mileageEndPostcode ?? ""} totalMiles={claim.mileageTotalMiles ?? null} disabled={saving} onSelect={(miles, startPostcode, endPostcode) => setClaim((current) => current ? { ...current, mileageStartPostcode: startPostcode, mileageEndPostcode: endPostcode, mileageTotalMiles: miles } : current)} /> : null}
+        {claim.status === "pending" && (props.settings?.country === 'GB' || !props.settings) ? <MileageRoutePicker token={props.sessionToken} startPostcode={claim.mileageStartPostcode ?? ""} endPostcode={claim.mileageEndPostcode ?? ""} totalMiles={claim.mileageTotalMiles ?? null} disabled={saving} onSelect={(miles, startPostcode, endPostcode) => setClaim((current) => current ? { ...current, mileageStartPostcode: startPostcode, mileageEndPostcode: endPostcode, mileageTotalMiles: miles } : current)} /> : null}
         <label>Rate per mile<input type="number" min="0" step="0.0001" value={claim.mileageRate ?? ""} disabled={claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageRate: Number(event.target.value) })} /></label>
         <label>Calculated total<input value={currency(total, claim.currency)} readOnly /></label>
         <label>Status<input value={claimStatusLabel(claim.status)} readOnly /></label>
@@ -5198,7 +5209,8 @@ function DocumentWorkspacePage(props: {
   const notes = receipt.notes ?? [];
   const isVaultRecord = props.mode === "vault";
   const vatTrackingEnabled = isVatTrackingEnabled(props.settings ?? null);
-  const foreignCurrencyDocument = Boolean(receipt.currency && receipt.currency.toUpperCase() !== "GBP");
+  const receiptCountry = props.settings?.country ?? 'GB';
+  const foreignCurrencyDocument = receiptCountry === 'GB' && Boolean(receipt.currency && receipt.currency.toUpperCase() !== "GBP");
   const receiptPublished = receipt.status === "Published";
   const receiptApproved = receipt.status === "Ready" && !receipt.needsReview;
   const reimbursementPaymentLocked =
@@ -5447,7 +5459,7 @@ function DocumentWorkspacePage(props: {
               {vatTrackingEnabled ? (
                 <>
                   <label>
-                    {foreignCurrencyDocument ? "UK VAT Amount" : "VAT Amount"}
+                    {foreignCurrencyDocument ? "UK VAT Amount" : `${countryTaxLabel(receiptCountry)} Amount`}
                     <input type="number" value={receipt.vatAmount ?? 0} onChange={(event) => setReceipt({ ...receipt, vatAmount: Number(event.target.value) })} />
                   </label>
                   <label>
@@ -5455,9 +5467,9 @@ function DocumentWorkspacePage(props: {
                     <input type="number" value={receiptGrossAmount(receipt)} onChange={(event) => setReceipt({ ...receipt, totalAmount: Number(event.target.value) })} />
                   </label>
                   <label>
-                    {foreignCurrencyDocument ? "UK VAT Tier" : "HMRC Tax Tier"}
-                    <select value={receipt.taxRateApplied ?? "No VAT"} onChange={(event) => setReceipt({ ...receipt, taxRateApplied: event.target.value })}>
-                      {taxRates.map((rate) => (
+                    {foreignCurrencyDocument ? "UK VAT Tier" : receiptCountry === 'GB' ? "HMRC Tax Tier" : `${countryTaxLabel(receiptCountry)} review`}
+                    <select value={receipt.taxRateApplied ?? countryDefaultTax(receiptCountry)} onChange={(event) => setReceipt({ ...receipt, taxRateApplied: event.target.value })}>
+                      {[...new Set([receipt.taxRateApplied, ...countryTaxChoices(receiptCountry)].filter((rate): rate is string => Boolean(rate)))].map((rate) => (
                         <option key={rate} value={rate}>
                           {rate}
                         </option>
@@ -5535,11 +5547,11 @@ function DocumentWorkspacePage(props: {
           <div className="summary-list">
             <div>
               <strong>Subtotal</strong>
-              <span>{currency(vatTrackingEnabled ? (receipt.subtotalAmount ?? receipt.netAmount ?? 0) : (receipt.totalAmount ?? 0))}</span>
+              <span>{currency(vatTrackingEnabled ? (receipt.subtotalAmount ?? receipt.netAmount ?? 0) : (receipt.totalAmount ?? 0), receiptCurrency(receipt))}</span>
             </div>
             <div>
-              <strong>{vatTrackingEnabled ? "Total tax" : "VAT"}</strong>
-              <span>{currency(vatTrackingEnabled ? (receipt.totalTaxAmount ?? receipt.vatAmount ?? 0) : 0)}</span>
+              <strong>{vatTrackingEnabled ? "Total tax" : countryTaxLabel(receiptCountry)}</strong>
+              <span>{currency(vatTrackingEnabled ? (receipt.totalTaxAmount ?? receipt.vatAmount ?? 0) : 0, receiptCurrency(receipt))}</span>
             </div>
           </div>
         </section>
@@ -5582,9 +5594,9 @@ function DocumentWorkspacePage(props: {
                     <tr key={`${item.description}-${index}`}>
                       <td>{item.description || "Line item"}</td>
                       <td>{item.quantity ?? "-"}</td>
-                      <td>{item.unitPrice === null ? "-" : currency(item.unitPrice)}</td>
-                      <td>{item.taxAmount === null ? "-" : currency(item.taxAmount)}</td>
-                      <td>{item.total === null ? "-" : currency(item.total)}</td>
+                      <td>{item.unitPrice === null ? "-" : currency(item.unitPrice, receiptCurrency(receipt))}</td>
+                      <td>{item.taxAmount === null ? "-" : currency(item.taxAmount, receiptCurrency(receipt))}</td>
+                      <td>{item.total === null ? "-" : currency(item.total, receiptCurrency(receipt))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -5629,7 +5641,7 @@ function DocumentWorkspacePage(props: {
                     <tr key={`${item.label}-${index}`}>
                       <td>{item.label || "Tax line"}</td>
                       <td>{item.rate === null ? "-" : `${item.rate}%`}</td>
-                      <td>{item.amount === null ? "-" : currency(item.amount)}</td>
+                      <td>{item.amount === null ? "-" : currency(item.amount, receiptCurrency(receipt))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -6276,7 +6288,7 @@ function ClaimsPage({
                 <td>{claimEmployeeLabel(claim)}</td>
                 <td>{claim.createdAt.slice(0, 10)}</td>
                 <td>{claim.claimType === "mileage" ? `${Number(claim.mileageTotalMiles ?? 0).toFixed(1)} miles` : `${claim.documentCount} receipt lines`}</td>
-                <td>{currency(claim.totalAmount)}</td>
+                <td>{currency(claim.totalAmount, claim.currency)}</td>
                 <td><StatusPill status={claimStatusToPill(claim.status)} /><small>{claimStatusSummary(claim)}</small></td>
                 <td><Link className="secondary-action" to={`/claims/${claim.id}`} onClick={(event) => event.stopPropagation()}>Open claim</Link></td>
               </tr>
@@ -6295,18 +6307,22 @@ function ClaimsPage({
 
 function CreateClaimPage({
   onCreateClaim,
+  settings,
   claimType = "standard",
   sessionToken = "",
   employeeMode,
 }: {
   onCreateClaim: (payload: { name?: string; description?: string; currency?: string; claimType?: 'standard' | 'mileage'; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
+  settings: OrganisationSettings | null;
   claimType?: "standard" | "mileage";
   sessionToken?: string;
   employeeMode?: boolean;
 }) {
   const navigate = useNavigate();
-  const [draft, setDraft] = useState({ name: "", description: "", currency: "GBP" });
-  const [mileageDraft, setMileageDraft] = useState({ startPostcode: "", endPostcode: "", totalMiles: "", mileageRate: "0.45" });
+  const [draft, setDraft] = useState({ name: "", description: "", currency: settings?.baseCurrency ?? "GBP" });
+  const [mileageDraft, setMileageDraft] = useState({ startPostcode: "", endPostcode: "", totalMiles: "", mileageRate: settings?.country === 'GB' || !settings ? String(settings?.mileageRate || 0.45) : settings.mileageRate > 0 ? String(settings.mileageRate) : '' });
+  useEffect(() => { if (settings?.baseCurrency) setDraft((current) => ({ ...current, currency: settings.baseCurrency })); }, [settings?.baseCurrency]);
+  useEffect(() => { if (settings?.country && settings.country !== 'GB' && settings.mileageRate === 0) setMileageDraft((current) => ({ ...current, mileageRate: '' })); }, [settings?.country, settings?.mileageRate]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isMileage = claimType === "mileage";
@@ -6317,7 +6333,7 @@ function CreateClaimPage({
       const miles = Number(mileageDraft.totalMiles);
       const rate = Number(mileageDraft.mileageRate);
       if (!mileageDraft.startPostcode.trim() || !mileageDraft.endPostcode.trim() || !Number.isFinite(miles) || miles <= 0 || !Number.isFinite(rate) || rate <= 0) {
-        setError("Enter both postcodes, total miles, and a positive rate per mile.");
+        setError(`Enter both ${settings?.country === 'GB' || !settings ? 'postcodes' : 'locations'}, total miles, and a positive rate per mile.`);
         return;
       }
       setBusy(true);
@@ -6325,7 +6341,7 @@ function CreateClaimPage({
         const claim = await onCreateClaim({
           name: `Mileage claim ${new Date().toLocaleDateString("en-GB")}`,
           description: `${mileageDraft.startPostcode.trim()} to ${mileageDraft.endPostcode.trim()}`,
-          currency: "GBP",
+          currency: settings?.baseCurrency ?? "GBP",
           claimType: "mileage",
           startPostcode: mileageDraft.startPostcode.trim(),
           endPostcode: mileageDraft.endPostcode.trim(),
@@ -6375,10 +6391,10 @@ function CreateClaimPage({
         <div className="form-grid">
           {isMileage ? (
             <>
-              <label>Start postcode<input autoFocus value={mileageDraft.startPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, startPostcode: event.target.value })} /></label>
-              <label>End postcode<input value={mileageDraft.endPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, endPostcode: event.target.value })} /></label>
+              <label>{settings?.country === 'GB' || !settings ? 'Start postcode' : 'Start location'}<input autoFocus maxLength={24} value={mileageDraft.startPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, startPostcode: event.target.value })} /></label>
+              <label>{settings?.country === 'GB' || !settings ? 'End postcode' : 'End location'}<input maxLength={24} value={mileageDraft.endPostcode} onChange={(event) => setMileageDraft({ ...mileageDraft, endPostcode: event.target.value })} /></label>
               <label>Total miles<input type="number" min="0.1" step="0.1" value={mileageDraft.totalMiles} onChange={(event) => setMileageDraft({ ...mileageDraft, totalMiles: event.target.value })} /></label>
-              <MileageRoutePicker token={sessionToken} startPostcode={mileageDraft.startPostcode} endPostcode={mileageDraft.endPostcode} totalMiles={mileageDraft.totalMiles} disabled={busy} autoCalculate onSelect={(miles, startPostcode, endPostcode) => setMileageDraft((current) => ({ ...current, startPostcode, endPostcode, totalMiles: String(miles) }))} />
+              {settings?.country === 'GB' || !settings ? <MileageRoutePicker token={sessionToken} startPostcode={mileageDraft.startPostcode} endPostcode={mileageDraft.endPostcode} totalMiles={mileageDraft.totalMiles} disabled={busy} autoCalculate onSelect={(miles, startPostcode, endPostcode) => setMileageDraft((current) => ({ ...current, startPostcode, endPostcode, totalMiles: String(miles) }))} /> : <p className="field-hint">Enter the distance in miles manually. UK postcode route suggestions are unavailable for this workspace.</p>}
               <label>Rate per mile<input type="number" min="0.01" step="0.01" value={mileageDraft.mileageRate} onChange={(event) => setMileageDraft({ ...mileageDraft, mileageRate: event.target.value })} /></label>
             </>
           ) : (
@@ -6549,7 +6565,7 @@ function EmployeeDocumentsPage(props: {
                 <th>Document date</th>
                 <th>Supplier</th>
                 {vatTrackingEnabled ? <th>Net</th> : null}
-                {vatTrackingEnabled ? <th>VAT</th> : null}
+                {vatTrackingEnabled ? <th>{countryTaxLabel(props.settings?.country ?? 'GB')}</th> : null}
                 <th>{vatTrackingEnabled ? "Gross" : "Total"}</th>
                 <th>Action</th>
               </tr>
@@ -6573,9 +6589,9 @@ function EmployeeDocumentsPage(props: {
                   <td><StatusPill status={receipt.status} /></td>
                   <td>{receiptDocumentDate(receipt) || receipt.createdAt.slice(0, 10)}</td>
                   <td>{receipt.vendorName ?? receipt.sourceFilename}</td>
-                  {vatTrackingEnabled ? <td>{currency(receipt.netAmount)}</td> : null}
-                  {vatTrackingEnabled ? <td>{currency(receipt.vatAmount)}</td> : null}
-                  <td>{currency(receiptGrossAmount(receipt))}</td>
+                  {vatTrackingEnabled ? <td>{currency(receipt.netAmount, receiptCurrency(receipt))}</td> : null}
+                  {vatTrackingEnabled ? <td>{currency(receipt.vatAmount, receiptCurrency(receipt))}</td> : null}
+                  <td>{currency(receiptGrossAmount(receipt), receiptCurrency(receipt))}</td>
                   <td><Link className="secondary-action link-action" to={employeeReceiptPath(receipt)}>Open</Link></td>
                 </tr>
               ))}
@@ -6774,7 +6790,7 @@ function EmployeeReportsPage(props: {
       </section>
       <section className="metrics-grid">
         <article className="metric-card"><span>Documents in view</span><strong>{records.length}</strong></article>
-        <article className="metric-card"><span>Personal spend in view</span><strong>{currency(sumGross(records.filter((record) => record.workspaceContext === "cost" && record.paymentMethod === "cash_personal")))}</strong></article>
+        <article className="metric-card"><span>Personal spend in view</span><strong>{currency(sumGross(records.filter((record) => record.workspaceContext === "cost" && record.paymentMethod === "cash_personal")), props.settings?.baseCurrency)}</strong></article>
         <article className="metric-card"><span>Paid reimbursement claims</span><strong>{paidClaims.length}</strong></article>
       </section>
       <section className="panel table-panel">
@@ -6890,7 +6906,7 @@ function ClaimDetailPage(props: {
       return;
     }
     if (!claim.name.trim() || !claim.mileageStartPostcode?.trim() || !claim.mileageEndPostcode?.trim()) {
-      setError("Enter a claim name and both journey postcodes before saving.");
+      setError(`Enter a claim name and both journey ${props.settings?.country === 'GB' || !props.settings ? 'postcodes' : 'locations'} before saving.`);
       return;
     }
     if (!Number.isFinite(Number(claim.mileageTotalMiles)) || Number(claim.mileageTotalMiles) <= 0 || !Number.isFinite(Number(claim.mileageRate)) || Number(claim.mileageRate) < 0) {
@@ -7014,8 +7030,8 @@ function ClaimDetailPage(props: {
       <section className="metrics-grid">
         <MetricCard
           label={claim.claimType === "mileage" ? "Mileage claim total" : "Claim total"}
-          value={currency(claim.totalAmount)}
-          detail={claim.claimType === "mileage" ? `${Number(claim.mileageTotalMiles ?? 0).toFixed(1)} miles at ${currency(Number(claim.mileageRate ?? 0))} per mile` : `${receipts.length} linked receipts`}
+          value={currency(claim.totalAmount, claim.currency)}
+          detail={claim.claimType === "mileage" ? `${Number(claim.mileageTotalMiles ?? 0).toFixed(1)} miles at ${currency(Number(claim.mileageRate ?? 0), claim.currency)} per mile` : `${receipts.length} linked receipts`}
         />
         <MetricCard label="Claiming employee" value={claimEmployeeLabel(claim)} detail="Claim owner" />
         <MetricCard label="Approval status" value={claimStatusLabel(claim.status)} detail="Current review state" />
@@ -7051,10 +7067,10 @@ function ClaimDetailPage(props: {
             <div className="form-grid">
               <label>Claim name<input value={claim.name} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, name: event.target.value })} /></label>
               <label>Original currency<input value={claim.currency} disabled={props.employeeMode || claim.status !== "pending"} maxLength={3} onChange={(event) => setClaim({ ...claim, currency: event.target.value.toUpperCase() })} /></label>
-              <label>Start postcode<input value={claim.mileageStartPostcode ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageStartPostcode: event.target.value })} /></label>
-              <label>End postcode<input value={claim.mileageEndPostcode ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageEndPostcode: event.target.value })} /></label>
+              <label>Start {props.settings?.country === 'GB' || !props.settings ? 'postcode' : 'location'}<input value={claim.mileageStartPostcode ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageStartPostcode: event.target.value })} /></label>
+              <label>End {props.settings?.country === 'GB' || !props.settings ? 'postcode' : 'location'}<input value={claim.mileageEndPostcode ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageEndPostcode: event.target.value })} /></label>
               <label>Total miles<input type="number" min="0.1" step="0.1" value={claim.mileageTotalMiles ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageTotalMiles: event.target.value === "" ? null : Number(event.target.value) })} /></label>
-              {!props.employeeMode && claim.status === "pending" ? <MileageRoutePicker token={props.sessionToken} startPostcode={claim.mileageStartPostcode ?? ""} endPostcode={claim.mileageEndPostcode ?? ""} totalMiles={claim.mileageTotalMiles ?? null} disabled={savingDetails} onSelect={(miles, startPostcode, endPostcode) => setClaim((current) => current ? { ...current, mileageStartPostcode: startPostcode, mileageEndPostcode: endPostcode, mileageTotalMiles: miles } : current)} /> : null}
+              {!props.employeeMode && claim.status === "pending" && (props.settings?.country === 'GB' || !props.settings) ? <MileageRoutePicker token={props.sessionToken} startPostcode={claim.mileageStartPostcode ?? ""} endPostcode={claim.mileageEndPostcode ?? ""} totalMiles={claim.mileageTotalMiles ?? null} disabled={savingDetails} onSelect={(miles, startPostcode, endPostcode) => setClaim((current) => current ? { ...current, mileageStartPostcode: startPostcode, mileageEndPostcode: endPostcode, mileageTotalMiles: miles } : current)} /> : null}
               <label>Mileage rate<input type="number" min="0" step="0.01" value={claim.mileageRate ?? ""} disabled={props.employeeMode || claim.status !== "pending"} onChange={(event) => setClaim({ ...claim, mileageRate: event.target.value === "" ? null : Number(event.target.value) })} /></label>
               <label>Claim total<input value={currency(mileageTotal, claim.currency)} readOnly /></label>
               <label>Approval status<input value={claimStatusLabel(claim.status)} readOnly /></label>
@@ -7143,7 +7159,7 @@ function ClaimDetailPage(props: {
                   <td>{receipt.vendorName ?? "Unknown supplier"}</td>
                   <td>{receiptDocumentDate(receipt)}</td>
                   <td>{receipt.category ?? "Uncategorised"}</td>
-                  <td>{currency(receiptGrossAmount(receipt))}</td>
+                  <td>{currency(receiptGrossAmount(receipt), receiptCurrency(receipt))}</td>
                   <td>
                     <div className="table-action-cell">
                       <StatusPill status={receipt.status} />
@@ -7177,6 +7193,7 @@ function ClaimDetailPage(props: {
 
 function RulesPage(props: {
   rules: SupplierRule[];
+  settings: OrganisationSettings | null;
   mode?: "supplier" | "customer";
   onSave: (
     payload: Partial<SupplierRule> &
@@ -7187,6 +7204,7 @@ function RulesPage(props: {
   const workspaceContext: SupplierRule["workspaceContext"] = props.mode === "customer" ? "sales" : "cost";
   const subjectLabel = workspaceContext === "sales" ? "customer" : "supplier";
   const categoryChoices = workspaceContext === "sales" ? salesCategoryOptions : costCategoryOptions;
+  const ruleCountry = props.settings?.country ?? 'GB';
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -7197,7 +7215,7 @@ function RulesPage(props: {
     workspaceContext,
     supplierMatchText: "",
     category: "",
-    taxRate: "20% Standard",
+    taxRate: countryDefaultTax(ruleCountry),
     paymentMethod: "business_card" as SupplierRule["paymentMethod"],
     isActive: true,
   });
@@ -7268,9 +7286,9 @@ function RulesPage(props: {
             </select>
           </label>
           <label>
-            Tax Rate
+            {countryTaxLabel(ruleCountry)} rule
             <select value={draft.taxRate} onChange={(event) => setDraft({ ...draft, taxRate: event.target.value })}>
-              {taxRates.map((rate) => (
+              {[...new Set([draft.taxRate, ...countryTaxChoices(ruleCountry)])].map((rate) => (
                 <option key={rate} value={rate}>
                   {rate}
                 </option>
@@ -7323,7 +7341,7 @@ function RulesPage(props: {
                   workspaceContext,
                   supplierMatchText: "",
                   category: "",
-                  taxRate: "20% Standard",
+                  taxRate: countryDefaultTax(ruleCountry),
                   paymentMethod: "business_card",
                   isActive: true,
                 });
@@ -7348,7 +7366,7 @@ function RulesPage(props: {
                   workspaceContext,
                   supplierMatchText: "",
                   category: "",
-                  taxRate: "20% Standard",
+                  taxRate: countryDefaultTax(ruleCountry),
                   paymentMethod: "business_card",
                   isActive: true,
                 })
@@ -7452,7 +7470,7 @@ function RulesPage(props: {
                             workspaceContext,
                             supplierMatchText: "",
                             category: "",
-                            taxRate: "20% Standard",
+                            taxRate: countryDefaultTax(ruleCountry),
                             paymentMethod: "business_card",
                             isActive: true,
                           });
@@ -8031,7 +8049,9 @@ function BankCallbackPage(props: {
   );
 }
 
-function AccountingIntegrationsPage({ session }: { session: SessionState }) {
+function AccountingIntegrationsPage({ session, workspaceSettings }: { session: SessionState; workspaceSettings: OrganisationSettings | null }) {
+  const taxCountry = workspaceSettings?.country ?? 'GB';
+  const mappingTaxRates = countryTaxChoices(taxCountry);
   const location = useLocation();
   const [status, setStatus] = useState<XeroIntegrationStatus | null>(null);
   const [referenceData, setReferenceData] = useState<XeroReferenceData | null>(null);
@@ -8175,8 +8195,8 @@ function AccountingIntegrationsPage({ session }: { session: SessionState }) {
           <label className="toggle-field">Attach source documents<button className={`toggle-button${settings.publishAttachments ? " on" : ""}`} type="button" onClick={() => setSettings({ ...settings, publishAttachments: !settings.publishAttachments })}>{settings.publishAttachments ? "On" : "Off"}</button></label>
         </div>
         <section className="workspace-detail-section"><div className="panel-heading"><div><h4>Exdox category mapping</h4><p>Send each Exdox category to the correct Xero account instead of relying only on one default.</p></div></div><div className="form-grid">{costCategoryOptions.map((category) => <label key={`cost-${category}`}>Cost: {category}<select value={settings.categoryAccountMappings[category] ?? ""} onChange={(event) => setSettings({ ...settings, categoryAccountMappings: { ...settings.categoryAccountMappings, [category]: event.target.value } })}><option value="">Use default cost account</option>{purchaseAccounts.map((account) => <option key={account.accountId} value={account.code}>{account.code} — {account.name}</option>)}</select></label>)}{salesCategoryOptions.map((category) => <label key={`sales-${category}`}>Sales: {category}<select value={settings.categoryAccountMappings[category] ?? ""} onChange={(event) => setSettings({ ...settings, categoryAccountMappings: { ...settings.categoryAccountMappings, [category]: event.target.value } })}><option value="">Use default sales account</option>{salesAccounts.map((account) => <option key={account.accountId} value={account.code}>{account.code} — {account.name}</option>)}</select></label>)}</div></section>
-        <section className="workspace-detail-section"><div className="panel-heading"><div><h4>Purchase VAT mapping</h4><p>Map cost and claim VAT labels only to Xero tax codes that apply to expenses.</p></div></div><div className="form-grid">{taxRates.map((taxLabel) => <label key={`purchase-tax-${taxLabel}`}>Cost: {taxLabel}<select value={settings.purchaseTaxTypeMappings[taxLabel] ?? ""} onChange={(event) => setSettings({ ...settings, purchaseTaxTypeMappings: { ...settings.purchaseTaxTypeMappings, [taxLabel]: event.target.value } })}><option value="">Use default cost tax</option>{purchaseTaxes.map((tax) => <option key={tax.taxType} value={tax.taxType}>{tax.name}</option>)}</select></label>)}</div></section>
-        <section className="workspace-detail-section"><div className="panel-heading"><div><h4>Sales VAT mapping</h4><p>Map sales VAT labels only to Xero tax codes that apply to revenue.</p></div></div><div className="form-grid">{taxRates.map((taxLabel) => <label key={`sales-tax-${taxLabel}`}>Sales: {taxLabel}<select value={settings.salesTaxTypeMappings[taxLabel] ?? ""} onChange={(event) => setSettings({ ...settings, salesTaxTypeMappings: { ...settings.salesTaxTypeMappings, [taxLabel]: event.target.value } })}><option value="">Use default sales tax</option>{salesTaxes.map((tax) => <option key={tax.taxType} value={tax.taxType}>{tax.name}</option>)}</select></label>)}</div></section>
+        <section className="workspace-detail-section"><div className="panel-heading"><div><h4>Purchase {countryTaxLabel(taxCountry)} mapping</h4><p>Map cost and claim tax labels only to Xero tax codes that apply to expenses.</p></div></div><div className="form-grid">{mappingTaxRates.map((taxLabel) => <label key={`purchase-tax-${taxLabel}`}>Cost: {taxLabel}<select value={settings.purchaseTaxTypeMappings[taxLabel] ?? ""} onChange={(event) => setSettings({ ...settings, purchaseTaxTypeMappings: { ...settings.purchaseTaxTypeMappings, [taxLabel]: event.target.value } })}><option value="">Use default cost tax</option>{purchaseTaxes.map((tax) => <option key={tax.taxType} value={tax.taxType}>{tax.name}</option>)}</select></label>)}</div></section>
+        <section className="workspace-detail-section"><div className="panel-heading"><div><h4>Sales {countryTaxLabel(taxCountry)} mapping</h4><p>Map sales tax labels only to Xero tax codes that apply to revenue.</p></div></div><div className="form-grid">{mappingTaxRates.map((taxLabel) => <label key={`sales-tax-${taxLabel}`}>Sales: {taxLabel}<select value={settings.salesTaxTypeMappings[taxLabel] ?? ""} onChange={(event) => setSettings({ ...settings, salesTaxTypeMappings: { ...settings.salesTaxTypeMappings, [taxLabel]: event.target.value } })}><option value="">Use default sales tax</option>{salesTaxes.map((tax) => <option key={tax.taxType} value={tax.taxType}>{tax.name}</option>)}</select></label>)}</div></section>
         <div className="toolbar"><button className="primary-action" type="button" disabled={busy !== null} onClick={() => void saveSettings()}>{busy === "settings" ? "Saving…" : "Save Xero defaults"}</button></div>
       </section>
 
@@ -8188,7 +8208,7 @@ function AccountingIntegrationsPage({ session }: { session: SessionState }) {
 function SettingsPage(props: {
   session: SessionState;
   settings: OrganisationSettings | null;
-  onSave: (payload: Pick<OrganisationSettings, "baseCurrency" | "isVatRegistered" | "defaultTaxRate" | "mileageRate">) => Promise<void>;
+  onSave: (payload: Pick<OrganisationSettings, "country" | "baseCurrency" | "isVatRegistered" | "defaultTaxRate" | "mileageRate">) => Promise<void>;
   onInviteEmployee: (payload: {
     email: string;
     fullName?: string;
@@ -8204,7 +8224,7 @@ function SettingsPage(props: {
   const openForgotPasswordRoute = () => {
     navigate(`${forgotPasswordPagePath}?email=${encodeURIComponent(props.session.user.email)}`);
   };
-  const [draft, setDraft] = useState<OrganisationSettings | null>(props.settings);
+  const [draft, setDraft] = useState<OrganisationSettings | null>(props.settings ? { ...props.settings, country: props.settings.country ?? 'GB' } : null);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -8257,7 +8277,7 @@ function SettingsPage(props: {
   };
 
   useEffect(() => {
-    setDraft(props.settings);
+    setDraft(props.settings ? { ...props.settings, country: props.settings.country ?? 'GB' } : null);
   }, [props.settings]);
 
   useEffect(() => {
@@ -8467,14 +8487,14 @@ function SettingsPage(props: {
           <span>{draft.baseCurrency}</span>
         </div>
         <div>
-          <strong>VAT posture</strong>
-          <span>{draft.isVatRegistered ? "VAT registered" : "No VAT registration"}</span>
+          <strong>{countryTaxLabel(draft.country)} tracking</strong>
+          <span>{draft.isVatRegistered ? "On" : "Off"}</span>
         </div>
         <div>
           <strong>Default fallback tax</strong>
           <span>{draft.defaultTaxRate}</span>
         </div>
-        <div><strong>Approved mileage rate</strong><span>{currency(draft.mileageRate)} per mile</span></div>
+        <div><strong>Approved mileage rate</strong><span>{draft.mileageRate > 0 ? `${currency(draft.mileageRate, draft.baseCurrency)} per mile` : 'Set a local rate'}</span></div>
         <div>
           <strong>Parity impact</strong>
           <span>Saved changes feed both the desktop dashboard and the mobile extraction workflow.</span>
@@ -8483,8 +8503,21 @@ function SettingsPage(props: {
       {copyFeedback ? <div className="success-banner">{copyFeedback}</div> : null}
       <div className="form-grid">
         <label>
+          Workspace country or territory
+          <select value={draft.country} disabled={saving} onChange={(event) => {
+            const country = event.target.value as Country;
+            setDraft({ ...draft, country, baseCurrency: countryCurrency(country), defaultTaxRate: countryDefaultTax(country), mileageRate: country === draft.country ? draft.mileageRate : country === 'GB' ? 0.45 : 0 });
+          }}>
+            {countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
+          </select>
+        </label>
+        <label>
           Choose your currency
-          <select value={draft.baseCurrency} disabled={saving} onChange={(event) => setDraft({ ...draft, baseCurrency: event.target.value })}>
+          <select value={draft.baseCurrency} disabled={saving} onChange={(event) => {
+            const baseCurrency = event.target.value;
+            const country = baseCurrency === 'EUR' ? (countryCurrency(draft.country) === 'EUR' ? draft.country : 'IE') : baseCurrency === 'USD' ? 'US' : baseCurrency === 'AUD' ? 'AU' : baseCurrency === 'CAD' ? 'CA' : 'GB';
+            setDraft({ ...draft, country, baseCurrency, defaultTaxRate: countryDefaultTax(country), mileageRate: country === draft.country ? draft.mileageRate : country === 'GB' ? 0.45 : 0 });
+          }}>
             <option value="GBP">GBP - Pound sterling</option>
             <option value="EUR">EUR - Euro</option>
             <option value="USD">USD - US dollar</option>
@@ -8493,7 +8526,7 @@ function SettingsPage(props: {
           </select>
         </label>
         <label className="toggle-field">
-          Company is VAT Registered
+          Track {countryTaxLabel(draft.country)} on documents
           <button
             className={`toggle-button${draft.isVatRegistered ? " on" : ""}`}
             type="button"
@@ -8504,24 +8537,20 @@ function SettingsPage(props: {
           </button>
         </label>
         <label>
-          Global fallback tax rate
+          {countryTaxLabel(draft.country)} review default
           <select value={draft.defaultTaxRate} disabled={saving} onChange={(event) => setDraft({ ...draft, defaultTaxRate: event.target.value })}>
-            {taxRates.map((rate) => (
+            {countryTaxChoices(draft.country).map((rate) => (
               <option key={rate} value={rate}>
                 {rate}
               </option>
             ))}
           </select>
         </label>
-        <label>Approved mileage rate per mile<input type="number" min="0.01" step="0.01" value={draft.mileageRate} disabled={saving} onChange={(event) => setDraft({ ...draft, mileageRate: Number(event.target.value) })} /></label>
+        <label>Approved mileage rate per mile<input type="number" min="0" step="0.01" value={draft.mileageRate} disabled={saving} onChange={(event) => setDraft({ ...draft, mileageRate: Number(event.target.value) })} /></label>
       </div>
-      <p>
-        This is the reporting currency for the whole workspace. New and existing workspaces use GBP unless a business admin changes it here. Receipt OCR preserves an uploaded document's original currency and records its equivalent in the workspace currency.
-      </p>
-      <p>
-        Turn VAT off to force downstream extraction toward gross-only treatment and a `No VAT` tax tier across
-        incoming receipt processing.
-      </p>
+      <p>{draft.country === 'GB' ? 'This is the reporting currency for the whole workspace. Receipt OCR preserves the source currency and records its equivalent in the workspace currency. Subscription billing remains in GBP.' : 'This is the reporting currency for new workspace records. Receipt OCR preserves the source currency and records its equivalent in the workspace currency. Existing records keep their original converted values after a currency change; review any reports spanning that change. Subscription billing remains in GBP.'}</p>
+      <p>{draft.country === 'GB' ? 'Turn VAT off to force downstream extraction toward gross-only treatment and a `No VAT` tax tier across incoming receipt processing.' : 'Local tax rates and recoverability vary by location and transaction. Review the tax printed on each document; Exdox does not calculate tax due or file returns.'}</p>
+      {countryTaxGuidance(draft.country) ? <p className="field-hint">{countryTaxGuidance(draft.country)!.text} <a href={countryTaxGuidance(draft.country)!.url} target="_blank" rel="noopener noreferrer">Official tax guidance</a></p> : null}
       <div className="toolbar">
         <button
           className="primary-action"
@@ -8533,6 +8562,7 @@ function SettingsPage(props: {
             setFeedback(null);
             try {
               await props.onSave({
+                country: draft.country,
                 baseCurrency: draft.baseCurrency,
                 isVatRegistered: draft.isVatRegistered,
                 defaultTaxRate: draft.defaultTaxRate,
@@ -9694,6 +9724,7 @@ function RegisterState(props: {
   initialIncludedUsers?: number;
   embeddedInPublicShell?: boolean;
   onRegister: (input: {
+    country?: Country;
     accountType?: "owner" | "sole_trader" | "employee";
     email: string;
     confirmEmail: string;
@@ -9722,6 +9753,10 @@ function RegisterState(props: {
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const selectedCountry = useSelectedCountry();
+  const [signupCountry, setSignupCountry] = useState<Country>(selectedCountry);
+  const signupReferenceRate = useGbpReferenceRate(signupCountry);
+  useEffect(() => setSignupCountry(selectedCountry), [selectedCountry]);
   const [audience, setAudience] = useState<"business" | "sole_trader" | "employee" | null>(props.initialAudience);
   const billingCycle: BillingCycle = "monthly";
   const invitedFlow = Boolean(props.inviteToken);
@@ -9836,6 +9871,7 @@ function RegisterState(props: {
                   confirmPassword,
                   fullName: fullName || undefined,
                   organisationName: invitedFlow || employeeFlow ? undefined : organisationName || undefined,
+                  country: invitedFlow || employeeFlow ? undefined : signupCountry,
                   inviteToken: props.inviteToken || undefined,
                   billingPlan: invitedFlow || employeeFlow ? undefined : selectedSignupStep.planId,
                   billingCycle: invitedFlow || employeeFlow ? undefined : billingCycle,
@@ -9865,6 +9901,12 @@ function RegisterState(props: {
               {!invitedFlow && !employeeFlow ? (
                 <>
                   <label>
+                    Country or territory
+                    <select value={signupCountry} onChange={(event) => { const next = event.target.value as Country; setSignupCountry(next); selectCountry(next); }} required>
+                      {countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
+                    </select>
+                  </label>
+                  <label>
                     {soleTraderFlow ? "Trading name (optional)" : "Organisation name"}
                     <input
                       type="text"
@@ -9881,7 +9923,8 @@ function RegisterState(props: {
                       <strong>{selectedSignupStep.users} {selectedSignupStep.users === 1 ? "user" : "users"} · all features included</strong>
                     </div>
                     <strong>{currency(selectedSignupPrice)} / month</strong>
-                    <p>{selectedSignupStep.documents.toLocaleString()} documents per month · VAT included</p>
+                    {signupReferenceRate ? <p>≈ {currency(selectedSignupPrice * signupReferenceRate.value, signupReferenceRate.currency)} at the {signupReferenceRate.date} reference rate</p> : null}
+                    <p>{selectedSignupStep.documents.toLocaleString()} documents per month · {signupCountry === 'GB' ? 'VAT included' : 'billed in GBP; see the final charge in Stripe'}</p>
                     <Link to="/pricing">Change selection</Link>
                   </section>
                 </>
@@ -9948,7 +9991,7 @@ function RegisterState(props: {
               ) : null}
               {!invitedFlow && !employeeFlow ? (
                 <div className="muted-copy">
-                  Next, confirm your free trial in Stripe. No card details are needed. We will send your confirmation email at the same time. Once the trial starts, you can use the workspace immediately and have three days to confirm your email. If you do not pay for your selected {currency(selectedSignupPrice)} monthly package, access pauses when the trial ends; monthly billing starts on your first payment date.
+                  Next, confirm your free trial in Stripe. No card details are needed. We will send your confirmation email at the same time. Once the trial starts, you can use the workspace immediately and have three days to confirm your email. If you do not pay for your selected {currency(selectedSignupPrice)} monthly package{signupCountry === 'GB' ? '' : ' billed in GBP'}, access pauses when the trial ends; monthly billing starts on your first payment date.
                 </div>
               ) : null}
               {successMessage ? <div className="success-banner">{successMessage}</div> : null}
@@ -10330,6 +10373,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
 function PublicLayout(props: { activePath: string; children: React.ReactNode; session?: SessionState | null }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const signedIn = Boolean(props.session);
+  const selectedCountry = useSelectedCountry();
 
   return (
     <div className="public-home">
@@ -10361,6 +10405,12 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
           <span />
         </button>
         <div className="public-actions">
+          <label className="public-country-picker">
+            <span>Country</span>
+            <select aria-label="Website country" value={selectedCountry} onChange={(event) => selectCountry(event.target.value as Country)}>
+              {countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
+            </select>
+          </label>
           {signedIn && props.session ? (
             <>
               <Link to={signedInPublicSecondaryRoute(props.session)}>{signedInPublicSecondaryLabel(props.session)}</Link>
@@ -10388,6 +10438,12 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
               ))}
             </nav>
             <div className="public-mobile-actions">
+              <label className="public-country-picker">
+                <span>Country</span>
+                <select aria-label="Website country" value={selectedCountry} onChange={(event) => { selectCountry(event.target.value as Country); setMobileMenuOpen(false); }}>
+                  {countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
+                </select>
+              </label>
               {signedIn && props.session ? (
                 <>
                   <Link to={signedInPublicSecondaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>
@@ -11368,6 +11424,7 @@ function CoverageSection({ session = null, linkTarget = "/platform" }: { session
 }
 
 function FlowSection({ session = null, linkTarget = "/platform" }: { session?: SessionState | null; linkTarget?: string | null }) {
+  const selectedCountry = useSelectedCountry();
   const ProcessCard = ({ step, title, detail }: { step: string; title: string; detail: string }) =>
     linkTarget ? (
       <Link className="process-card" to={linkTarget}><span>{step}</span><strong>{title}</strong><p>{detail}</p></Link>
@@ -11390,7 +11447,7 @@ function FlowSection({ session = null, linkTarget = "/platform" }: { session?: S
       </div>
       <div className="process-grid">
         <ProcessCard step="1. Capture" title="Collect receipts, invoices, and supporting files" detail="Use mobile capture, web upload, and employee submission flows." />
-        <ProcessCard step="2. Extract" title="Pull out totals, tax, supplier, and line detail" detail="Structured extraction, VAT-aware fields, and document detail all stay visible for review." />
+        <ProcessCard step="2. Extract" title="Pull out totals, tax, supplier, and line detail" detail={`Structured extraction, ${countryTaxLabel(selectedCountry)} review fields, and document detail stay visible for review.`} />
         <ProcessCard step="3. Review" title="Work the exceptions instead of retyping everything" detail="Needs-review, duplicate, unreadable, and low-confidence signals surface the items that need attention." />
         <ProcessCard step="4. Store" title="Keep the original evidence easy to retrieve" detail="Vault storage, protected document access, and searchable archive views keep source files close at hand." />
         <ProcessCard step="5. Approve & Publish" title="Move claims, reviews, and handoff queues forward" detail="Approval-ready claims, ready queues, and export routes keep the downstream workflow moving." />
@@ -11400,6 +11457,7 @@ function FlowSection({ session = null, linkTarget = "/platform" }: { session?: S
 }
 
 function WorkflowCoverageSection({ session = null, linkTarget = "/platform" }: { session?: SessionState | null; linkTarget?: string | null }) {
+  const selectedCountry = useSelectedCountry();
   const WorkflowCard = ({ title, items }: { title: string; items: string[] }) =>
     linkTarget ? (
       <Link className="workflow-card workflow-link" to={linkTarget}>
@@ -11449,7 +11507,7 @@ function WorkflowCoverageSection({ session = null, linkTarget = "/platform" }: {
           title="Automate the review layer"
           items={[
             "Supplier rules for category, tax rate and payment method",
-            "VAT-aware editable totals, net and tax fields",
+            `${countryTaxLabel(selectedCountry)} review with editable totals, net and tax fields`,
             "Needs-review queues across costs, sales and claims",
             "Low-confidence and unreadable-document follow-up",
             "Duplicate upload checks before final publish",
@@ -11462,7 +11520,7 @@ function WorkflowCoverageSection({ session = null, linkTarget = "/platform" }: {
             "Dedicated vault workspace for searchable archived evidence",
             "Approval-ready claims and document review handoff",
             "Filtered CSV exports across queues and document views",
-            "Organisation-level VAT settings and tax defaults",
+            `Organisation-level ${countryTaxLabel(selectedCountry)} settings and review defaults`,
             "Live sync with the same receipt records used in mobile",
           ]}
         />
@@ -11472,6 +11530,7 @@ function WorkflowCoverageSection({ session = null, linkTarget = "/platform" }: {
 }
 
 function PricingTeaserSection({ session = null }: { session?: SessionState | null }) {
+  const selectedCountry = useSelectedCountry();
   return (
     <section className="pricing-band">
       <div className="section-heading">
@@ -11485,7 +11544,7 @@ function PricingTeaserSection({ session = null }: { session?: SessionState | nul
         </p>
       </div>
       <ul className="pricing-teaser-features">
-        {includedPricingFeatures.map((feature) => <li key={feature}>{feature}</li>)}
+        {includedPricingFeatures.map((feature) => <li key={feature}>{selectedCountry === 'GB' ? feature : feature.replace('VAT fields', 'Tax fields')}</li>)}
       </ul>
       <div className="section-actions">
         <Link className="public-button" to="/pricing">View pricing page</Link>
@@ -11498,6 +11557,8 @@ function PricingTeaserSection({ session = null }: { session?: SessionState | nul
 }
 
 function PricingSection({ session = null }: { session?: SessionState | null }) {
+  const selectedCountry = useSelectedCountry();
+  const referenceRate = useGbpReferenceRate(selectedCountry);
   const pricingAudience = new URLSearchParams(useLocation().search).get("audience") === "sole_trader"
     ? "sole_trader"
     : "business";
@@ -11532,11 +11593,11 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
         <div className="pricing-page-main">
           <article className="slider-pricing-card">
             <div className="slider-price-row">
-              <strong>{currency(selectedPrice)}</strong>
+              <strong>{referenceRate ? `≈ ${currency(selectedPrice * referenceRate.value, referenceRate.currency)}` : currency(selectedPrice)}</strong>
               <span>Per Month</span>
             </div>
             <span className="slider-vat-note">
-              GBP, includes VAT
+              {selectedCountry === 'GB' ? 'GBP, includes VAT' : `Charged in GBP: ${currency(selectedPrice)} per month. ${referenceRate ? `Local amount is an estimate using the ${referenceRate.date} reference rate; your card issuer sets the final conversion.` : 'Local currency estimate is temporarily unavailable.'} Review the final charge in Stripe.`}
             </span>
             <div className="slider-capacity-copy">
               <strong>{selectedStep.documents.toLocaleString()}</strong>
@@ -11625,7 +11686,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               </div>
               <ul className="slider-feature-list">
                 {includedPricingFeatures.map((feature) => (
-                  <li key={feature}>{feature}</li>
+                  <li key={feature}>{selectedCountry === 'GB' ? feature : feature.replace('VAT fields', 'Tax fields')}</li>
                 ))}
               </ul>
               <p className="slider-enterprise-note">
