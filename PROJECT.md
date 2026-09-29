@@ -31,6 +31,8 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 
 ## Performance and release notes
 
+- Security chatbot guidance (2026-09-29): `src/chatbotKnowledge.ts` now answers where owners/admins and employees find their 2FA controls, how to enable email or authenticator codes, and how to use or disable them safely. The help chat also offers a visible 2FA question. All 103 canonical Q&As and representative 2FA paraphrases were checked locally; this does not verify the live site.
+
 - Two-factor login (2026-09-29): Dashboard Profile/Settings > Security lets admins enable email codes, a Google Authenticator compatible app, or both; employees use Login security. When both are enabled, either method can complete login after the password. The client calls `/two-factor` for setup and `/login` for the challenge; it does not receive a session token before successful verification. Deploy the server update before this website version. Authenticator setup uses a manual key and shows eight one-time recovery codes once. The owner checks live deployment and email delivery; never delete or move mobile signing keystores or signing details.
 
 - Pricing headline (2026-09-29): the public pricing page now gives “Free trial no card details needed” a larger highlighted line beneath the allowance headline, with “Cancel anytime” immediately below. The same content appears in the signed-in pricing view. Website TypeScript/Vite build passed; the live site and deployment workflow are for the owner to check.

@@ -2210,6 +2210,7 @@ const helpChatQuickPrompts = [
   "How do I upload a receipt?",
   "How do reimbursement payments work?",
   "How do I invite a manager?",
+  "Where do I find 2FA and security settings?",
 ];
 
 function helpChatReply(message: string, findKnowledgeAnswer: (message: string) => string | null) {
@@ -2319,8 +2320,8 @@ function helpChatReply(message: string, findKnowledgeAnswer: (message: string) =
   if (includes("change email", "change account email", "change my email", "profile email")) {
     return "Email-address changes are handled through Profile/Settings using Open email change request. This protects the workspace from an unauthorised account change. Use Access support if you cannot sign in to submit the request.";
   }
-  if (includes("two factor", "2fa", "authenticator", "google authenticator")) {
-    return "You can turn on email codes, an authenticator app, or both in Dashboard Settings under Security. If both are on, either method can verify a login. Never share a password or verification code in this chat.";
+  if (includes("two factor", "two step", "2fa", "mfa", "authenticator", "login security", "security settings", "where is security", "find security")) {
+    return "Sign in to the Exdox website. Owners and administrators can open Profile/Settings, then Security; employees can open Login security from their dashboard menu. You can enable email codes, an authenticator app, or both there. If both are on, either code works at login. Save any recovery codes shown during authenticator setup, and never share passwords or codes in this chat.";
   }
   if (includes("browser preferences", "start page", "date format", "compact tables", "alerts", "notifications")) {
     return "Profile/Settings lets each user choose their default landing page, date format, compact table view, and browser-specific upload, review, and claim alerts. These preferences apply only to the browser where you save them, not to every person in the workspace.";

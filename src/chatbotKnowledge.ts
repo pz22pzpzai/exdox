@@ -105,10 +105,13 @@ export const workspaceChatbotKnowledge: ChatbotKnowledgeEntry[] = [
   { id: 98, question: "Will disconnecting Xero delete my Exdox records?", answer: "No. Disconnecting removes the accounting connection but does not delete the Costs, Sales, claims, or evidence already stored in Exdox." },
   { id: 99, question: "How do I change a team member's department?", answer: "Open Profile/Settings, find the team member, choose the correct department from their selector, and wait for the update confirmation." },
   { id: 100, question: "How do I remove a team member?", answer: "A permitted business administrator can open Profile/Settings, find the person under Team members, select Remove team member, and confirm. Historical business records are retained for audit continuity." },
+  { id: 101, question: "Where do I find two-factor authentication and security settings?", answer: "Sign in to the Exdox website. If you are a business owner or administrator, open Profile/Settings in the dashboard and find Security. If you are an employee, open Login security from your dashboard menu. Each person manages the two-factor methods for their own login." },
+  { id: 102, question: "How do I turn on email or authenticator two-factor authentication?", answer: "Open your dashboard security settings: Profile/Settings > Security for owners and administrators, or Login security for employees. You can turn on email codes, an authenticator app, or both. Email setup sends a code to your registered address. Authenticator setup shows a key to enter in a TOTP app; confirm the app's code and save the one-time recovery codes." },
+  { id: 103, question: "How do I turn off two-factor authentication or use a recovery code?", answer: "Open your dashboard security settings to turn off an enabled method. You must enter your password and a current verification code. If you lose your authenticator, choose Recovery code on the website login screen and use one of the one-time codes you saved during setup. Never put a password, verification code, setup key, or recovery code in this chat." },
 ];
 
 const ignoredWords = new Set([
-  "a", "an", "and", "are", "as", "at", "be", "can", "choose", "could", "do", "does", "exdox", "for", "from", "happens", "how", "i", "if", "in", "is", "it", "me", "mean", "means", "my", "of", "on", "or", "that", "the", "then", "there", "this", "to", "what", "when", "where", "which", "why", "will", "with", "you", "your",
+  "a", "an", "and", "are", "as", "at", "be", "can", "choose", "could", "do", "does", "exdox", "for", "from", "happens", "how", "i", "if", "in", "is", "it", "me", "mean", "means", "my", "of", "on", "or", "that", "the", "then", "there", "this", "to", "use", "what", "when", "where", "which", "why", "will", "with", "you", "your",
 ]);
 
 const wordAliases: Record<string, string> = {
@@ -118,6 +121,7 @@ const wordAliases: Record<string, string> = {
   expenses: "cost", expense: "cost", file: "document", files: "document", find: "search", five: "multiple", invoices: "invoice", link: "connect", locate: "search", managers: "manager",
   items: "item", pages: "page", purchases: "cost", purchase: "cost", receipt: "document", receipts: "document", reimbursements: "reimbursement", rules: "rule", sales: "sale", see: "view", send: "upload", several: "multiple",
   showing: "view", shown: "view", staff: "employee", submissions: "submission", team: "employee", member: "employee", members: "employee", things: "document", together: "multiple", uploaded: "upload", uploading: "upload", users: "user", viewing: "view", waiting: "need",
+  mfa: "2fa", twofactor: "2fa",
 };
 
 const knowledgeAliases: Record<number, string> = {
@@ -129,6 +133,9 @@ const knowledgeAliases: Record<number, string> = {
   76: "deleted item recoverable",
   90: "document missing absent Analytics",
   99: "change employee department",
+  101: "2fa mfa two step verification account security settings find location dashboard employee login",
+  102: "enable activate set up 2fa email code google authenticator totp",
+  103: "disable switch off 2fa lost authenticator recovery backup code",
 };
 
 function knowledgeTokens(value: string) {
@@ -137,6 +144,7 @@ function knowledgeTokens(value: string) {
     .replace(/can['’]t/g, "cant")
     .replace(/expense\s+claim/g, "claim")
     .replace(/company[ -]card/g, "companycard")
+    .replace(/\b(?:two|2)[ -](?:factor|step)(?: authentication| verification)?\b/g, "2fa")
     .replace(/credit\s+note/g, "creditnote")
     .replace(/[^a-z0-9£]+/g, " ")
     .trim()
