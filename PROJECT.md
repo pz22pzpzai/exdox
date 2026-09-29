@@ -20,6 +20,7 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 
 ## Performance and release notes
 
+- Pricing headline (2026-09-29): the public pricing page now gives “Free trial no card details needed” a larger highlighted line beneath the allowance headline, with “Cancel anytime” immediately below. The same content appears in the signed-in pricing view. Website TypeScript/Vite build passed; the live site and deployment workflow are for the owner to check.
 - Mobile homepage hero aspect ratio (2026-09-25): the `width="1717" height="916"` HTML image attributes were making the 350 px wide homepage image render 916 px tall on narrow screens. The `max-width: 650px` hero image rule now sets `height: auto`, preserving the image's natural ratio. A local phone-width check measured 350 × 187 px after the fix; desktop CSS was left unchanged.
 - The 2026-09-25 mobile PageSpeed report for the homepage showed performance 78, FCP 3.0 s, LCP 4.1 s, and a 3.6 MB demo video transfer during the initial load.
 - The homepage video uses a small poster and `preload="none"`. Keep it user-controlled; do not cause the MP4 to download on initial page load.

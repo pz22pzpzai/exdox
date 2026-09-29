@@ -11517,10 +11517,12 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
         <div>
           <p className="section-kicker">Pricing</p>
           {signedIn ? (
-            <h2>Choose the allowance that fits your business.<br />all price plans start with a free trial, cancel anytime</h2>
+            <h2>Choose the allowance that fits your business.</h2>
           ) : (
-            <h1>Choose the allowance that fits your business.<br />all price plans start with a free trial, cancel anytime</h1>
+            <h1>Choose the allowance that fits your business.</h1>
           )}
+          <p className="pricing-trial-highlight">Free trial no card details needed</p>
+          <p className="pricing-trial-cancel">Cancel anytime.</p>
         </div>
         <p>
           Every price includes the same Exdox tools. The slider changes only your user and monthly document allowance.

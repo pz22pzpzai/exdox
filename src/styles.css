@@ -4530,6 +4530,28 @@ input {
   max-width: calc(100% - 64px);
 }
 
+.pricing-page-band .section-heading .pricing-trial-highlight {
+  box-sizing: border-box;
+  display: table;
+  max-width: 100%;
+  margin: 14px 0 8px;
+  padding: 10px 16px;
+  border: 2px solid #8bd6f0;
+  border-radius: 12px;
+  background: #e9f8ff;
+  color: var(--navy);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: clamp(2rem, 3.4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.pricing-page-band .section-heading .pricing-trial-cancel {
+  color: var(--navy);
+  font-weight: 600;
+}
+
 .pricing-card span {
   display: block;
   margin-bottom: 10px;
