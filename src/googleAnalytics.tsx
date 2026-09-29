@@ -14,6 +14,7 @@ declare global {
 }
 
 let googleAnalyticsConfigured = false;
+let googleAnalyticsScriptScheduled = false;
 let lastTrackedPage: string | null = null;
 
 const privateWorkspacePrefixes = [
@@ -52,6 +53,38 @@ function ensureGoogleTagQueue() {
   };
 }
 
+function scheduleGoogleAnalyticsScript() {
+  if (googleAnalyticsScriptScheduled || document.querySelector(`script[data-exdox-google-analytics="${googleAnalyticsMeasurementId}"]`)) {
+    return;
+  }
+
+  googleAnalyticsScriptScheduled = true;
+  const appendScript = () => {
+    googleAnalyticsScriptScheduled = false;
+    if (!hasAnalyticsConsent() || document.querySelector(`script[data-exdox-google-analytics="${googleAnalyticsMeasurementId}"]`)) {
+      return;
+    }
+    const script = document.createElement("script");
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`;
+    script.dataset.exdoxGoogleAnalytics = googleAnalyticsMeasurementId;
+    document.head.appendChild(script);
+  };
+  const afterPageLoad = () => {
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(appendScript, { timeout: 3000 });
+    } else {
+      window.setTimeout(appendScript, 1500);
+    }
+  };
+
+  if (document.readyState === "complete") {
+    afterPageLoad();
+  } else {
+    window.addEventListener("load", afterPageLoad, { once: true });
+  }
+}
+
 function configureGoogleAnalytics() {
   if (googleAnalyticsConfigured || !hasAnalyticsConsent()) {
     return;
@@ -67,13 +100,7 @@ function configureGoogleAnalytics() {
   window.gtag?.("js", new Date());
   window.gtag?.("config", googleAnalyticsMeasurementId, { send_page_view: false });
 
-  if (!document.querySelector(`script[data-exdox-google-analytics="${googleAnalyticsMeasurementId}"]`)) {
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsMeasurementId}`;
-    script.dataset.exdoxGoogleAnalytics = googleAnalyticsMeasurementId;
-    document.head.appendChild(script);
-  }
+  scheduleGoogleAnalyticsScript();
 
   googleAnalyticsConfigured = true;
 }

@@ -4084,6 +4084,7 @@ input {
 
 .public-hero > img {
   width: 115%;
+  height: auto;
   max-width: none;
   margin-left: -5%;
   mix-blend-mode: multiply;
