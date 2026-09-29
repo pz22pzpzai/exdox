@@ -8217,22 +8217,25 @@ function TwoFactorSettings({ session }: { session: SessionState }) {
   const [secret, setSecret] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
-  const [codeMethod, setCodeMethod] = useState<"email" | "authenticator">("email");
+  const [codeMethod, setCodeMethod] = useState<"email" | "authenticator" | "recovery">("email");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let current = true;
-    void getTwoFactorStatus(session.token).then((next) => { if (current) setStatus(next); }).catch((cause) => { if (current) setError(cause instanceof Error ? cause.message : "Could not load 2FA settings."); });
+    void getTwoFactorStatus(session.token).then((next) => { if (current) { setStatus(next); setCodeMethod(next.emailEnabled ? "email" : "authenticator"); } }).catch((cause) => { if (current) setError(cause instanceof Error ? cause.message : "Could not load 2FA settings."); });
     return () => { current = false; };
   }, [session.token]);
   const change = async (input: Parameters<typeof changeTwoFactor>[1], success: string) => {
     setBusy(true); setError(null); setMessage(null);
     try {
       const next = await changeTwoFactor(session.token, input);
-      if (typeof next.emailEnabled === "boolean") setStatus(next);
+      if (typeof next.emailEnabled === "boolean") { setStatus(next); setCodeMethod(next.emailEnabled ? "email" : "authenticator"); }
       if (next.secret) setSecret(next.secret);
+      if (next.recoveryCodes) setRecoveryCodes(next.recoveryCodes);
       if (input.action === "enable_authenticator") setSecret(null);
+      if (input.action === "disable" && input.method === "authenticator") setRecoveryCodes(null);
       setCode(""); setPassword(""); setMessage(next.message ?? success);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not update 2FA."); }
     finally { setBusy(false); }
@@ -8256,15 +8259,18 @@ function TwoFactorSettings({ session }: { session: SessionState }) {
         <label>Code from authenticator<input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label>
         <button className="primary-action" type="button" disabled={busy || code.length !== 6} onClick={() => void change({ action: "enable_authenticator", code }, "Authenticator 2FA is on.")}>Turn on authenticator 2FA</button></> : null}
     </div> : null}
+    {recoveryCodes ? <div className="two-factor-option"><h3>Save your recovery codes</h3><p>Each code works once if you lose your authenticator. Store them somewhere private. They will not be shown again.</p><code className="two-factor-secret">{recoveryCodes.join("   ")}</code><button className="secondary-action" type="button" onClick={() => setRecoveryCodes(null)}>I have saved these codes</button></div> : null}
     {status.emailEnabled || status.authenticatorEnabled ? <div className="two-factor-option">
       <h3>Turn off a method</h3><p>Enter your password and a current code from either enabled method.</p>
-      {status.emailEnabled && status.authenticatorEnabled ? <label>Code method<select value={codeMethod} onChange={(event) => setCodeMethod(event.target.value as "email" | "authenticator")}><option value="email">Email</option><option value="authenticator">Authenticator</option></select></label> : null}
+      {status.authenticatorEnabled ? <label>Code method<select value={codeMethod} onChange={(event) => setCodeMethod(event.target.value as "email" | "authenticator" | "recovery")}>
+        {status.emailEnabled ? <option value="email">Email</option> : null}<option value="authenticator">Authenticator</option><option value="recovery">Recovery code</option>
+      </select></label> : null}
       {status.emailEnabled ? <button className="secondary-action" type="button" disabled={busy} onClick={() => void change({ action: "send_email_code" }, "Check your email for a code.")}>Send email code</button> : null}
       <label>Password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-      <label>Verification code<input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} /></label>
+      <label>Verification code<input inputMode={codeMethod === "recovery" ? "text" : "numeric"} maxLength={codeMethod === "recovery" ? 12 : 6} value={code} onChange={(event) => setCode(codeMethod === "recovery" ? event.target.value.toUpperCase().replace(/[^A-F0-9]/g, "") : event.target.value.replace(/\D/g, ""))} /></label>
       <div className="toolbar">
-        {status.emailEnabled ? <button className="secondary-action" type="button" disabled={busy || !password || code.length !== 6} onClick={() => void change({ action: "disable", method: "email", codeMethod: status.authenticatorEnabled ? codeMethod : "email", code, password }, "Email 2FA is off.")}>Turn off email 2FA</button> : null}
-        {status.authenticatorEnabled ? <button className="secondary-action" type="button" disabled={busy || !password || code.length !== 6} onClick={() => void change({ action: "disable", method: "authenticator", codeMethod: status.emailEnabled ? codeMethod : "authenticator", code, password }, "Authenticator 2FA is off.")}>Turn off authenticator 2FA</button> : null}
+        {status.emailEnabled ? <button className="secondary-action" type="button" disabled={busy || !password || code.length !== (codeMethod === "recovery" ? 12 : 6)} onClick={() => void change({ action: "disable", method: "email", codeMethod: status.authenticatorEnabled ? codeMethod : "email", code, password }, "Email 2FA is off.")}>Turn off email 2FA</button> : null}
+        {status.authenticatorEnabled ? <button className="secondary-action" type="button" disabled={busy || !password || code.length !== (codeMethod === "recovery" ? 12 : 6)} onClick={() => void change({ action: "disable", method: "authenticator", codeMethod: status.emailEnabled ? codeMethod : "authenticator", code, password }, "Authenticator 2FA is off.")}>Turn off authenticator 2FA</button> : null}
       </div>
     </div> : null}
   </div>;
@@ -9447,13 +9453,13 @@ function LoginState(props: {
   trialReminder?: string | null;
   accountDeleted?: boolean;
   embeddedInPublicShell?: boolean;
-  onLogin: (email: string, password: string, code?: string, method?: "email" | "authenticator") => Promise<{ kind: "two_factor"; emailEnabled: boolean; authenticatorEnabled: boolean; message: string } | void>;
+  onLogin: (email: string, password: string, code?: string, method?: "email" | "authenticator" | "recovery") => Promise<{ kind: "two_factor"; emailEnabled: boolean; authenticatorEnabled: boolean; message: string } | void>;
 }) {
   const [email, setEmail] = useState(props.initialEmail);
   const [password, setPassword] = useState("");
   const [twoFactor, setTwoFactor] = useState<{ emailEnabled: boolean; authenticatorEnabled: boolean; message: string } | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState("");
-  const [twoFactorMethod, setTwoFactorMethod] = useState<"email" | "authenticator">("email");
+  const [twoFactorMethod, setTwoFactorMethod] = useState<"email" | "authenticator" | "recovery">("email");
   const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
   const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
   const needsEmailConfirmation =
@@ -9559,15 +9565,15 @@ function LoginState(props: {
               {twoFactor ? (
                 <div className="two-factor-login">
                   <p>{twoFactor.message}</p>
-                  {twoFactor.emailEnabled && twoFactor.authenticatorEnabled ? (
+                  {twoFactor.authenticatorEnabled ? (
                     <label>Verification method
-                      <select value={twoFactorMethod} onChange={(event) => setTwoFactorMethod(event.target.value as "email" | "authenticator")}>
-                        <option value="email">Email code</option><option value="authenticator">Authenticator app</option>
+                      <select value={twoFactorMethod} onChange={(event) => { setTwoFactorMethod(event.target.value as "email" | "authenticator" | "recovery"); setTwoFactorCode(""); }}>
+                        {twoFactor.emailEnabled ? <option value="email">Email code</option> : null}<option value="authenticator">Authenticator app</option><option value="recovery">Recovery code</option>
                       </select>
                     </label>
                   ) : null}
-                  <label>Six-digit verification code
-                    <input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" value={twoFactorCode} onChange={(event) => setTwoFactorCode(event.target.value.replace(/\D/g, ""))} required />
+                  <label>{twoFactorMethod === "recovery" ? "One-time recovery code" : "Six-digit verification code"}
+                    <input inputMode={twoFactorMethod === "recovery" ? "text" : "numeric"} pattern={twoFactorMethod === "recovery" ? "[A-Fa-f0-9]{12}" : "[0-9]{6}"} maxLength={twoFactorMethod === "recovery" ? 12 : 6} autoComplete="one-time-code" value={twoFactorCode} onChange={(event) => setTwoFactorCode(twoFactorMethod === "recovery" ? event.target.value.toUpperCase().replace(/[^A-F0-9]/g, "") : event.target.value.replace(/\D/g, ""))} required />
                   </label>
                   {twoFactor.emailEnabled ? <button className="secondary-action" type="button" disabled={props.busy} onClick={() => { void props.onLogin(email, password).then((result) => { if (result?.kind === "two_factor") setTwoFactor(result); }); }}>Send email code again</button> : null}
                 </div>

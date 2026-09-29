@@ -139,7 +139,7 @@ export function clearStoredSession() {
   window.localStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
-export async function loginWithEmail(input: { email: string; password: string; twoFactorCode?: string; twoFactorMethod?: "email" | "authenticator" }): Promise<LoginResult> {
+export async function loginWithEmail(input: { email: string; password: string; twoFactorCode?: string; twoFactorMethod?: "email" | "authenticator" | "recovery" }): Promise<LoginResult> {
   const response = await fetch(`${API_BASE_URL}/login`, {
     method: "POST",
     headers: {
@@ -205,10 +205,10 @@ export async function changeTwoFactor(token: string, input: {
   action: "begin_authenticator" | "enable_authenticator" | "send_email_code" | "enable_email" | "disable";
   code?: string;
   method?: "email" | "authenticator";
-  codeMethod?: "email" | "authenticator";
+  codeMethod?: "email" | "authenticator" | "recovery";
   password?: string;
-}): Promise<TwoFactorStatus & { secret?: string; uri?: string; message?: string }> {
-  return apiFetch<TwoFactorStatus & { secret?: string; uri?: string; message?: string }>("/two-factor", token, { method: "POST", body: JSON.stringify(input) });
+}): Promise<TwoFactorStatus & { secret?: string; uri?: string; message?: string; recoveryCodes?: string[] }> {
+  return apiFetch<TwoFactorStatus & { secret?: string; uri?: string; message?: string; recoveryCodes?: string[] }>("/two-factor", token, { method: "POST", body: JSON.stringify(input) });
 }
 
 export async function registerWithEmail(input: {
