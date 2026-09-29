@@ -1,0 +1,4 @@
+Contact: mailto:contact@exdox.co.uk
+Expires: 2027-03-29T00:00:00Z
+Canonical: https://exdox.co.uk/.well-known/security.txt
+Preferred-Languages: en
