@@ -25,6 +25,10 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 - Non-UK mileage uses manual miles and a local rate. UK postcode route suggestions remain available only for UK workspaces. Existing historical documents are not revalued when a workspace changes country or currency; check reports spanning a country change before relying on totals.
 - The server must be deployed before this website version because registration and settings now send `country`. The Android and iPhone app code was not changed and may still display UK-oriented labels. Never delete or move a mobile app keystore or signing details.
 
+## Company disclosure (2026-09-29)
+
+- The public footer shows EXDOX LTD, company number 17488771 linked to its Companies House listing, England and Wales as the registration jurisdiction, and the registered office address from that listing. Do not publish the incorporation certificate PDF; update the footer if the Companies House registered office changes.
+
 ## Performance and release notes
 
 - Pricing headline (2026-09-29): the public pricing page now gives “Free trial no card details needed” a larger highlighted line beneath the allowance headline, with “Cancel anytime” immediately below. The same content appears in the signed-in pricing view. Website TypeScript/Vite build passed; the live site and deployment workflow are for the owner to check.

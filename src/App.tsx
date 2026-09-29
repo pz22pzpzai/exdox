@@ -10548,6 +10548,11 @@ function SiteFooterBlock() {
             </div>
           </div>
         </div>
+        <div className="site-footer-company">
+          <strong>EXDOX LTD</strong>
+          <span>Registered in England and Wales · Company number <a href="https://find-and-update.company-information.service.gov.uk/company/17488771" target="_blank" rel="noopener noreferrer">17488771</a></span>
+          <address>Registered office: 1 Cannon Hill, Bracknell, United Kingdom, RG12 7QA</address>
+        </div>
         <div className="site-footer-bottom">
           <span>Copyright {new Date().getFullYear()} exdox.co.uk</span>
           <span>
