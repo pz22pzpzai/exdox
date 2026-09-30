@@ -29,6 +29,10 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 
 - The public footer shows EXDOX LTD, company number 17488771 linked to its Companies House listing, England and Wales as the registration jurisdiction, and the registered office address from that listing. Do not publish the incorporation certificate PDF; update the footer if the Companies House registered office changes.
 
+## Public footer social links (2026-09-30)
+
+- The public footer shows inline, accessible icons for the Exdox Facebook Page, YouTube `@exdox_expenses`, TikTok `@terry.reed` (display name Exdox), X `@exdox_expenses`, Instagram `@exdox.co.uk`, and Terry Reed's personal LinkedIn profile `/in/terry-reed-109031220/`. Icons are embedded SVGs, so they add no third-party runtime requests. Keep account destinations current if handles change. Never delete or move mobile signing keystores or signing details.
+
 ## Performance and release notes
 
 - Desktop homepage image and first-load follow-up (2026-09-29): `.public-hero > img` now uses `height: auto` at desktop widths as well as mobile widths. The prior 620 × 916 px rendered size stretched the 720 × 384 px source; the local production preview now renders about 620 × 331 px at the default desktop viewport. For visitors who already accepted analytics cookies, `src/googleAnalytics.tsx` queues page views immediately but waits until page load and browser idle before downloading Google's analytics script, so it does not compete with the initial hero and app resources. A pre-change live PageSpeed run reported 100 desktop (0.5 s LCP) and 95 mobile (2.5 s LCP); these are baseline results, not post-deployment measurements. The production build and local homepage visual check passed. Keep the CSP unchanged and do not delete or move mobile keystores or signing details.
