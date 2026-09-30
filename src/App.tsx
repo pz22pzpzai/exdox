@@ -10476,6 +10476,19 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
   return (
     <div className="public-home">
       <header className="public-header">
+        <a
+          className="public-security-badge"
+          href="https://internet.nl/site/exdox.co.uk/4323228/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img
+            src="/branding/internetnl-website-test-100.svg"
+            width="204"
+            height="38"
+            alt="Internet.nl website test: Exdox scored 100% on 29 September 2026. View the report."
+          />
+        </a>
         <Link className="public-brand" to="/" aria-label="exdox home">
           <img className="public-brand-mark" src={publicBrandMarkSrc} alt="" />
           <strong>Exdox</strong>

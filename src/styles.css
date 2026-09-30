@@ -3658,6 +3658,20 @@ input {
   backdrop-filter: blur(16px);
 }
 
+.public-security-badge {
+  grid-column: 1 / -1;
+  justify-self: end;
+  display: block;
+  height: 38px;
+  margin-top: 6px;
+}
+
+.public-security-badge img {
+  display: block;
+  width: 204px;
+  height: 38px;
+}
+
 .public-brand,
 .public-actions,
 .public-nav {
@@ -5160,6 +5174,12 @@ input {
   .public-header {
     width: calc(100% - 28px);
     min-height: 72px;
+  }
+
+  .public-security-badge,
+  .public-security-badge img {
+    width: 184px;
+    height: auto;
   }
 
   .public-brand img,
