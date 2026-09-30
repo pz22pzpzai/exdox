@@ -313,6 +313,19 @@ const pricingSliderSteps: Array<{
     annualMonthlyPrice: 230.59,
     planId: "operations",
   },
+  ...Array.from({ length: 10 }, (_, index) => {
+    const users = 110 + index * 10;
+    const monthlyPrice = Number((377.05 + index * 28.81).toFixed(2));
+    return {
+      label: `${users} users`,
+      markerLabel: String(users),
+      users,
+      documents: users * 50 + 5000,
+      monthlyPrice,
+      annualMonthlyPrice: Number((monthlyPrice * 0.8).toFixed(2)),
+      planId: "operations" as BillingPlanId,
+    };
+  }),
 ];
 
 function resolvePricingSliderStep(
@@ -11815,6 +11828,9 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               </ul>
               <p className="slider-enterprise-note">
                 Xero connection follows the same paid-subscription and trial-unlock rules at every price.
+              </p>
+              <p className="slider-enterprise-note">
+                Need a different user or document allowance? <Link to={`${contactPagePath}?subject=${encodeURIComponent("Tailored pricing enquiry")}`}>Ask us about a tailored plan.</Link>
               </p>
             </article>
           </div>
