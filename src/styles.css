@@ -3658,18 +3658,22 @@ input {
   backdrop-filter: blur(16px);
 }
 
+.public-brand-stack {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+}
+
 .public-security-badge {
-  grid-column: 1 / -1;
-  justify-self: end;
   display: block;
-  height: 38px;
-  margin-top: 6px;
+  width: 153px;
+  height: 28.5px;
 }
 
 .public-security-badge img {
   display: block;
-  width: 204px;
-  height: 38px;
+  width: 153px;
+  height: 28.5px;
 }
 
 .public-brand,
@@ -3702,6 +3706,7 @@ input {
 
 .public-brand {
   gap: 10px;
+  line-height: 1;
 }
 
 .public-brand img,
@@ -5189,12 +5194,6 @@ input {
   .public-header {
     width: calc(100% - 28px);
     min-height: 72px;
-  }
-
-  .public-security-badge,
-  .public-security-badge img {
-    width: 184px;
-    height: auto;
   }
 
   .public-brand img,
