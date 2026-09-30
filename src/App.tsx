@@ -11728,6 +11728,15 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
           Every price includes the same Exdox tools. The slider changes only your user and monthly document allowance.
         </p>
       </div>
+      <aside className="pricing-bespoke-callout">
+        <div>
+          <h2>Need a bespoke plan?</h2>
+          <p>Tell us how many users and documents you need each month, and we can discuss a tailored quote for your business.</p>
+        </div>
+        <Link className="public-button" to={`${contactPagePath}?subject=${encodeURIComponent("Bespoke pricing enquiry")}`}>
+          Ask about bespoke pricing
+        </Link>
+      </aside>
       <div className="pricing-page-layout">
         <div className="pricing-page-main">
           <article className="slider-pricing-card">
@@ -11831,9 +11840,6 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               <p className="slider-enterprise-note">
                 Xero connection follows the same paid-subscription and trial-unlock rules at every price.
               </p>
-              <p className="slider-enterprise-note">
-                Need a different user or document allowance? <Link to={`${contactPagePath}?subject=${encodeURIComponent("Tailored pricing enquiry")}`}>Ask us about a tailored plan.</Link>
-              </p>
             </article>
           </div>
         </div>
@@ -11919,6 +11925,7 @@ function ContactSection({ embedded = false, session = null }: { embedded?: boole
     "General enquiry",
     "Access support",
     "Billing support",
+    "Bespoke pricing enquiry",
     "Product demo",
     "Onboarding help",
     "Register interest for iPhone app",
