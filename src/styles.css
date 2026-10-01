@@ -3650,9 +3650,10 @@ input {
   display: grid;
   grid-template-columns: 170px 1fr auto;
   align-items: center;
-  width: min(1120px, calc(100% - 48px));
+  box-sizing: border-box;
+  width: 100%;
   min-height: 82px;
-  margin: 0 auto;
+  padding: 0 max(24px, calc((100% - 1120px) / 2));
   background: rgba(255, 255, 255, 0.96);
   border-bottom: 1px solid #e3e8ef;
   backdrop-filter: blur(16px);
@@ -5234,7 +5235,7 @@ input {
 
 @media (max-width: 650px) {
   .public-header {
-    width: calc(100% - 28px);
+    padding: 0 14px;
     min-height: 72px;
   }
 
@@ -5369,6 +5370,23 @@ input {
 
   .slider-bands span {
     text-align: left;
+  }
+}
+
+/* Match the desktop workspace's 80% presentation without narrowing the public header. */
+@media (min-width: 981px) and (hover: hover) and (pointer: fine) {
+  .public-home {
+    min-height: 125vh;
+    zoom: 0.8;
+  }
+
+  .public-header {
+    width: 125vw;
+    padding: 0 max(30px, calc((125vw - 1400px) / 2));
+  }
+
+  .public-home > main {
+    width: 125vw;
   }
 }
 
