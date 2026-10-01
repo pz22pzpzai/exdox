@@ -24,6 +24,7 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 - A workspace's Settings country and reporting currency move together and replace the tax review choices and guidance. Non-UK tax rates are review aids, not automatic tax determination or filing; US state/local, Canadian provincial, and EUR territory rules still require a local review. The UK defaults and existing UK VAT choices remain unchanged.
 - Non-UK mileage uses manual miles and a local rate. UK postcode route suggestions remain available only for UK workspaces. Existing historical documents are not revalued when a workspace changes country or currency; check reports spanning a country change before relying on totals.
 - The server must be deployed before this website version because registration and settings now send `country`. At the time of this country update, the Android and iPhone app code had not been changed; the later Android update is documented in `app/PROJECT.md`. Never delete or move a mobile app keystore or signing details.
+- The homepage hero now carries the owner's exact international availability line above its headline: “Now available in the UK, USA, Australia, Canada and EU”. It is a compact responsive badge; the shared header size and country selector are unchanged. The owner has tested country behaviour on web and Android. Note that the selectable EUR list is narrower than all EU member states, so review this line if the country list remains limited.
 
 ## Admin rejection of unreviewed purchases (2026-10-01)
 

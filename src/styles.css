@@ -3980,6 +3980,20 @@ input {
   z-index: 1;
 }
 
+.public-availability {
+  display: inline-block;
+  max-width: 100%;
+  margin-bottom: 16px;
+  padding: 8px 14px;
+  border: 1px solid #b7cdf6;
+  border-radius: 999px;
+  background: #edf4ff;
+  color: #174493;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .public-hero h1 {
   max-width: 520px;
   margin: 0;

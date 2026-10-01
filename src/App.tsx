@@ -10426,6 +10426,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
     <PublicLayout activePath="/" session={session}>
       <section className="public-hero">
         <div className="public-hero-copy">
+          <span className="public-availability">Now available in the UK, USA, Australia, Canada and EU</span>
           <h1>Capture, review and publish business spend without chasing paper.</h1>
           <p>
             Exdox gives businesses one synced workspace across mobile and web for receipt capture,
