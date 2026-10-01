@@ -23,7 +23,11 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 - `src/region.ts` lists GB, US, AU, CA, and 27 EUR-using countries and territories. The public selector persists locally and signup sends the chosen country to the API. Public pricing and signup show a dated reference conversion from GBP where available; Stripe billing remains GBP and the issuer sets the final conversion.
 - A workspace's Settings country and reporting currency move together and replace the tax review choices and guidance. Non-UK tax rates are review aids, not automatic tax determination or filing; US state/local, Canadian provincial, and EUR territory rules still require a local review. The UK defaults and existing UK VAT choices remain unchanged.
 - Non-UK mileage uses manual miles and a local rate. UK postcode route suggestions remain available only for UK workspaces. Existing historical documents are not revalued when a workspace changes country or currency; check reports spanning a country change before relying on totals.
-- The server must be deployed before this website version because registration and settings now send `country`. The Android and iPhone app code was not changed and may still display UK-oriented labels. Never delete or move a mobile app keystore or signing details.
+- The server must be deployed before this website version because registration and settings now send `country`. At the time of this country update, the Android and iPhone app code had not been changed; the later Android update is documented in `app/PROJECT.md`. Never delete or move a mobile app keystore or signing details.
+
+## Admin rejection of unreviewed purchases (2026-10-01)
+
+- Business admins now have **Reject Expense** on an unreviewed Cost receipt or supplier invoice that is not in a claim. The existing **Delete Document** action also causes an uploader-specific decision record when an admin deletes an employee's unreviewed Cost. The API stores this record for Android Purchases and in-app Notifications; the employee can dismiss it by deleting the item there. Rejected records remain in the website Costs list with status `Rejected` and leave review queues. Deploy the API before this website change. Preserve unrelated working-tree edits and never delete or move mobile signing keystores or details.
 
 ## Company disclosure (2026-09-29)
 

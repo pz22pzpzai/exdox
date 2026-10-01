@@ -2001,6 +2001,7 @@ function DashboardShell(props: {
                   element={
                     <DocumentWorkspacePage
                       mode="cost"
+                      isBusinessAdmin={props.session.user.role === 'Business_Admin'}
                       sessionToken={props.session.token}
                       fallbackRecords={props.store.costs}
                       settings={props.store.settings}
@@ -2046,6 +2047,7 @@ function DashboardShell(props: {
                   element={
                     <DocumentWorkspacePage
                       mode="sales"
+                      isBusinessAdmin={props.session.user.role === 'Business_Admin'}
                       sessionToken={props.session.token}
                       fallbackRecords={props.store.sales}
                       settings={props.store.settings}
@@ -2078,6 +2080,7 @@ function DashboardShell(props: {
                   element={
                     <DocumentWorkspacePage
                       mode="vault"
+                      isBusinessAdmin={props.session.user.role === 'Business_Admin'}
                       sessionToken={props.session.token}
                       fallbackRecords={props.store.vault}
                       settings={props.store.settings}
@@ -5137,6 +5140,7 @@ function MileageCostReviewPage(props: {
 
 function DocumentWorkspacePage(props: {
   mode: "cost" | "sales" | "vault";
+  isBusinessAdmin: boolean;
   sessionToken: string;
   fallbackRecords: ReceiptRecord[];
   settings?: OrganisationSettings | null;
@@ -5235,6 +5239,8 @@ function DocumentWorkspacePage(props: {
   const foreignCurrencyDocument = receiptCountry === 'GB' && Boolean(receipt.currency && receipt.currency.toUpperCase() !== "GBP");
   const receiptPublished = receipt.status === "Published";
   const receiptApproved = receipt.status === "Ready" && !receipt.needsReview;
+  const canRejectExpense = props.isBusinessAdmin && props.mode === 'cost'
+    && receipt.status === 'Review' && receipt.claimId === null;
   const reimbursementPaymentLocked =
     props.mode === "cost" &&
     receipt.paymentMethod === "cash_personal" &&
@@ -5460,6 +5466,7 @@ function DocumentWorkspacePage(props: {
               <option value="Published">Published</option>
               {receipt.status === "Payment processing" ? <option value="Payment processing">Payment processing</option> : null}
               {receipt.status === "Paid" ? <option value="Paid">Paid</option> : null}
+              {receipt.status === "Rejected" ? <option value="Rejected">Rejected</option> : null}
             </select>
           </label>
           {!isVaultRecord && !reimbursementPaymentLocked ? (
@@ -5800,6 +5807,31 @@ function DocumentWorkspacePage(props: {
           >
             Delete Document
           </button>
+          {canRejectExpense ? (
+            <button
+              className="danger-action"
+              type="button"
+              disabled={saving}
+              onClick={async () => {
+                if (!window.confirm(`Reject ${receipt.vendorName || receipt.sourceFilename}? The uploader will see it in Purchases and receive an in-app notification.`)) return;
+                setSaving(true);
+                setFeedback(null);
+                setError(null);
+                try {
+                  const rejected = { ...receipt, status: 'Rejected' as const, needsReview: false };
+                  await props.onSave(receipt.id, rejected);
+                  setReceipt(rejected);
+                  setFeedback('Expense rejected. The uploader can delete it from Purchases.');
+                } catch (rejectError) {
+                  setError(rejectError instanceof Error ? rejectError.message : 'Could not reject this expense.');
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              Reject Expense
+            </button>
+          ) : null}
           {!isVaultRecord ? (
           <button
             className="secondary-action"
