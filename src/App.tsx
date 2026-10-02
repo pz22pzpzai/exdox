@@ -231,8 +231,8 @@ const pricingSliderSteps: Array<{
     markerLabel: "1",
     users: 1,
     documents: 100,
-    monthlyPrice: 10,
-    annualMonthlyPrice: 8,
+    monthlyPrice: 5,
+    annualMonthlyPrice: 4,
     planId: "capture",
   },
   {
@@ -8188,8 +8188,8 @@ function AccountingIntegrationsPage({ session, workspaceSettings }: { session: S
     setBusy("unlock-confirm");
     setError(null);
     void confirmAccountingIntegrationUnlock(session.token, accountingUnlockSessionId)
-      .then(() => refresh(true))
-      .then(() => { if (active) setFeedback("Your £5 payment is confirmed. Accounting integrations are unlocked, and a £5 credit has been added to your first subscription invoice."); })
+      .then(async (result) => { await refresh(true); return result; })
+      .then((result) => { if (active) setFeedback(result.creditAmountPence ? "Your £5 payment is confirmed. Accounting integrations are unlocked, and a £5 credit has been added to your first subscription invoice." : "Your £5 payment is confirmed. Xero is unlocked and your sole trader subscription is set to £10 per month."); })
       .catch((unlockError) => { if (active) setError(unlockError instanceof Error ? unlockError.message : "Could not confirm the accounting integration payment."); })
       .finally(() => { if (active) setBusy(null); });
     return () => { active = false; };
@@ -8200,14 +8200,15 @@ function AccountingIntegrationsPage({ session, workspaceSettings }: { session: S
     {callbackResult === "connected" ? <div className="success-banner">Xero authorised this Exdox workspace. Its accounting lists are loading below.</div> : null}
     {callbackResult === "failed" ? <div className="error-banner">Xero was not connected. Try again and choose the organisation you want Exdox to use.</div> : null}
     {callbackResult === "locked" ? <div className="error-banner">Xero was not connected because this workspace is still in its trial or does not have an active paid plan.</div> : null}
-    {accountingUnlockResult === "cancelled" ? <div className="notice-banner">The £5 payment was cancelled. Accounting integrations remain locked during the free trial.</div> : null}
+    {accountingUnlockResult === "cancelled" ? <div className="notice-banner">The £5 payment was cancelled. Xero remains locked.</div> : null}
     {error ? <div className="error-banner">{error}</div> : null}
     {feedback ? <div className="success-banner">{feedback}</div> : null}
 
     <section className="panel">
       <div className="panel-heading"><div><h3>Xero accounting</h3><p>Available only to business admins for this Exdox workspace.</p></div><SignalPill tone={status?.available && status.connected ? "info" : "warning"}>{status?.available ? status.connected ? "Connected" : "Not connected" : "Locked"}</SignalPill></div>
-      {status && !status.available ? <div className="notice-banner"><strong>Accounting software integrations are locked during the free trial.</strong><span>{status.lockedReason ?? "An active paid plan is required."}</span>{status.trialUnlockEligible ? <span>Pay £5 now to link Xero during the trial. The £5 is credited against your first subscription payment; later months return to your selected plan price.</span> : null}{session.user.isOwner && status.trialUnlockEligible ? <button className="primary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("unlock-checkout"); setError(null); setFeedback(null); void createAccountingIntegrationUnlockCheckout(session.token).then((result) => { if (result.alreadyUnlocked) return refresh(true); if (result.checkoutUrl) window.location.href = result.checkoutUrl; else throw new Error("Stripe did not return a checkout page."); }).catch((unlockError) => setError(unlockError instanceof Error ? unlockError.message : "Could not open the £5 payment checkout.")).finally(() => setBusy(null)); }}>{busy === "unlock-checkout" ? "Opening secure checkout…" : `Pay £${((status.trialUnlockPricePence || 500) / 100).toFixed(0)} once and unlock`}</button> : status.trialUnlockEligible ? <span>Ask the workspace owner to make the one-off £5 payment.</span> : session.user.isOwner ? <Link className="secondary-action link-action" to="/billing">Manage subscription</Link> : <span>Ask the workspace owner to activate the subscription.</span>}</div> : null}
+      {status && !status.available ? <div className="notice-banner"><strong>Xero is not included in this subscription.</strong><span>{status.lockedReason ?? "An active paid plan is required."}</span>{status.trialUnlockEligible ? <span>The £5 trial payment is credited against your first subscription invoice.</span> : null}{session.user.isOwner && (status.trialUnlockEligible || status.soleTraderXeroUpgradeEligible) ? <button className="primary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("unlock-checkout"); setError(null); setFeedback(null); void createAccountingIntegrationUnlockCheckout(session.token).then((result) => { if (result.alreadyUnlocked) return refresh(true); if (result.checkoutUrl) window.location.href = result.checkoutUrl; else throw new Error("Stripe did not return a checkout page."); }).catch((unlockError) => setError(unlockError instanceof Error ? unlockError.message : "Could not open the £5 payment checkout.")).finally(() => setBusy(null)); }}>{busy === "unlock-checkout" ? "Opening secure checkout…" : status.soleTraderXeroUpgradeEligible ? "Add Xero: £5 now, then £10/month" : "Pay £5 once and unlock"}</button> : status.trialUnlockEligible || status.soleTraderXeroUpgradeEligible ? <span>Ask the workspace owner to add Xero.</span> : session.user.isOwner ? <Link className="secondary-action link-action" to="/billing">Manage subscription</Link> : <span>Ask the workspace owner to activate the subscription.</span>}</div> : null}
       {status?.billingStatus === "trialing" && status.trialUnlockPurchasedAt ? <div className="success-banner">Accounting integrations are unlocked for this trial. The £5 paid has been credited against the first subscription invoice.</div> : null}
+      {status?.soleTraderXeroActive ? <div className="success-banner">Xero is included with this sole trader subscription at £10 per month.</div> : null}
       <div className="summary-list">
         <div><strong>Organisation</strong>{status?.available && status.availableTenants?.length && status.availableTenants.length > 1 ? <select value={status.tenantId ?? ""} disabled={busy !== null} onChange={(event) => { const tenantId = event.target.value; setBusy("tenant"); setError(null); setFeedback(null); void selectXeroTenant(session.token, tenantId).then((selected) => { setStatus((current) => current ? { ...current, tenantId: selected.tenantId, tenantName: selected.tenantName } : current); setReferenceData(null); return refresh(true); }).then(() => setFeedback("Connected Xero organisation changed and its lists refreshed.")).catch((tenantError) => setError(tenantError instanceof Error ? tenantError.message : "Could not change Xero organisation.")).finally(() => setBusy(null)); }}>{status.availableTenants.map((tenant) => <option key={tenant.tenantId} value={tenant.tenantId}>{tenant.tenantName}</option>)}</select> : <span>{status?.available ? status.tenantName ?? "Connect a Xero organisation" : "Unlock with an active paid plan"}</span>}</div>
         <div><strong>Data Exdox uses</strong><span>Chart of accounts, suppliers and customers, tax rates, tracking categories, bank accounts, invoices, bills, and source attachments.</span></div>
@@ -10063,7 +10064,7 @@ function RegisterState(props: {
                   <section className="registration-plan-summary" aria-label="Selected plan summary">
                     <div>
                       <span>Selected allowance</span>
-                      <strong>{selectedSignupStep.users} {selectedSignupStep.users === 1 ? "user" : "users"} · all features included</strong>
+                      <strong>{selectedSignupStep.users} {selectedSignupStep.users === 1 ? "user" : "users"} · {selectedSignupStep.users === 1 ? "Xero available as an upgrade" : "all features included"}</strong>
                     </div>
                     <strong>{currency(selectedSignupPrice)} / month</strong>
                     {signupReferenceRate ? <p>≈ {currency(selectedSignupPrice * signupReferenceRate.value, signupReferenceRate.currency)} at the {signupReferenceRate.date} reference rate</p> : null}
@@ -11758,7 +11759,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
           <p className="pricing-trial-cancel">Cancel anytime.</p>
         </div>
         <p>
-          Every price includes the same Exdox tools. The slider changes only your user and monthly document allowance.
+          Every price includes the core Exdox tools. Choose the user and monthly document allowance that fits your business.
         </p>
       </div>
       <aside className="pricing-bespoke-callout">
@@ -11798,7 +11799,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               onChange={(event) => setSliderIndex(Number(event.target.value))}
               aria-label="Pricing allowance slider"
             />
-            <p className="slider-helper">Drag the slider to choose your users and monthly documents. All features stay included.</p>
+            <p className="slider-helper">Drag the slider to choose your users and monthly documents.</p>
             {signedIn && signedInBillingRoute ? (
               <Link className="public-button" to={signedInBillingRoute}>
                 {signedInBillingRoute === "/billing" ? "Open Billing" : "Back to Workspace"}
@@ -11836,8 +11837,8 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               <p>No card needed to start. After 14 days, pay for the first month to continue; monthly billing starts on that payment date.</p>
             </article>
             <article className="company-card">
-              <strong>Xero during the trial</strong>
-              <p>Linking Xero during the trial costs £5 once. That payment is credited against your first subscription invoice.</p>
+              <strong>Connect Xero</strong>
+              <p>Choose Xero access from your workspace when you need it.</p>
             </article>
           </div>
         </div>
@@ -11855,8 +11856,8 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
               </ul>
             </article>
             <article className="slider-info-card slider-access-card">
-              <h2>Included at every price</h2>
-              <p>Only your user and document limits change when you move the slider.</p>
+              <h2>Included with every plan</h2>
+              <p>Your core Exdox workspace is included at every price.</p>
               <div className="slider-access-group">
                 <strong>Workspace areas</strong>
                 <div className="slider-access-tags">
@@ -11871,7 +11872,7 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
                 ))}
               </ul>
               <p className="slider-enterprise-note">
-                Xero connection follows the same paid-subscription and trial-unlock rules at every price.
+                Xero is included with plans for five or more users. Sole traders can add it in their workspace.
               </p>
             </article>
           </div>
@@ -12316,7 +12317,7 @@ function BillingUpgradePage(props: { session: SessionState }) {
           </div>
           <button className="secondary-action" type="button" onClick={() => navigate("/billing")}>Back to billing</button>
         </div>
-        <p className="muted-copy">Choose more users and documents. Every price includes the same Exdox features. Exdox updates your existing Stripe subscription and applies the new limits immediately; it does not create a second subscription.</p>
+        <p className="muted-copy">Choose more users and documents. Plans for five or more users include Xero. Exdox updates your existing Stripe subscription and applies the new limits immediately; it does not create a second subscription.</p>
       </div>
 
       <div className="pricing-page-layout upgrade-plan-layout">

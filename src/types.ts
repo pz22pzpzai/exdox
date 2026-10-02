@@ -222,6 +222,8 @@ export type XeroIntegrationStatus = {
   billingStatus: BillingStatus;
   lockedReason: string | null;
   trialUnlockEligible: boolean;
+  soleTraderXeroUpgradeEligible: boolean;
+  soleTraderXeroActive: boolean;
   trialUnlockPurchasedAt: string | null;
   trialUnlockPricePence: number;
   connected: boolean;
