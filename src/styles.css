@@ -5373,20 +5373,21 @@ input {
   }
 }
 
-/* Match the desktop workspace's 80% presentation without narrowing the public header. */
+/* Keep public content at 88% and the header at 92% of its original desktop size. */
 @media (min-width: 981px) and (hover: hover) and (pointer: fine) {
   .public-home {
-    min-height: 125vh;
-    zoom: 0.8;
+    min-height: 113.636vh;
+    zoom: 0.88;
   }
 
   .public-header {
-    width: 125vw;
-    padding: 0 max(30px, calc((125vw - 1400px) / 2));
+    zoom: 1.0454545;
+    width: 108.696vw;
+    padding: 0 max(26px, calc((108.696vw - 1400px) / 2));
   }
 
   .public-home > main {
-    width: 125vw;
+    width: 113.636vw;
   }
 }
 
