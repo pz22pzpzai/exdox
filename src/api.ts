@@ -41,7 +41,10 @@ export type AccountingEntry = { id: string; date: string; reference: string; des
 export type AccountingBalance = AccountingAccount & { debitPence: number; creditPence: number; balancePence: number };
 export type AccountingDocument = { id: string; kind: 'invoice' | 'bill'; number: string; contactName: string; issuerName: string; issuerAddress: string; contactAddress: string; vatNumber: string; paymentInstructions: string; date: string; dueDate: string; items: Array<{ description: string; quantity: number; unitPricePence: number; vatRate: 0 | 5 | 20 }>; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
 export type AccountingPayment = { id: string; documentId: string; date: string; amountPence: number; reference: string; createdAt: string; createdBy: string };
-export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; payments: AccountingPayment[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
+export type AccountingStatementLine = { index: number; date: string; description: string; reference: string; amountPence: number };
+export type AccountingBankStatement = { id: string; name: string; openingPence: number; closingPence: number; fromDate: string; toDate: string; lines: AccountingStatementLine[]; importedAt: string; importedBy: string };
+export type AccountingBankMatch = { statementId: string; lineIndex: number; bankEntryId: string; amountPence: number; matchedAt: string; matchedBy: string };
+export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; payments: AccountingPayment[]; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
 
 export function getAccounting(token: string): Promise<AccountingData> {
   return apiFetch('/accounting', token);
@@ -61,6 +64,16 @@ export async function postAccountingDocument(token: string, payload: Pick<Accoun
 export async function postAccountingPayment(token: string, payload: { documentId: string; date: string; amountPence: number; reference: string }): Promise<AccountingPayment> {
   const result = await apiFetch<{ payment: AccountingPayment }>('/accounting/payments', token, { method: 'POST', body: JSON.stringify(payload) });
   return result.payment;
+}
+export async function importAccountingBankStatement(token: string, payload: { name: string; openingPence: number; closingPence: number; lines: Array<Omit<AccountingStatementLine, 'index'>> }): Promise<{ statement: AccountingBankStatement; alreadyImported: boolean }> {
+  return apiFetch('/accounting/bank-statements', token, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function matchAccountingBankLine(token: string, payload: { statementId: string; lineIndex: number; bankEntryId: string }): Promise<AccountingBankMatch> {
+  const result = await apiFetch<{ match: AccountingBankMatch }>('/accounting/bank-matches', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.match;
+}
+export async function unmatchAccountingBankLine(token: string, payload: { statementId: string; lineIndex: number }): Promise<void> {
+  await apiFetch('/accounting/bank-matches', token, { method: 'DELETE', body: JSON.stringify(payload) });
 }
 
 type AuthResponse =
