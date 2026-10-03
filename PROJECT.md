@@ -95,3 +95,7 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 ## Mileage map preview (2026-09-27)
 
 - The existing mileage picker also displays the selected Mapbox route image, using `includeMap: true` on the shared authenticated API. The same route result is used by the Android mileage sheet. Mapbox credentials remain server-side, and Total miles stays editable.
+
+## Private Accounting invoice lifecycle (2026-10-03)
+
+The website Accounting tab remains locked to active `terryreedbfv@outlook.com`, with server-side access checks. `server/src/aws/handlers/accounting.ts` now exposes contact revisions, invoice/bill draft revisions, explicit draft approval, invoice email through SES, one bank settlement allocated to multiple posted documents, and refunds against paid credit notes. Drafts do not post to the ledger or VAT report; approval creates an immutable posted document under its draft ID. Accounting S3 records remain under `accounting/org-{id}/`. Invoice email contains the complete posted invoice in plain text and is logged after SES accepts it. The existing Costs and Sales workspaces are separate. Deploy server before the `exdox` website; the owner checks deployment and live behaviour. Never delete or move mobile signing keystores or signing details.

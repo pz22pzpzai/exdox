@@ -40,7 +40,12 @@ export type AccountingLine = { accountId: string; debitPence: number; creditPenc
 export type AccountingEntry = { id: string; date: string; reference: string; description: string; lines: AccountingLine[]; createdAt: string; createdBy: string };
 export type AccountingBalance = AccountingAccount & { debitPence: number; creditPence: number; balancePence: number };
 export type AccountingVatCode = 'S20' | 'S5' | 'S0' | 'SE' | 'P20' | 'P5' | 'P0' | 'PE';
-export type AccountingDocument = { id: string; kind: 'invoice' | 'bill'; number: string; contactName: string; issuerName: string; issuerAddress: string; contactAddress: string; vatNumber: string; paymentInstructions: string; date: string; taxDate?: string; dueDate: string; items: Array<{ description: string; quantity: number; unitPricePence: number; vatRate: 0 | 5 | 20; vatCode?: AccountingVatCode }>; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
+export type AccountingDocument = { id: string; draftId?: string; contactId?: string; kind: 'invoice' | 'bill'; number: string; contactName: string; issuerName: string; issuerAddress: string; contactAddress: string; vatNumber: string; paymentInstructions: string; date: string; taxDate?: string; dueDate: string; items: Array<{ description: string; quantity: number; unitPricePence: number; vatRate: 0 | 5 | 20; vatCode?: AccountingVatCode }>; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
+export type AccountingContact = { id: string; version: number; role: 'customer' | 'supplier' | 'both'; name: string; email: string; address: string; updatedAt: string; updatedBy: string };
+export type AccountingDraft = { id: string; version: number; contactId: string; document: Omit<AccountingDocument, 'id' | 'createdAt' | 'createdBy'>; updatedAt: string; updatedBy: string };
+export type AccountingAudit = { id: string; action: string; subjectId: string; detail: string; at: string; by: string };
+export type AccountingSettlement = { id: string; kind: 'invoice' | 'bill'; date: string; reference: string; allocations: Array<{ documentId: string; amountPence: number }>; totalPence: number; createdAt: string; createdBy: string };
+export type AccountingRefund = { id: string; creditId: string; date: string; reference: string; amountPence: number; createdAt: string; createdBy: string };
 export type AccountingPayment = { id: string; documentId: string; date: string; amountPence: number; reference: string; createdAt: string; createdBy: string };
 export type AccountingStatementLine = { index: number; date: string; description: string; reference: string; amountPence: number };
 export type AccountingBankStatement = { id: string; name: string; openingPence: number; closingPence: number; fromDate: string; toDate: string; lines: AccountingStatementLine[]; importedAt: string; importedBy: string };
@@ -55,7 +60,7 @@ export type AccountingVatRow = { id: string; entryId: string; taxDate: string; r
 export type AccountingVatIssue = { entryId: string; date: string; reference: string; description: string; reason: string };
 export type AccountingVatReport = { fromDate: string; toDate: string; boxes: AccountingVatBoxes; rows: AccountingVatRow[]; issues: AccountingVatIssue[]; ready: boolean; digest: string };
 export type AccountingVatClose = { id: string; fromDate: string; toDate: string; boxes: AccountingVatBoxes; digest: string; rowCount: number; closedAt: string; closedBy: string };
-export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; payments: AccountingPayment[]; creditNotes: AccountingCreditNote[]; reversals: AccountingReversal[]; sourcePostings: AccountingSourcePosting[]; periodLocks: AccountingPeriodLock[]; lockedThrough: string | null; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
+export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; drafts: AccountingDraft[]; contacts: AccountingContact[]; audit: AccountingAudit[]; payments: AccountingPayment[]; settlements: AccountingSettlement[]; refunds: AccountingRefund[]; creditNotes: AccountingCreditNote[]; reversals: AccountingReversal[]; sourcePostings: AccountingSourcePosting[]; periodLocks: AccountingPeriodLock[]; lockedThrough: string | null; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
 
 export function getAccounting(token: string): Promise<AccountingData> {
   return apiFetch('/accounting', token);
@@ -71,6 +76,29 @@ export async function postAccountingJournal(token: string, payload: Pick<Account
 export async function postAccountingDocument(token: string, payload: Pick<AccountingDocument, 'kind' | 'number' | 'contactName' | 'issuerName' | 'issuerAddress' | 'contactAddress' | 'vatNumber' | 'paymentInstructions' | 'date' | 'dueDate' | 'items'> & { taxDate: string }): Promise<AccountingDocument> {
   const result = await apiFetch<{ document: AccountingDocument }>('/accounting/documents', token, { method: 'POST', body: JSON.stringify(payload) });
   return result.document;
+}
+export async function saveAccountingContact(token: string, payload: { id?: string; version?: number; role: AccountingContact['role']; name: string; email: string; address: string }): Promise<AccountingContact> {
+  const result = await apiFetch<{ contact: AccountingContact }>('/accounting/contacts', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.contact;
+}
+export async function saveAccountingDraft(token: string, payload: Record<string, unknown>): Promise<AccountingDraft> {
+  const result = await apiFetch<{ draft: AccountingDraft }>('/accounting/drafts', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.draft;
+}
+export async function approveAccountingDraft(token: string, draftId: string, version: number): Promise<AccountingDocument> {
+  const result = await apiFetch<{ document: AccountingDocument }>('/accounting/drafts/approve', token, { method: 'POST', body: JSON.stringify({ draftId, version }) });
+  return result.document;
+}
+export async function sendAccountingInvoice(token: string, documentId: string, recipient: string): Promise<void> {
+  await apiFetch('/accounting/documents/send', token, { method: 'POST', body: JSON.stringify({ documentId, recipient, confirm: true }) });
+}
+export async function postAccountingSettlement(token: string, payload: { kind: 'invoice' | 'bill'; date: string; reference: string; allocations: Array<{ documentId: string; amountPence: number }> }): Promise<AccountingSettlement> {
+  const result = await apiFetch<{ settlement: AccountingSettlement }>('/accounting/settlements', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.settlement;
+}
+export async function postAccountingRefund(token: string, payload: { creditId: string; date: string; reference: string; amountPence: number }): Promise<AccountingRefund> {
+  const result = await apiFetch<{ refund: AccountingRefund }>('/accounting/refunds', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.refund;
 }
 export async function postAccountingPayment(token: string, payload: { documentId: string; date: string; amountPence: number; reference: string }): Promise<AccountingPayment> {
   const result = await apiFetch<{ payment: AccountingPayment }>('/accounting/payments', token, { method: 'POST', body: JSON.stringify(payload) });
