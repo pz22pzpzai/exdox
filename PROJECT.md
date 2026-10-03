@@ -1,5 +1,12 @@
 # Exdox website
 
+## Private accounting pilot (2026-10-03)
+
+- Dashboard navigation now shows Accounting for every signed-in user. It is locked unless the active, business-admin account email is `terryreedbfv@outlook.com`. The corresponding API independently verifies the current user record and email; the browser lock is only a visual cue.
+- `src/AccountingPage.tsx` is a separate workspace for chart of accounts, balanced GBP journals, a posted journal export, trial balance, profit and loss, and balance sheet. It does not alter the existing Costs, Sales, Xero, billing, or Android flows. API deployment must precede the website update.
+- This is a private double-entry foundation, not feature parity with Xero. It has no invoicing, bank feeds, VAT returns, payroll, period locks, or automatic posting from Exdox documents yet. Do not represent it as a full accounting replacement until those workflows are implemented and verified.
+- Never delete or move a mobile signing keystore or signing details. The owner checks the live website and deployment workflow after source pushes.
+
 This repository contains the public Exdox website and the signed-in React/TypeScript workspace. The live site is `https://exdox.co.uk`; source is `https://github.com/pz22pzpzai/exdox`.
 
 ## Main files

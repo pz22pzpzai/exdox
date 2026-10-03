@@ -35,6 +35,24 @@ const API_BASE_URL =
   "https://hz2zkm6jkf.execute-api.eu-west-2.amazonaws.com/prod";
 const SESSION_STORAGE_KEY = "exdox-auth-session-v1";
 
+export type AccountingAccount = { id: string; code: string; name: string; type: 'asset' | 'liability' | 'equity' | 'income' | 'expense'; system?: boolean };
+export type AccountingLine = { accountId: string; debitPence: number; creditPence: number };
+export type AccountingEntry = { id: string; date: string; reference: string; description: string; lines: AccountingLine[]; createdAt: string; createdBy: string };
+export type AccountingBalance = AccountingAccount & { debitPence: number; creditPence: number; balancePence: number };
+export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
+
+export function getAccounting(token: string): Promise<AccountingData> {
+  return apiFetch('/accounting', token);
+}
+export async function addAccountingAccount(token: string, payload: Pick<AccountingAccount, 'code' | 'name' | 'type'>): Promise<AccountingAccount> {
+  const result = await apiFetch<{ account: AccountingAccount }>('/accounting/accounts', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.account;
+}
+export async function postAccountingJournal(token: string, payload: Pick<AccountingEntry, 'date' | 'reference' | 'description' | 'lines'>): Promise<AccountingEntry> {
+  const result = await apiFetch<{ entry: AccountingEntry }>('/accounting/journals', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.entry;
+}
+
 type AuthResponse =
   | {
       success: true;

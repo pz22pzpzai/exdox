@@ -6061,3 +6061,26 @@ input {
 .two-factor-qr { width: fit-content; max-width: 100%; padding: .5rem; background: #fff; border: 1px solid #d9e0e7; border-radius: 10px; }
 .two-factor-qr svg { display: block; max-width: 100%; height: auto; }
 .two-factor-login { display: grid; gap: .75rem; }
+.accounting-page { max-width: 1200px; }
+.accounting-heading, .accounting-section-heading, .accounting-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.accounting-heading h2 { margin: .3rem 0; }
+.accounting-heading p { margin-bottom: 0; }
+.accounting-pilot { border: 1px solid currentColor; border-radius: 999px; padding: .35rem .75rem; font-size: .8rem; }
+.accounting-tabs { display: flex; gap: .5rem; flex-wrap: wrap; }
+.accounting-tabs button { border: 1px solid #cbd5e1; background: #fff; color: #19344f; border-radius: .65rem; padding: .65rem 1rem; cursor: pointer; }
+.accounting-tabs button.active { background: #173f69; color: #fff; border-color: #173f69; }
+.accounting-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+.accounting-cards > * { display: flex; flex-direction: column; gap: .5rem; }
+.accounting-cards strong { font-size: 1.5rem; }
+.accounting-actions { justify-content: flex-start; margin-top: 1rem; }
+.accounting-form { display: flex; gap: .75rem; align-items: flex-end; flex-wrap: wrap; }
+.accounting-form label, .accounting-section-heading label { display: flex; flex-direction: column; gap: .3rem; }
+.accounting-form input, .accounting-form select, .accounting-section-heading input, .accounting-table input, .accounting-table select { border: 1px solid #b8c6d4; border-radius: .45rem; padding: .55rem; max-width: 100%; background: #fff; color: #162b42; }
+.accounting-table-wrap { width: 100%; overflow-x: auto; }
+.accounting-table { width: 100%; border-collapse: collapse; margin-top: .75rem; min-width: 620px; }
+.accounting-table th, .accounting-table td { border-bottom: 1px solid #e2e8f0; text-align: left; padding: .65rem .5rem; vertical-align: top; }
+.accounting-table td:nth-last-child(-n+2), .accounting-table th:nth-last-child(-n+2) { white-space: nowrap; }
+.accounting-table tfoot { font-weight: 700; }
+.accounting-table input { width: 110px; }
+.accounting-table select { min-width: 190px; }
+.accounting-locked { max-width: 600px; }

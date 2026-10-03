@@ -9,6 +9,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
+import AccountingPage from "./AccountingPage";
 
 import {
   clearStoredSession,
@@ -145,6 +146,7 @@ const salesCategoryOptions = [
 
 const navItems = [
   { to: "/overview", label: "Overview", icon: "overview" },
+  { to: "/accounting", label: "Accounting", icon: "billing" },
   { to: "/overview/data-health", label: "Workspace Health", icon: "health" },
   { to: "/overview/workflows", label: "Workflows", icon: "workflow" },
   { to: "/overview/analytics", label: "Analytics", icon: "analytics" },
@@ -168,6 +170,7 @@ const navItems = [
 const newlyIncludedNavigationRoutes = new Set(["/rules", "/customer-rules", "/vault", "/employee/vault"]);
 
 const privateAppRoutePrefixes = [
+  "/accounting",
   "/overview",
   "/costs",
   "/sales",
@@ -1593,6 +1596,7 @@ function DashboardShell(props: {
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
+  const accountingUnlocked = businessAdmin && props.session.user.status === "active" && props.session.user.email.trim().toLowerCase() === "terryreedbfv@outlook.com";
   const approvalWorkflowsEnabled = hasSessionFeature(props.session, "approval_workflows");
   const costReviewCount = props.store.costs.filter((receipt) => countsAsManualReview(receipt)).length;
   const salesReviewCount = props.store.sales.filter((receipt) => countsAsManualReview(receipt)).length;
@@ -1619,6 +1623,7 @@ function DashboardShell(props: {
     ? navItems
       .filter((item) => props.session.user.isOwner || item.to !== "/billing")
       .map((item) => {
+        if (item.to === "/accounting") return { ...item, locked: !accountingUnlocked, activating: false };
         const allowed = isRouteAllowed(props.session, item.to);
         const activating = !allowed
           && newlyIncludedNavigationRoutes.has(item.to)
@@ -1627,6 +1632,7 @@ function DashboardShell(props: {
       })
     : [
         { to: "/dropbox", label: "My Costs", icon: "costs" },
+        { to: "/accounting", label: "Accounting", icon: "billing", locked: true, activating: false },
         ...(isRouteAllowed(props.session, "/employee/sales") ? [{ to: "/employee/sales", label: "My Sales", icon: "sales" }] : []),
         {
           to: "/employee/vault",
@@ -1659,7 +1665,7 @@ function DashboardShell(props: {
         </span>
       );
     }
-    const destination = locked && businessAdmin ? `/billing?locked=${encodeURIComponent(item.to)}` : item.to;
+    const destination = item.to === "/accounting" ? item.to : locked && businessAdmin ? `/billing?locked=${encodeURIComponent(item.to)}` : item.to;
     return (
       <NavLink
         key={item.to}
@@ -1932,6 +1938,7 @@ function DashboardShell(props: {
         <Routes>
           {businessAdmin ? (
             <>
+              <Route path="/accounting" element={<AccountingPage token={props.session.token} unlocked={accountingUnlocked} />} />
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview" element={<OverviewPage session={props.session} store={props.store} />} />
               ) : null}
@@ -2156,6 +2163,7 @@ function DashboardShell(props: {
             </>
           ) : (
             <>
+              <Route path="/accounting" element={<AccountingPage token={props.session.token} unlocked={false} />} />
               <Route
                 path="/dropbox"
                 element={<EmployeeDocumentsPage title="My costs" description="Upload and view your own receipts. Personal expenses can be added to reimbursement claims after they are approved." records={props.store.costs} workspaceContext="cost" settings={props.store.settings} onUpload={(files) => props.onUpload("cost", files)} uploadBusy={uploadBusy} />}
