@@ -35,7 +35,7 @@ const API_BASE_URL =
   "https://hz2zkm6jkf.execute-api.eu-west-2.amazonaws.com/prod";
 const SESSION_STORAGE_KEY = "exdox-auth-session-v1";
 
-export type AccountingAccount = { id: string; code: string; name: string; type: 'asset' | 'liability' | 'equity' | 'income' | 'expense'; system?: boolean };
+export type AccountingAccount = { id: string; code: string; name: string; type: 'asset' | 'liability' | 'equity' | 'income' | 'expense'; system?: boolean; bank?: boolean };
 export type AccountingLine = { accountId: string; debitPence: number; creditPence: number };
 export type AccountingEntry = { id: string; date: string; reference: string; description: string; lines: AccountingLine[]; createdAt: string; createdBy: string };
 export type AccountingBalance = AccountingAccount & { debitPence: number; creditPence: number; balancePence: number };
@@ -44,12 +44,15 @@ export type AccountingDocument = { id: string; draftId?: string; contactId?: str
 export type AccountingContact = { id: string; version: number; role: 'customer' | 'supplier' | 'both'; name: string; email: string; address: string; updatedAt: string; updatedBy: string };
 export type AccountingDraft = { id: string; version: number; contactId: string; document: Omit<AccountingDocument, 'id' | 'createdAt' | 'createdBy'>; updatedAt: string; updatedBy: string };
 export type AccountingAudit = { id: string; action: string; subjectId: string; detail: string; at: string; by: string };
-export type AccountingSettlement = { id: string; kind: 'invoice' | 'bill'; date: string; reference: string; allocations: Array<{ documentId: string; amountPence: number }>; totalPence: number; createdAt: string; createdBy: string };
-export type AccountingRefund = { id: string; creditId: string; date: string; reference: string; amountPence: number; createdAt: string; createdBy: string };
-export type AccountingPayment = { id: string; documentId: string; date: string; amountPence: number; reference: string; createdAt: string; createdBy: string };
+export type AccountingSettlement = { id: string; kind: 'invoice' | 'bill'; bankAccountId?: string; date: string; reference: string; allocations: Array<{ documentId: string; amountPence: number }>; totalPence: number; createdAt: string; createdBy: string };
+export type AccountingRefund = { id: string; creditId: string; bankAccountId?: string; date: string; reference: string; amountPence: number; createdAt: string; createdBy: string };
+export type AccountingPayment = { id: string; documentId: string; bankAccountId?: string; date: string; amountPence: number; reference: string; createdAt: string; createdBy: string };
 export type AccountingStatementLine = { index: number; date: string; description: string; reference: string; amountPence: number };
-export type AccountingBankStatement = { id: string; name: string; openingPence: number; closingPence: number; fromDate: string; toDate: string; lines: AccountingStatementLine[]; importedAt: string; importedBy: string };
+export type AccountingBankStatement = { id: string; accountId?: string; name: string; openingPence: number; closingPence: number; fromDate: string; toDate: string; lines: AccountingStatementLine[]; importedAt: string; importedBy: string };
 export type AccountingBankMatch = { statementId: string; lineIndex: number; bankEntryId: string; amountPence: number; matchedAt: string; matchedBy: string };
+export type AccountingBankRule = { id: string; version: number; accountId: string; contains: string; direction: 'in' | 'out' | 'both'; counterAccountId: string; enabled: boolean; createdAt: string; createdBy: string };
+export type AccountingMatchSuggestion = { statementId: string; lineIndex: number; bankEntryId: string; score: number; reason: string };
+export type AccountingRuleSuggestion = { statementId: string; lineIndex: number; ruleId: string; counterAccountId: string };
 export type AccountingPeriodLock = { id: string; lockedThrough: string; reason: string; createdAt: string; createdBy: string };
 export type AccountingReversal = { targetEntryId: string; date: string; reason: string; createdAt: string; createdBy: string };
 export type AccountingCreditNote = { id: string; documentId: string; number: string; date: string; reason: string; items: Array<{ itemIndex: number; quantity: number }>; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
@@ -60,12 +63,12 @@ export type AccountingVatRow = { id: string; entryId: string; taxDate: string; r
 export type AccountingVatIssue = { entryId: string; date: string; reference: string; description: string; reason: string };
 export type AccountingVatReport = { fromDate: string; toDate: string; boxes: AccountingVatBoxes; rows: AccountingVatRow[]; issues: AccountingVatIssue[]; ready: boolean; digest: string };
 export type AccountingVatClose = { id: string; fromDate: string; toDate: string; boxes: AccountingVatBoxes; digest: string; rowCount: number; closedAt: string; closedBy: string };
-export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; drafts: AccountingDraft[]; contacts: AccountingContact[]; audit: AccountingAudit[]; payments: AccountingPayment[]; settlements: AccountingSettlement[]; refunds: AccountingRefund[]; creditNotes: AccountingCreditNote[]; reversals: AccountingReversal[]; sourcePostings: AccountingSourcePosting[]; periodLocks: AccountingPeriodLock[]; lockedThrough: string | null; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
+export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; drafts: AccountingDraft[]; contacts: AccountingContact[]; audit: AccountingAudit[]; payments: AccountingPayment[]; settlements: AccountingSettlement[]; refunds: AccountingRefund[]; creditNotes: AccountingCreditNote[]; reversals: AccountingReversal[]; sourcePostings: AccountingSourcePosting[]; periodLocks: AccountingPeriodLock[]; lockedThrough: string | null; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; bankRules: AccountingBankRule[]; bankSuggestions: AccountingMatchSuggestion[]; ruleSuggestions: AccountingRuleSuggestion[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
 
 export function getAccounting(token: string): Promise<AccountingData> {
   return apiFetch('/accounting', token);
 }
-export async function addAccountingAccount(token: string, payload: Pick<AccountingAccount, 'code' | 'name' | 'type'>): Promise<AccountingAccount> {
+export async function addAccountingAccount(token: string, payload: Pick<AccountingAccount, 'code' | 'name' | 'type'> & { bank?: boolean }): Promise<AccountingAccount> {
   const result = await apiFetch<{ account: AccountingAccount }>('/accounting/accounts', token, { method: 'POST', body: JSON.stringify(payload) });
   return result.account;
 }
@@ -92,20 +95,30 @@ export async function approveAccountingDraft(token: string, draftId: string, ver
 export async function sendAccountingInvoice(token: string, documentId: string, recipient: string): Promise<void> {
   await apiFetch('/accounting/documents/send', token, { method: 'POST', body: JSON.stringify({ documentId, recipient, confirm: true }) });
 }
-export async function postAccountingSettlement(token: string, payload: { kind: 'invoice' | 'bill'; date: string; reference: string; allocations: Array<{ documentId: string; amountPence: number }> }): Promise<AccountingSettlement> {
+export async function postAccountingSettlement(token: string, payload: { requestId?: string; kind: 'invoice' | 'bill'; bankAccountId?: string; date: string; reference: string; allocations: Array<{ documentId: string; amountPence: number }> }): Promise<AccountingSettlement> {
   const result = await apiFetch<{ settlement: AccountingSettlement }>('/accounting/settlements', token, { method: 'POST', body: JSON.stringify(payload) });
   return result.settlement;
 }
-export async function postAccountingRefund(token: string, payload: { creditId: string; date: string; reference: string; amountPence: number }): Promise<AccountingRefund> {
+export async function postAccountingRefund(token: string, payload: { requestId?: string; creditId: string; bankAccountId?: string; date: string; reference: string; amountPence: number }): Promise<AccountingRefund> {
   const result = await apiFetch<{ refund: AccountingRefund }>('/accounting/refunds', token, { method: 'POST', body: JSON.stringify(payload) });
   return result.refund;
 }
-export async function postAccountingPayment(token: string, payload: { documentId: string; date: string; amountPence: number; reference: string }): Promise<AccountingPayment> {
+export async function postAccountingPayment(token: string, payload: { requestId?: string; documentId: string; bankAccountId?: string; date: string; amountPence: number; reference: string }): Promise<AccountingPayment> {
   const result = await apiFetch<{ payment: AccountingPayment }>('/accounting/payments', token, { method: 'POST', body: JSON.stringify(payload) });
   return result.payment;
 }
-export async function importAccountingBankStatement(token: string, payload: { name: string; openingPence: number; closingPence: number; lines: Array<Omit<AccountingStatementLine, 'index'>> }): Promise<{ statement: AccountingBankStatement; alreadyImported: boolean }> {
+export async function importAccountingBankStatement(token: string, payload: { accountId: string; name: string; openingPence: number; closingPence: number; lines: Array<Omit<AccountingStatementLine, 'index'>> }): Promise<{ statement: AccountingBankStatement; alreadyImported: boolean }> {
   return apiFetch('/accounting/bank-statements', token, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function saveAccountingBankRule(token: string, payload: Partial<AccountingBankRule> & Pick<AccountingBankRule, 'accountId' | 'contains' | 'direction' | 'counterAccountId' | 'enabled'>): Promise<AccountingBankRule> {
+  const result = await apiFetch<{ rule: AccountingBankRule }>('/accounting/bank-rules', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.rule;
+}
+export async function postAccountingBankRule(token: string, payload: { statementId: string; lineIndex: number; ruleId: string }): Promise<void> {
+  await apiFetch('/accounting/bank-rules/post', token, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function postAccountingBankTransfer(token: string, payload: { requestId?: string; fromAccountId: string; toAccountId: string; date: string; amountPence: number; reference: string }): Promise<void> {
+  await apiFetch('/accounting/bank-transfers', token, { method: 'POST', body: JSON.stringify(payload) });
 }
 export async function matchAccountingBankLine(token: string, payload: { statementId: string; lineIndex: number; bankEntryId: string }): Promise<AccountingBankMatch> {
   const result = await apiFetch<{ match: AccountingBankMatch }>('/accounting/bank-matches', token, { method: 'POST', body: JSON.stringify(payload) });
