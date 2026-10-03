@@ -6076,6 +6076,8 @@ input {
 .accounting-form { display: flex; gap: .75rem; align-items: flex-end; flex-wrap: wrap; }
 .accounting-form label, .accounting-section-heading label { display: flex; flex-direction: column; gap: .3rem; }
 .accounting-form input, .accounting-form select, .accounting-section-heading input, .accounting-table input, .accounting-table select { border: 1px solid #b8c6d4; border-radius: .45rem; padding: .55rem; max-width: 100%; background: #fff; color: #162b42; }
+.accounting-form .accounting-confirm { flex-direction: row; align-items: center; max-width: 28rem; }
+.accounting-form .accounting-confirm input { width: 1rem; height: 1rem; padding: 0; flex: none; }
 .accounting-table-wrap { width: 100%; overflow-x: auto; }
 .accounting-table { width: 100%; border-collapse: collapse; margin-top: .75rem; min-width: 620px; }
 .accounting-table th, .accounting-table td { border-bottom: 1px solid #e2e8f0; text-align: left; padding: .65rem .5rem; vertical-align: top; }

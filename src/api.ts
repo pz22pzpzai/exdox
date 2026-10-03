@@ -44,7 +44,12 @@ export type AccountingPayment = { id: string; documentId: string; date: string; 
 export type AccountingStatementLine = { index: number; date: string; description: string; reference: string; amountPence: number };
 export type AccountingBankStatement = { id: string; name: string; openingPence: number; closingPence: number; fromDate: string; toDate: string; lines: AccountingStatementLine[]; importedAt: string; importedBy: string };
 export type AccountingBankMatch = { statementId: string; lineIndex: number; bankEntryId: string; amountPence: number; matchedAt: string; matchedBy: string };
-export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; payments: AccountingPayment[]; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
+export type AccountingPeriodLock = { id: string; lockedThrough: string; reason: string; createdAt: string; createdBy: string };
+export type AccountingReversal = { targetEntryId: string; date: string; reason: string; createdAt: string; createdBy: string };
+export type AccountingCreditNote = { id: string; documentId: string; number: string; date: string; reason: string; items: Array<{ itemIndex: number; quantity: number }>; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
+export type AccountingSourcePosting = { id: string; sourceType: 'receipt'; sourceId: number; workspaceContext: 'cost' | 'sales'; sourceUpdatedAt: string; date: string; description: string; reference: string; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
+export type AccountingSourceCandidate = { id: number; workspaceContext: 'cost' | 'sales'; status: string; date: string; description: string; totalAmount: number | null; reference: string | null; eligible: boolean; reason: string | null; postedAt: string | null; sourceChangedAfterPosting: boolean };
+export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; payments: AccountingPayment[]; creditNotes: AccountingCreditNote[]; reversals: AccountingReversal[]; sourcePostings: AccountingSourcePosting[]; periodLocks: AccountingPeriodLock[]; lockedThrough: string | null; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
 
 export function getAccounting(token: string): Promise<AccountingData> {
   return apiFetch('/accounting', token);
@@ -74,6 +79,25 @@ export async function matchAccountingBankLine(token: string, payload: { statemen
 }
 export async function unmatchAccountingBankLine(token: string, payload: { statementId: string; lineIndex: number }): Promise<void> {
   await apiFetch('/accounting/bank-matches', token, { method: 'DELETE', body: JSON.stringify(payload) });
+}
+export async function closeAccountingPeriod(token: string, payload: { lockedThrough: string; reason: string }): Promise<AccountingPeriodLock> {
+  const result = await apiFetch<{ lock: AccountingPeriodLock }>('/accounting/period-locks', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.lock;
+}
+export async function reverseAccountingEntry(token: string, payload: { entryId: string; date: string; reason: string }): Promise<AccountingReversal> {
+  const result = await apiFetch<{ reversal: AccountingReversal }>('/accounting/reversals', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.reversal;
+}
+export async function postAccountingCreditNote(token: string, payload: { documentId: string; number: string; date: string; reason: string; items: Array<{ itemIndex: number; quantity: number }> }): Promise<AccountingCreditNote> {
+  const result = await apiFetch<{ credit: AccountingCreditNote }>('/accounting/credit-notes', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.credit;
+}
+export async function listAccountingSourceCandidates(token: string): Promise<AccountingSourceCandidate[]> {
+  const result = await apiFetch<{ candidates: AccountingSourceCandidate[] }>('/accounting/source-candidates', token);
+  return result.candidates;
+}
+export async function postAccountingSource(token: string, receiptId: number): Promise<{ posting: AccountingSourcePosting; alreadyPosted: boolean }> {
+  return apiFetch('/accounting/source-postings', token, { method: 'POST', body: JSON.stringify({ receiptId, confirmNoDuplicate: true }) });
 }
 
 type AuthResponse =
