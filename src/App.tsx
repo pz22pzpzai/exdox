@@ -1209,10 +1209,6 @@ export function App() {
                     ? "business"
                     : null
               }
-              initialPlan={normalizePublicPlan(new URLSearchParams(location.search).get("plan"))}
-              initialBillingCycle={normalizePublicBillingCycle(new URLSearchParams(location.search).get("billingCycle"))}
-              initialMonthlyDocumentLimit={Number(new URLSearchParams(location.search).get("monthlyDocumentLimit")) || undefined}
-              initialIncludedUsers={Number(new URLSearchParams(location.search).get("includedUsers")) || undefined}
               embeddedInPublicShell
               onRegister={async (input) => {
                 setAuthBusy(true);
@@ -1880,6 +1876,15 @@ function DashboardShell(props: {
           </div>
         </header>
 
+        {props.session.billing?.planId === "trial" && props.session.billing.trialEndsAt ? (
+          <div className="success-banner" role="status">
+            {Date.parse(props.session.billing.trialEndsAt) > Date.now()
+              ? `${Math.ceil((Date.parse(props.session.billing.trialEndsAt) - Date.now()) / 86_400_000)} day(s) left in your free trial. `
+              : "Your free trial has ended. "}
+            {props.session.user.isOwner ? <Link to="/billing">Choose a plan when ready</Link> : null}
+          </div>
+        ) : null}
+
         {props.error ? <div className="error-banner">{props.error}</div> : null}
 
         {new URLSearchParams(location.search).get("confirmed") === "1"
@@ -2262,7 +2267,7 @@ function helpChatReply(message: string, findKnowledgeAnswer: (message: string) =
     return knowledgeAnswer;
   }
   if (includes("register", "sign up", "create account", "open an account", "new account")) {
-    return "Choose Register to start. Select A business or A sole trader to choose an allowance, create the workspace, and start the 14-day trial without payment details. Sign in after confirming the trial in Stripe. Employees join their employer's workspace without setting up billing.";
+    return "Choose Register to start. Select A business or A sole trader, create the workspace, and start the 14-day trial without payment details. Confirm your email to keep access. Employees join their employer's workspace without setting up billing.";
   }
   if (includes("business or sole trader", "sole trader", "business owner", "which account type", "account type")) {
     return "Businesses and sole traders follow the same plan and billing flow. A business can use its company name; a sole trader can use a trading name or continue with a personal email address. Both become the workspace owner and control billing. Employees use the separate employee route.";
@@ -2283,7 +2288,7 @@ function helpChatReply(message: string, findKnowledgeAnswer: (message: string) =
     return "Use the newest confirmation email from Exdox and open its link on any device. The link confirms the email, then takes you to the Exdox login page so you can sign in normally. If it has expired or does not work, use Resend confirmation email from the workspace or contact Access support.";
   }
   if (includes("free trial", "card setup", "card details", "stripe checkout", "first charge", "charged")) {
-    return "A business or sole trader can start the 14-day trial in Stripe without payment details. If no payment method is added, access pauses when the trial ends. The owner can then pay for the first month in Stripe; monthly billing starts on that payment date. Employees never enter the business card details.";
+    return "A business or sole trader can start the 14-day trial without choosing a plan or entering payment details. Access pauses when the trial ends unless the owner chooses a plan and pays for the first month in Stripe. Employees never enter the business card details.";
   }
   if (includes("google play", "play store", "download app", "android app", "install app")) {
     return "The Exdox Android app is available through Google Play. Use the app for capture on the move and the website for wider review, team, billing, and administration tasks. Sign in with the same Exdox email address on both.";
@@ -8197,7 +8202,7 @@ function AccountingIntegrationsPage({ session, workspaceSettings }: { session: S
     setError(null);
     void confirmAccountingIntegrationUnlock(session.token, accountingUnlockSessionId)
       .then(async (result) => { await refresh(true); return result; })
-      .then((result) => { if (active) setFeedback(result.creditAmountPence ? "Your £5 payment is confirmed. Accounting integrations are unlocked, and a £5 credit has been added to your first subscription invoice." : "Your £5 payment is confirmed. Xero is unlocked and your sole trader subscription is set to £10 per month."); })
+      .then((result) => { if (active) setFeedback(result.creditAmountPence ? "Your £5 payment is confirmed. Xero is unlocked for the trial and will be credited against your first paid invoice." : "Your £5 payment is confirmed. Xero is unlocked and your sole trader subscription is set to £10 per month."); })
       .catch((unlockError) => { if (active) setError(unlockError instanceof Error ? unlockError.message : "Could not confirm the accounting integration payment."); })
       .finally(() => { if (active) setBusy(null); });
     return () => { active = false; };
@@ -8214,8 +8219,8 @@ function AccountingIntegrationsPage({ session, workspaceSettings }: { session: S
 
     <section className="panel">
       <div className="panel-heading"><div><h3>Xero accounting</h3><p>Available only to business admins for this Exdox workspace.</p></div><SignalPill tone={status?.available && status.connected ? "info" : "warning"}>{status?.available ? status.connected ? "Connected" : "Not connected" : "Locked"}</SignalPill></div>
-      {status && !status.available ? <div className="notice-banner"><strong>Xero is not included in this subscription.</strong><span>{status.lockedReason ?? "An active paid plan is required."}</span>{status.trialUnlockEligible ? <span>The £5 trial payment is credited against your first subscription invoice.</span> : null}{session.user.isOwner && (status.trialUnlockEligible || status.soleTraderXeroUpgradeEligible) ? <button className="primary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("unlock-checkout"); setError(null); setFeedback(null); void createAccountingIntegrationUnlockCheckout(session.token).then((result) => { if (result.alreadyUnlocked) return refresh(true); if (result.checkoutUrl) window.location.href = result.checkoutUrl; else throw new Error("Stripe did not return a checkout page."); }).catch((unlockError) => setError(unlockError instanceof Error ? unlockError.message : "Could not open the £5 payment checkout.")).finally(() => setBusy(null)); }}>{busy === "unlock-checkout" ? "Opening secure checkout…" : status.soleTraderXeroUpgradeEligible ? "Add Xero: £5 now, then £10/month" : "Pay £5 once and unlock"}</button> : status.trialUnlockEligible || status.soleTraderXeroUpgradeEligible ? <span>Ask the workspace owner to add Xero.</span> : session.user.isOwner ? <Link className="secondary-action link-action" to="/billing">Manage subscription</Link> : <span>Ask the workspace owner to activate the subscription.</span>}</div> : null}
-      {status?.billingStatus === "trialing" && status.trialUnlockPurchasedAt ? <div className="success-banner">Accounting integrations are unlocked for this trial. The £5 paid has been credited against the first subscription invoice.</div> : null}
+      {status && !status.available ? <div className="notice-banner"><strong>{session.billing?.planId === "trial" ? "Xero is a paid option during the free trial." : "Xero is not included in this subscription."}</strong><span>{status.lockedReason ?? "An active paid plan is required."}</span>{status.trialUnlockEligible ? <span>The £5 trial payment is credited against your first subscription invoice.</span> : null}{session.user.isOwner && (status.trialUnlockEligible || status.soleTraderXeroUpgradeEligible) ? <button className="primary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("unlock-checkout"); setError(null); setFeedback(null); void createAccountingIntegrationUnlockCheckout(session.token).then((result) => { if (result.alreadyUnlocked) return refresh(true); if (result.checkoutUrl) window.location.href = result.checkoutUrl; else throw new Error("Stripe did not return a checkout page."); }).catch((unlockError) => setError(unlockError instanceof Error ? unlockError.message : "Could not open the £5 payment checkout.")).finally(() => setBusy(null)); }}>{busy === "unlock-checkout" ? "Opening secure checkout…" : status.soleTraderXeroUpgradeEligible ? "Add Xero: £5 now, then £10/month" : "Pay £5 once and unlock"}</button> : status.trialUnlockEligible || status.soleTraderXeroUpgradeEligible ? <span>Ask the workspace owner to add Xero.</span> : session.user.isOwner ? <Link className="secondary-action link-action" to="/billing">Manage subscription</Link> : <span>Ask the workspace owner to activate the subscription.</span>}</div> : null}
+      {status?.billingStatus === "trialing" && status.trialUnlockPurchasedAt ? <div className="success-banner">Xero is unlocked for this trial. Your £5 payment will be credited against the first subscription invoice when you choose a plan.</div> : null}
       {status?.soleTraderXeroActive ? <div className="success-banner">Xero is included with this sole trader subscription at £10 per month.</div> : null}
       <div className="summary-list">
         <div><strong>Organisation</strong>{status?.available && status.availableTenants?.length && status.availableTenants.length > 1 ? <select value={status.tenantId ?? ""} disabled={busy !== null} onChange={(event) => { const tenantId = event.target.value; setBusy("tenant"); setError(null); setFeedback(null); void selectXeroTenant(session.token, tenantId).then((selected) => { setStatus((current) => current ? { ...current, tenantId: selected.tenantId, tenantName: selected.tenantName } : current); setReferenceData(null); return refresh(true); }).then(() => setFeedback("Connected Xero organisation changed and its lists refreshed.")).catch((tenantError) => setError(tenantError instanceof Error ? tenantError.message : "Could not change Xero organisation.")).finally(() => setBusy(null)); }}>{status.availableTenants.map((tenant) => <option key={tenant.tenantId} value={tenant.tenantId}>{tenant.tenantName}</option>)}</select> : <span>{status?.available ? status.tenantName ?? "Connect a Xero organisation" : "Unlock with an active paid plan"}</span>}</div>
@@ -9579,7 +9584,7 @@ function LoginState(props: {
             ) : null}
             {props.trialReminder === "ending" ? (
               <div className="notice-banner">
-                Your free trial is ending. Log in, then open Billing to add payment details if you want your subscription to continue when the trial ends.
+                Your free trial is ending. Log in, then open Billing to choose a plan if you want to continue after the trial.
               </div>
             ) : props.trialReminder === "ended" ? (
               <div className="notice-banner">
@@ -9870,10 +9875,6 @@ function RegisterState(props: {
   initialEmail: string;
   inviteToken: string;
   initialAudience: "business" | "sole_trader" | "employee" | null;
-  initialPlan: BillingPlanId;
-  initialBillingCycle: BillingCycle;
-  initialMonthlyDocumentLimit?: number;
-  initialIncludedUsers?: number;
   embeddedInPublicShell?: boolean;
   onRegister: (input: {
     country?: Country;
@@ -9907,20 +9908,12 @@ function RegisterState(props: {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const selectedCountry = useSelectedCountry();
   const [signupCountry, setSignupCountry] = useState<Country>(selectedCountry);
-  const signupReferenceRate = useGbpReferenceRate(signupCountry);
   useEffect(() => setSignupCountry(selectedCountry), [selectedCountry]);
   const [audience, setAudience] = useState<"business" | "sole_trader" | "employee" | null>(props.initialAudience);
-  const billingCycle: BillingCycle = "monthly";
   const invitedFlow = Boolean(props.inviteToken);
   const employeeFlow = audience === "employee";
   const soleTraderFlow = audience === "sole_trader";
-  const selectedSignupStep = resolvePricingSliderStep(
-    normalizeRegisterPlan(props.initialPlan),
-    props.initialMonthlyDocumentLimit,
-    props.initialIncludedUsers,
-  );
-  const selectedSignupPrice = priceWithVat(selectedSignupStep.monthlyPrice);
-  const enterpriseSignupRequested = !invitedFlow && selectedSignupStep.planId === "enterprise";
+  const enterpriseSignupRequested = false;
   const selfServeSignupBlocked = false;
 
   useEffect(() => {
@@ -9974,19 +9967,19 @@ function RegisterState(props: {
                 : employeeFlow
                   ? "Use your company email address to join its existing Exdox workspace. No card setup is required."
                   : soleTraderFlow
-                    ? "Set up your own workspace and subscription using either a personal or business email address."
-                    : "Create your company workspace, choose its allowance, and start the 14-day trial without payment details."}
+                    ? "Start your 14-day free trial using a personal or business email address. No payment details needed."
+                    : "Create your company workspace and start the 14-day trial without choosing a plan or entering payment details."}
             </p>
             {!invitedFlow && audience === null ? (
               <div className="registration-audience-grid" role="group" aria-label="Choose account type">
-                <Link className="registration-audience-option" to="/pricing">
+                <button className="registration-audience-option" type="button" onClick={() => setAudience("business")}>
                   <strong>A business</strong>
-                  <span>Choose a package, then create the company workspace as its owner.</span>
-                </Link>
-                <Link className="registration-audience-option" to="/pricing?audience=sole_trader">
+                  <span>Create your company workspace and start the free trial.</span>
+                </button>
+                <button className="registration-audience-option" type="button" onClick={() => setAudience("sole_trader")}>
                   <strong>A sole trader</strong>
-                  <span>Choose a package, then create your sole trader workspace.</span>
-                </Link>
+                  <span>Create your workspace and start the free trial.</span>
+                </button>
                 <button type="button" onClick={() => setAudience("employee")}>
                   <strong>An employee of a business</strong>
                   <span>I submit expenses for a company that already uses Exdox.</span>
@@ -10025,10 +10018,6 @@ function RegisterState(props: {
                   organisationName: invitedFlow || employeeFlow ? undefined : organisationName || undefined,
                   country: invitedFlow || employeeFlow ? undefined : signupCountry,
                   inviteToken: props.inviteToken || undefined,
-                  billingPlan: invitedFlow || employeeFlow ? undefined : selectedSignupStep.planId,
-                  billingCycle: invitedFlow || employeeFlow ? undefined : billingCycle,
-                  monthlyDocumentLimit: invitedFlow || employeeFlow ? undefined : selectedSignupStep.documents,
-                  includedUsers: invitedFlow || employeeFlow ? undefined : selectedSignupStep.users,
                   termsAccepted: invitedFlow || employeeFlow ? undefined : acceptedTerms,
                   termsVersion: invitedFlow || employeeFlow ? undefined : termsVersion,
                 });
@@ -10069,16 +10058,7 @@ function RegisterState(props: {
                       required={!soleTraderFlow}
                     />
                   </label>
-                  <section className="registration-plan-summary" aria-label="Selected plan summary">
-                    <div>
-                      <span>Selected allowance</span>
-                      <strong>{selectedSignupStep.users} {selectedSignupStep.users === 1 ? "user" : "users"} · {selectedSignupStep.users === 1 ? "Xero available as an upgrade" : "all features included"}</strong>
-                    </div>
-                    <strong>{currency(selectedSignupPrice)} / month</strong>
-                    {signupReferenceRate ? <p>≈ {currency(selectedSignupPrice * signupReferenceRate.value, signupReferenceRate.currency)} at the {signupReferenceRate.date} reference rate</p> : null}
-                    <p>{selectedSignupStep.documents.toLocaleString()} documents per month · {signupCountry === 'GB' ? 'VAT included' : 'billed in GBP; see the final charge in Stripe'}</p>
-                    <Link to="/pricing">Change selection</Link>
-                  </section>
+                  <p className="registration-plan-summary">14 days of core Exdox access. Choose a paid plan in Billing only if you decide to continue. Xero is a separate paid option; Accounting is currently a private pilot.</p>
                 </>
               ) : null}
               <label>
@@ -10143,7 +10123,7 @@ function RegisterState(props: {
               ) : null}
               {!invitedFlow && !employeeFlow ? (
                 <div className="muted-copy">
-                  Next, confirm your free trial in Stripe. No card details are needed. We will send your confirmation email at the same time. Once the trial starts, you can use the workspace immediately and have three days to confirm your email. If you do not pay for your selected {currency(selectedSignupPrice)} monthly package{signupCountry === 'GB' ? '' : ' billed in GBP'}, access pauses when the trial ends; monthly billing starts on your first payment date.
+                  Your free trial starts when you create the workspace. No card or plan is needed. We will send a confirmation email, and you have three days to confirm it. If you do not choose and pay for a plan, access pauses after 14 days.
                 </div>
               ) : null}
               {successMessage ? <div className="success-banner">{successMessage}</div> : null}
@@ -10453,7 +10433,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
               </>
             ) : (
               <>
-                <Link className="public-primary" to="/pricing">Open Free Trial Signup</Link>
+                <Link className="public-primary" to="/register">Open Free Trial Signup</Link>
                 <Link className="secondary-inline-link" to="/pricing">See pricing structure</Link>
               </>
             )}
@@ -11070,8 +11050,8 @@ function TermsSection() {
           heading: "Free trial and monthly billing",
           body: (
             <>
-              <p>Eligible self-serve plans include a 14-day free trial. New trials can start without payment details. If no payment method is provided, workspace access pauses when the trial ends and no subscription invoice is created.</p>
-              <p>To continue after the trial, the owner must complete the first monthly payment in secure Stripe Checkout. The monthly billing cycle starts on that payment date and renews monthly until cancelled. If the owner voluntarily adds a payment method during the trial, the first charge may be attempted when the trial ends; access continues only after payment succeeds. Earlier card-authorised trials remain subject to the payment terms accepted when they began.</p>
+              <p>A new workspace starts with a 14-day free trial without choosing a plan or providing payment details. If the owner does not choose and pay for a plan, workspace access pauses when the trial ends and no subscription invoice is created.</p>
+              <p>To continue, the owner chooses a monthly plan and completes the first payment in secure Stripe Checkout. The monthly billing cycle starts on that payment date and renews monthly until cancelled. Earlier card-authorised trials remain subject to the payment terms accepted when they began.</p>
             </>
           ),
         },
@@ -11912,7 +11892,7 @@ function CompanySection({ session = null }: { session?: SessionState | null }) {
         <article className="company-card">
           <strong>Review-ready audit trail</strong>
           <p>Receipts, vault files, sales evidence, claims, supplier rules and reconciliation status live in one workspace.</p>
-          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/pricing"}>{session ? signedInPublicPrimaryHeroLabel(session) : "Start a free trial"}</Link>
+          <Link className="secondary-inline-link company-card-link-row" to={session ? signedInPublicPrimaryRoute(session) : "/register"}>{session ? signedInPublicPrimaryHeroLabel(session) : "Start a free trial"}</Link>
         </article>
         <article className="company-card">
           <strong>Built for finance teams</strong>
@@ -12137,10 +12117,22 @@ function BillingPage(props: { session: SessionState }) {
   const navigate = useNavigate();
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [trialPlanIndex, setTrialPlanIndex] = useState(0);
+  const [trialXeroPurchased, setTrialXeroPurchased] = useState<boolean | null>(null);
   const search = new URLSearchParams(useLocation().search);
   const lockedRoute = search.get("locked");
   const lockedRouteLabel = lockedRoute ? routeTitle(lockedRoute) : null;
   const billing = props.session.billing;
+  const planFreeTrial = billing?.planId === "trial";
+  const chosenPaidStep = pricingSliderSteps[trialPlanIndex] ?? pricingSliderSteps[0]!;
+  useEffect(() => {
+    if (!planFreeTrial) return;
+    let active = true;
+    void getXeroIntegrationStatus(props.session.token)
+      .then((status) => { if (active) setTrialXeroPurchased(Boolean(status.trialUnlockPurchasedAt)); })
+      .catch(() => { if (active) setMessage("Could not check the Xero add-on price. Refresh Billing before checkout."); });
+    return () => { active = false; };
+  }, [planFreeTrial, props.session.token]);
   const trialSetupRequired = billing?.status === "inactive" && !billing?.stripeSubscriptionId;
   const selectedBillingStep = billing
     ? resolvePricingSliderStep(billing.planId, billing.monthlyDocumentLimit ?? undefined, billing.includedUsers ?? undefined)
@@ -12165,7 +12157,7 @@ function BillingPage(props: { session: SessionState }) {
         <div className="panel-header">
           <div>
             <p className="section-kicker">Billing</p>
-            <h2>{billing.planLabel ?? billing.planId} plan</h2>
+            <h2>{planFreeTrial ? "14-day free trial" : `${billing.planLabel ?? billing.planId} plan`}</h2>
           </div>
           <span className="status-chip">{billing.status.replace(/_/g, " ")}</span>
         </div>
@@ -12198,8 +12190,36 @@ function BillingPage(props: { session: SessionState }) {
             </strong>
           </div>
         </div>
+        {planFreeTrial ? (
+          <div className="registration-plan-summary">
+            <strong>{billing.trialEndsAt && Date.parse(billing.trialEndsAt) > Date.now()
+              ? `${Math.ceil((Date.parse(billing.trialEndsAt) - Date.now()) / 86_400_000)} day(s) remaining in your trial`
+              : "Your trial has ended"}</strong>
+            <p>Choose a monthly plan when you are ready. No payment has been taken for the trial. Your selected plan starts after you confirm its price in Stripe.</p>
+            <label htmlFor="trial-paid-plan">Choose users and monthly documents</label>
+            <select id="trial-paid-plan" value={trialPlanIndex} onChange={(event) => setTrialPlanIndex(Number(event.target.value))}>
+              {pricingSliderSteps.map((step, index) => <option key={`${step.planId}-${step.users}`} value={index}>{step.users} {step.users === 1 ? "user" : "users"} · {step.documents.toLocaleString()} documents · {step.users === 1 && trialXeroPurchased ? "£10" : currency(priceWithVat(step.monthlyPrice))}/month</option>)}
+            </select>
+            {trialXeroPurchased ? <p>Your £5 Xero trial payment is credited against your first invoice. {chosenPaidStep.users === 1 ? "The sole trader price shown above includes Xero." : "Xero is included in the selected business plan."}</p> : null}
+            <button className="primary-action" type="button" disabled={busyPlan !== null || !billing.stripeConfigured || trialXeroPurchased === null} onClick={async () => {
+              setBusyPlan("checkout");
+              setMessage(null);
+              try {
+                const response = await createBillingCheckoutSession(props.session.token, {
+                  planId: chosenPaidStep.planId, billingCycle: "monthly", monthlyDocumentLimit: chosenPaidStep.documents, includedUsers: chosenPaidStep.users,
+                });
+                if (response.checkoutUrl) window.location.href = response.checkoutUrl;
+                else setMessage("Checkout is unavailable right now. Please try again shortly.");
+              } catch (error) {
+                setMessage(error instanceof Error ? error.message : "Could not open checkout.");
+              } finally { setBusyPlan(null); }
+            }}>{busyPlan === "checkout" ? "Opening checkout..." : "Continue to secure checkout"}</button>
+          </div>
+        ) : null}
         <p className="muted-copy">
-          {cancellationDateLabel
+          {planFreeTrial
+            ? "The trial is free for 14 days and does not renew automatically. Core workspace access pauses after the trial unless you choose and pay for a plan."
+            : cancellationDateLabel
             ? `Cancellation is scheduled for ${cancellationDateLabel}. Access remains available until then unless the billing portal shows a different end date.`
             : billing.stripeConfigured
             ? trialSetupRequired
@@ -12245,7 +12265,7 @@ function BillingPage(props: { session: SessionState }) {
           <button className="secondary-action" type="button" onClick={() => navigate("/pricing")}>
             Compare allowances
           </button>
-          {billing.stripeConfigured ? (
+          {billing.stripeConfigured && !planFreeTrial ? (
             <button
               className={billing.status === "trialing" ? "primary-action" : "secondary-action"}
               type="button"
@@ -13654,7 +13674,8 @@ function isRouteAllowed(session: SessionState, pathname: string) {
 }
 
 function getDefaultRoute(session: SessionState) {
-  if (session.user.isOwner && session.billing && !isBillingStatusActive(session.billing.status)) {
+  if (session.user.isOwner && session.billing && (!isBillingStatusActive(session.billing.status)
+    || (session.billing.planId === "trial" && (!session.billing.trialEndsAt || Date.parse(session.billing.trialEndsAt) <= Date.now())))) {
     return "/billing";
   }
   const allowedRoutes = session.allowedWebRoutes;
@@ -13667,7 +13688,8 @@ function getDefaultRoute(session: SessionState) {
 }
 
 function getAttentionRoute(session: SessionState, store: AppStore) {
-  if (session.user.isOwner && session.billing && !isBillingStatusActive(session.billing.status)) {
+  if (session.user.isOwner && session.billing && (!isBillingStatusActive(session.billing.status)
+    || (session.billing.planId === "trial" && (!session.billing.trialEndsAt || Date.parse(session.billing.trialEndsAt) <= Date.now())))) {
     return "/billing";
   }
   if (!isBusinessAdmin(session)) {
@@ -13762,28 +13784,19 @@ function DropboxDetailRedirect() {
 }
 
 function buildRegisterLink(
-  planId: BillingPlanId,
-  billingCycle: BillingCycle,
+  _planId: BillingPlanId,
+  _billingCycle: BillingCycle,
   options?: {
     monthlyDocumentLimit?: number;
     includedUsers?: number;
     audience?: "business" | "sole_trader";
   },
 ) {
-  const params = new URLSearchParams({
-    plan: planId,
-    billingCycle,
-  });
-  if (typeof options?.monthlyDocumentLimit === "number") {
-    params.set("monthlyDocumentLimit", String(options.monthlyDocumentLimit));
-  }
-  if (typeof options?.includedUsers === "number") {
-    params.set("includedUsers", String(options.includedUsers));
-  }
+  const params = new URLSearchParams();
   if (options?.audience === "sole_trader") {
     params.set("audience", "sole_trader");
   }
-  return `/register?${params.toString()}`;
+  return params.size ? `/register?${params.toString()}` : "/register";
 }
 
 function buildPublicPlanLink(

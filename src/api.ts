@@ -476,7 +476,7 @@ export async function fetchBilling(token: string): Promise<{
 
 export async function createBillingCheckoutSession(
   token: string,
-  payload: { planId: BillingPlanId; billingCycle: BillingCycle },
+  payload: { planId: BillingPlanId; billingCycle: BillingCycle; monthlyDocumentLimit?: number; includedUsers?: number },
 ): Promise<{ checkoutUrl: string | null; sessionId?: string }> {
   return apiFetch("/billing/checkout-session", token, {
     method: "POST",
