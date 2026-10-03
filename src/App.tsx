@@ -1938,7 +1938,7 @@ function DashboardShell(props: {
         <Routes>
           {businessAdmin ? (
             <>
-              <Route path="/accounting" element={<AccountingPage token={props.session.token} unlocked={accountingUnlocked} />} />
+              <Route path="/accounting" element={<AccountingPage token={props.session.token} unlocked={accountingUnlocked} organisationName={props.store.settings?.organisationName ?? ''} />} />
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview" element={<OverviewPage session={props.session} store={props.store} />} />
               ) : null}
@@ -2163,7 +2163,7 @@ function DashboardShell(props: {
             </>
           ) : (
             <>
-              <Route path="/accounting" element={<AccountingPage token={props.session.token} unlocked={false} />} />
+              <Route path="/accounting" element={<AccountingPage token={props.session.token} unlocked={false} organisationName="" />} />
               <Route
                 path="/dropbox"
                 element={<EmployeeDocumentsPage title="My costs" description="Upload and view your own receipts. Personal expenses can be added to reimbursement claims after they are approved." records={props.store.costs} workspaceContext="cost" settings={props.store.settings} onUpload={(files) => props.onUpload("cost", files)} uploadBusy={uploadBusy} />}

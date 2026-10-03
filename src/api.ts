@@ -39,7 +39,9 @@ export type AccountingAccount = { id: string; code: string; name: string; type: 
 export type AccountingLine = { accountId: string; debitPence: number; creditPence: number };
 export type AccountingEntry = { id: string; date: string; reference: string; description: string; lines: AccountingLine[]; createdAt: string; createdBy: string };
 export type AccountingBalance = AccountingAccount & { debitPence: number; creditPence: number; balancePence: number };
-export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
+export type AccountingDocument = { id: string; kind: 'invoice' | 'bill'; number: string; contactName: string; issuerName: string; issuerAddress: string; contactAddress: string; vatNumber: string; paymentInstructions: string; date: string; dueDate: string; items: Array<{ description: string; quantity: number; unitPricePence: number; vatRate: 0 | 5 | 20 }>; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
+export type AccountingPayment = { id: string; documentId: string; date: string; amountPence: number; reference: string; createdAt: string; createdBy: string };
+export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; payments: AccountingPayment[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
 
 export function getAccounting(token: string): Promise<AccountingData> {
   return apiFetch('/accounting', token);
@@ -51,6 +53,14 @@ export async function addAccountingAccount(token: string, payload: Pick<Accounti
 export async function postAccountingJournal(token: string, payload: Pick<AccountingEntry, 'date' | 'reference' | 'description' | 'lines'>): Promise<AccountingEntry> {
   const result = await apiFetch<{ entry: AccountingEntry }>('/accounting/journals', token, { method: 'POST', body: JSON.stringify(payload) });
   return result.entry;
+}
+export async function postAccountingDocument(token: string, payload: Pick<AccountingDocument, 'kind' | 'number' | 'contactName' | 'issuerName' | 'issuerAddress' | 'contactAddress' | 'vatNumber' | 'paymentInstructions' | 'date' | 'dueDate' | 'items'>): Promise<AccountingDocument> {
+  const result = await apiFetch<{ document: AccountingDocument }>('/accounting/documents', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.document;
+}
+export async function postAccountingPayment(token: string, payload: { documentId: string; date: string; amountPence: number; reference: string }): Promise<AccountingPayment> {
+  const result = await apiFetch<{ payment: AccountingPayment }>('/accounting/payments', token, { method: 'POST', body: JSON.stringify(payload) });
+  return result.payment;
 }
 
 type AuthResponse =

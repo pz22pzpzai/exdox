@@ -6084,3 +6084,14 @@ input {
 .accounting-table input { width: 110px; }
 .accounting-table select { min-width: 190px; }
 .accounting-locked { max-width: 600px; }
+.accounting-invoice-details { margin-top: 1rem; align-items: stretch; }
+.accounting-invoice-details label { min-width: 190px; flex: 1 1 190px; }
+.accounting-invoice-details textarea { border: 1px solid #b8c6d4; border-radius: .45rem; padding: .55rem; background: #fff; color: #162b42; }
+.accounting-print { display: none; }
+@media print {
+  body * { visibility: hidden !important; }
+  .accounting-print, .accounting-print * { visibility: visible !important; }
+  .accounting-print { display: block; position: absolute; inset: 0; padding: 24px; color: #111; background: #fff; white-space: pre-line; font: 12pt Arial, sans-serif; }
+  .accounting-print table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+  .accounting-print th, .accounting-print td { border-bottom: 1px solid #aaa; padding: 8px; text-align: left; }
+}

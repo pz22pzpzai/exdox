@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addAccountingAccount, getAccounting, postAccountingJournal, type AccountingAccount, type AccountingData, type AccountingEntry } from './api';
+import { addAccountingAccount, getAccounting, postAccountingDocument, postAccountingJournal, postAccountingPayment, type AccountingAccount, type AccountingData, type AccountingDocument, type AccountingEntry } from './api';
 
 const money = (pence: number) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(pence / 100);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -22,9 +22,9 @@ function csvDownload(filename: string, rows: Array<Array<string | number>>) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export default function AccountingPage({ token, unlocked }: { token: string; unlocked: boolean }) {
+export default function AccountingPage({ token, unlocked, organisationName }: { token: string; unlocked: boolean; organisationName: string }) {
   const [data, setData] = useState<AccountingData | null>(null);
-  const [section, setSection] = useState<'overview' | 'accounts' | 'journals' | 'reports'>('overview');
+  const [section, setSection] = useState<'overview' | 'documents' | 'accounts' | 'journals' | 'reports'>('overview');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -32,6 +32,10 @@ export default function AccountingPage({ token, unlocked }: { token: string; unl
   const [journal, setJournal] = useState({ date: today(), reference: '', description: '' });
   const [lines, setLines] = useState<DraftLine[]>([emptyLine(), emptyLine()]);
   const [through, setThrough] = useState(today());
+  const [document, setDocument] = useState({ kind: 'invoice' as 'invoice' | 'bill', number: '', contactName: '', issuerName: organisationName, issuerAddress: '', contactAddress: '', vatNumber: '', paymentInstructions: '', date: today(), dueDate: today() });
+  const [documentItems, setDocumentItems] = useState([{ description: '', quantity: '1', unitPrice: '', vatRate: '20' }]);
+  const [payment, setPayment] = useState({ documentId: '', date: today(), amount: '', reference: '' });
+  const [printDocument, setPrintDocument] = useState<AccountingDocument | null>(null);
 
   useEffect(() => {
     if (!unlocked) return;
@@ -39,6 +43,14 @@ export default function AccountingPage({ token, unlocked }: { token: string; unl
     getAccounting(token).then((result) => { if (active) setData(result); }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load accounting.'); });
     return () => { active = false; };
   }, [token, unlocked]);
+  useEffect(() => {
+    const clearPrint = () => setPrintDocument(null);
+    window.addEventListener('afterprint', clearPrint);
+    return () => window.removeEventListener('afterprint', clearPrint);
+  }, []);
+  useEffect(() => {
+    if (organisationName) setDocument((current) => current.issuerName ? current : { ...current, issuerName: organisationName });
+  }, [organisationName]);
 
   const report = useMemo(() => {
     if (!data) return null;
@@ -79,11 +91,35 @@ export default function AccountingPage({ token, unlocked }: { token: string; unl
     const accountNames = new Map(data.accounts.map((item) => [item.id, `${item.code} ${item.name}`]));
     csvDownload('exdox-accounting-journal.csv', [['Date', 'Reference', 'Description', 'Account', 'Debit GBP', 'Credit GBP', 'Posted at', 'Posted by'], ...data.entries.flatMap((entry: AccountingEntry) => entry.lines.map((line) => [entry.date, entry.reference, entry.description, accountNames.get(line.accountId) ?? line.accountId, (line.debitPence / 100).toFixed(2), (line.creditPence / 100).toFixed(2), entry.createdAt, entry.createdBy]))]);
   }
+  async function saveDocument(event: React.FormEvent) {
+    event.preventDefault(); setBusy(true); setError(''); setMessage('');
+    try {
+      await postAccountingDocument(token, { ...document, items: documentItems.map((item) => ({ description: item.description, quantity: Number(item.quantity), unitPricePence: toPence(item.unitPrice), vatRate: Number(item.vatRate) as 0 | 5 | 20 })) });
+      setData(await getAccounting(token));
+      setDocument({ ...document, number: '', contactName: '' }); setDocumentItems([{ description: '', quantity: '1', unitPrice: '', vatRate: '20' }]);
+      setMessage(`${document.kind === 'invoice' ? 'Invoice' : 'Bill'} posted to the ledger.`);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not save document.'); }
+    finally { setBusy(false); }
+  }
+  async function savePayment(event: React.FormEvent) {
+    event.preventDefault(); setBusy(true); setError(''); setMessage('');
+    try {
+      await postAccountingPayment(token, { documentId: payment.documentId, date: payment.date, amountPence: toPence(payment.amount), reference: payment.reference });
+      setData(await getAccounting(token)); setPayment({ documentId: '', date: today(), amount: '', reference: '' });
+      setMessage('Payment recorded in the ledger.');
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not record payment.'); }
+    finally { setBusy(false); }
+  }
+  const amountDue = (item: AccountingDocument) => item.totalPence - (data?.payments ?? []).filter((entry) => entry.documentId === item.id).reduce((sum, entry) => sum + entry.amountPence, 0);
+  function printInvoice(item: AccountingDocument) {
+    setPrintDocument(item);
+    setTimeout(() => window.print(), 80);
+  }
 
   return <div className="stack-page accounting-page">
     <section className="panel accounting-heading"><div><span className="eyebrow">Private accounting workspace</span><h2>Accounting</h2><p>Double entry books for the selected Exdox organisation. Figures below are in GBP.</p></div><span className="accounting-pilot">Private pilot</span></section>
     <nav className="accounting-tabs" aria-label="Accounting sections">
-      {(['overview', 'accounts', 'journals', 'reports'] as const).map((item) => <button type="button" key={item} className={section === item ? 'active' : ''} onClick={() => { setSection(item); setError(''); setMessage(''); }}>{item === 'journals' ? 'Journal & ledger' : item[0].toUpperCase() + item.slice(1)}</button>)}
+      {(['overview', 'documents', 'accounts', 'journals', 'reports'] as const).map((item) => <button type="button" key={item} className={section === item ? 'active' : ''} onClick={() => { setSection(item); setError(''); setMessage(''); }}>{item === 'journals' ? 'Journal & ledger' : item === 'documents' ? 'Invoices & bills' : item[0].toUpperCase() + item.slice(1)}</button>)}
     </nav>
     {error && <div className="notice-banner" role="alert">{error}</div>}{message && <div className="success-banner" role="status">{message}</div>}
     {!data ? <section className="panel">Loading accounting records…</section> : null}
@@ -91,6 +127,11 @@ export default function AccountingPage({ token, unlocked }: { token: string; unl
       <div className="accounting-cards"><section className="panel"><span>Bank balance</span><strong>{money(data.report.balances.find((item) => item.code === '1000')?.balancePence ?? 0)}</strong></section><section className="panel"><span>Profit to date</span><strong>{money(data.report.profitPence)}</strong></section><section className="panel"><span>Journal entries</span><strong>{data.report.journalCount}</strong></section></div>
       <section className="panel"><h3>Books at a glance</h3><p>Post a balanced journal to record opening balances, sales, purchases, tax, or payments. The chart of accounts and reports update from posted entries.</p><div className="accounting-actions"><button className="primary-action" type="button" onClick={() => setSection('journals')}>Post a journal</button><button className="secondary-action" type="button" onClick={() => setSection('reports')}>View reports</button></div></section>
       <section className="panel"><h3>Recent entries</h3>{data.entries.length ? <div className="accounting-table-wrap"><table className="accounting-table"><thead><tr><th>Date</th><th>Reference</th><th>Description</th><th>Amount</th></tr></thead><tbody>{data.entries.slice(0, 8).map((entry) => <tr key={entry.id}><td>{entry.date}</td><td>{entry.reference || '—'}</td><td>{entry.description}</td><td>{money(entry.lines.reduce((sum, line) => sum + line.debitPence, 0))}</td></tr>)}</tbody></table></div> : <p>No journals have been posted.</p>}</section>
+    </> : null}
+    {data && section === 'documents' ? <>
+      <section className="panel"><h3>Invoices and bills</h3><p>Posted documents create receivables or payables in the accounting ledger. Record payments separately as money moves.</p><div className="accounting-table-wrap"><table className="accounting-table"><thead><tr><th>Type</th><th>Number</th><th>Contact</th><th>Issued</th><th>Due</th><th>Total</th><th>Outstanding</th><th></th></tr></thead><tbody>{data.documents.map((item) => <tr key={item.id}><td>{item.kind}</td><td>{item.number}</td><td>{item.contactName}</td><td>{item.date}</td><td>{item.dueDate}</td><td>{money(item.totalPence)}</td><td>{money(amountDue(item))}</td><td>{item.kind === 'invoice' && <button type="button" onClick={() => printInvoice(item)}>Print</button>}</td></tr>)}</tbody></table></div>{!data.documents.length && <p>No invoices or bills posted yet.</p>}</section>
+      <section className="panel"><h3>Create invoice or bill</h3><form onSubmit={saveDocument}><div className="accounting-form"><label>Type<select value={document.kind} onChange={(event) => setDocument({ ...document, kind: event.target.value as 'invoice' | 'bill' })}><option value="invoice">Sales invoice</option><option value="bill">Purchase bill</option></select></label><label>Number<input required value={document.number} maxLength={80} onChange={(event) => setDocument({ ...document, number: event.target.value })} /></label><label>{document.kind === 'invoice' ? 'Customer' : 'Supplier'}<input required value={document.contactName} maxLength={120} onChange={(event) => setDocument({ ...document, contactName: event.target.value })} /></label><label>Issue date<input type="date" required value={document.date} onChange={(event) => setDocument({ ...document, date: event.target.value })} /></label><label>Due date<input type="date" required value={document.dueDate} onChange={(event) => setDocument({ ...document, dueDate: event.target.value })} /></label></div>{document.kind === 'invoice' && <div className="accounting-form accounting-invoice-details"><label>Your business name<input required value={document.issuerName} onChange={(event) => setDocument({ ...document, issuerName: event.target.value })} /></label><label>Your business address<textarea required rows={3} value={document.issuerAddress} onChange={(event) => setDocument({ ...document, issuerAddress: event.target.value })} /></label><label>Customer address<textarea required rows={3} value={document.contactAddress} onChange={(event) => setDocument({ ...document, contactAddress: event.target.value })} /></label><label>VAT number, if registered<input value={document.vatNumber} onChange={(event) => setDocument({ ...document, vatNumber: event.target.value })} /></label><label>Payment instructions<textarea rows={3} value={document.paymentInstructions} onChange={(event) => setDocument({ ...document, paymentInstructions: event.target.value })} /></label></div>}<div className="accounting-table-wrap"><table className="accounting-table"><thead><tr><th>Description</th><th>Quantity</th><th>Unit price £</th><th>VAT</th><th></th></tr></thead><tbody>{documentItems.map((item, index) => <tr key={index}><td><input required aria-label={`Item ${index + 1} description`} value={item.description} onChange={(event) => setDocumentItems(documentItems.map((current, position) => position === index ? { ...current, description: event.target.value } : current))} /></td><td><input required inputMode="numeric" aria-label={`Item ${index + 1} quantity`} value={item.quantity} onChange={(event) => setDocumentItems(documentItems.map((current, position) => position === index ? { ...current, quantity: event.target.value } : current))} /></td><td><input required inputMode="decimal" aria-label={`Item ${index + 1} unit price`} value={item.unitPrice} onChange={(event) => setDocumentItems(documentItems.map((current, position) => position === index ? { ...current, unitPrice: event.target.value } : current))} /></td><td><select aria-label={`Item ${index + 1} VAT`} value={item.vatRate} onChange={(event) => setDocumentItems(documentItems.map((current, position) => position === index ? { ...current, vatRate: event.target.value } : current))}><option value="20">20%</option><option value="5">5%</option><option value="0">0%</option></select></td><td>{documentItems.length > 1 && <button type="button" onClick={() => setDocumentItems(documentItems.filter((_, position) => position !== index))}>Remove</button>}</td></tr>)}</tbody></table></div><div className="accounting-actions"><button type="button" className="secondary-action" onClick={() => setDocumentItems([...documentItems, { description: '', quantity: '1', unitPrice: '', vatRate: '20' }])}>Add item</button><button type="submit" className="primary-action" disabled={busy}>{busy ? 'Posting…' : 'Post document'}</button></div></form></section>
+      <section className="panel"><h3>Record a payment</h3><form className="accounting-form" onSubmit={savePayment}><label>Document<select required value={payment.documentId} onChange={(event) => setPayment({ ...payment, documentId: event.target.value })}><option value="">Choose unpaid document</option>{data.documents.filter((item) => amountDue(item) > 0).map((item) => <option key={item.id} value={item.id}>{item.kind} {item.number} — {money(amountDue(item))} due</option>)}</select></label><label>Date<input type="date" required value={payment.date} onChange={(event) => setPayment({ ...payment, date: event.target.value })} /></label><label>Amount £<input required inputMode="decimal" value={payment.amount} onChange={(event) => setPayment({ ...payment, amount: event.target.value })} /></label><label>Reference<input value={payment.reference} maxLength={80} onChange={(event) => setPayment({ ...payment, reference: event.target.value })} /></label><button className="primary-action" type="submit" disabled={busy}>Record payment</button></form></section>
     </> : null}
     {data && section === 'accounts' ? <>
       <section className="panel"><h3>Chart of accounts</h3><div className="accounting-table-wrap"><table className="accounting-table"><thead><tr><th>Code</th><th>Account</th><th>Type</th><th>Balance</th></tr></thead><tbody>{data.accounts.slice().sort((a, b) => a.code.localeCompare(b.code)).map((item) => <tr key={item.id}><td>{item.code}</td><td>{item.name}</td><td>{item.type}</td><td>{money(data.report.balances.find((balance) => balance.id === item.id)?.balancePence ?? 0)}</td></tr>)}</tbody></table></div></section>
@@ -106,5 +147,6 @@ export default function AccountingPage({ token, unlocked }: { token: string; unl
       <section className="panel"><h3>Profit and loss</h3><div className="accounting-table-wrap"><table className="accounting-table"><tbody>{report.balances.filter((item) => item.type === 'income' || item.type === 'expense').map((item) => <tr key={item.id}><td>{item.code} {item.name}</td><td>{money(item.type === 'income' ? -item.balancePence : item.balancePence)}</td></tr>)}<tr><th>Net profit</th><th>{money(report.profitPence)}</th></tr></tbody></table></div></section>
       <section className="panel"><h3>Balance sheet</h3><div className="accounting-table-wrap"><table className="accounting-table"><tbody><tr><th>Assets</th><td>{money(report.assetsPence)}</td></tr><tr><th>Liabilities</th><td>{money(report.liabilitiesPence)}</td></tr><tr><th>Equity including current profit</th><td>{money(report.equityPence)}</td></tr></tbody></table></div></section>
     </> : null}
+    {printDocument && <div className="accounting-print"><h1>Invoice</h1><p><strong>{printDocument.issuerName}</strong><br />{printDocument.issuerAddress}</p><p><strong>Bill to:</strong> {printDocument.contactName}<br />{printDocument.contactAddress}</p><p>Invoice number: {printDocument.number}<br />Issued: {printDocument.date}<br />Due: {printDocument.dueDate}{printDocument.vatNumber && <><br />VAT number: {printDocument.vatNumber}</>}</p><table><thead><tr><th>Description</th><th>Quantity</th><th>Unit price</th><th>VAT</th><th>Net</th></tr></thead><tbody>{printDocument.items.map((item, index) => <tr key={index}><td>{item.description}</td><td>{item.quantity}</td><td>{money(item.unitPricePence)}</td><td>{item.vatRate}%</td><td>{money(item.quantity * item.unitPricePence)}</td></tr>)}</tbody></table><p>Net: {money(printDocument.netPence)}<br />VAT: {money(printDocument.vatPence)}<br /><strong>Total: {money(printDocument.totalPence)}</strong></p>{printDocument.paymentInstructions && <p><strong>Payment instructions</strong><br />{printDocument.paymentInstructions}</p>}</div>}
   </div>;
 }
