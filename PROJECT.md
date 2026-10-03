@@ -40,6 +40,8 @@ This repository contains the public Exdox website and the signed-in React/TypeSc
 
 ## Performance and release notes
 
+- Public header sizing (2026-10-03): the shared public header contents are 10% larger than the prior presentation on desktop and narrow/touch layouts. Desktop retains the page body's 88% scale while the header's effective scale rises from 92% to 101.2%; the header width and content spacing keep the logo, navigation, country selector, and account actions visible. At 901–1200px the header uses the existing menu layout to avoid clipping. Signed-in workspace chrome is unchanged. The owner checks the live website and deployment workflow after the source push.
+
 - Sole trader pricing (2026-10-02): the one-user, 100-document plan is £5/month including VAT. It excludes Xero until the workspace owner selects the £5 Xero upgrade in Integrations; the same Stripe subscription then becomes £10/month. The public page keeps the description brief, while signup and Integrations explain the choice. Other plans retain their existing accounting access. Deploy the server before the website. Source builds passed; live Stripe payment and deployment remain for the owner to verify. Never delete or move mobile signing keystores or details.
 
 - Public desktop presentation (2026-10-02): the shared `.public-home` layout now presents the page body at 88% of its original size (10% larger than the previous 80%), and the header at 92% (15% larger than the previous 80%). The header and main remain full viewport width at their respective scales, with the header background and border stretching edge to edge. Phone and touch layouts keep their existing size for readability. The owner checks the live website and deployment workflow after the source push.
