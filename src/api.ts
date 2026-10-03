@@ -39,7 +39,8 @@ export type AccountingAccount = { id: string; code: string; name: string; type: 
 export type AccountingLine = { accountId: string; debitPence: number; creditPence: number };
 export type AccountingEntry = { id: string; date: string; reference: string; description: string; lines: AccountingLine[]; createdAt: string; createdBy: string };
 export type AccountingBalance = AccountingAccount & { debitPence: number; creditPence: number; balancePence: number };
-export type AccountingDocument = { id: string; kind: 'invoice' | 'bill'; number: string; contactName: string; issuerName: string; issuerAddress: string; contactAddress: string; vatNumber: string; paymentInstructions: string; date: string; dueDate: string; items: Array<{ description: string; quantity: number; unitPricePence: number; vatRate: 0 | 5 | 20 }>; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
+export type AccountingVatCode = 'S20' | 'S5' | 'S0' | 'SE' | 'P20' | 'P5' | 'P0' | 'PE';
+export type AccountingDocument = { id: string; kind: 'invoice' | 'bill'; number: string; contactName: string; issuerName: string; issuerAddress: string; contactAddress: string; vatNumber: string; paymentInstructions: string; date: string; taxDate?: string; dueDate: string; items: Array<{ description: string; quantity: number; unitPricePence: number; vatRate: 0 | 5 | 20; vatCode?: AccountingVatCode }>; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
 export type AccountingPayment = { id: string; documentId: string; date: string; amountPence: number; reference: string; createdAt: string; createdBy: string };
 export type AccountingStatementLine = { index: number; date: string; description: string; reference: string; amountPence: number };
 export type AccountingBankStatement = { id: string; name: string; openingPence: number; closingPence: number; fromDate: string; toDate: string; lines: AccountingStatementLine[]; importedAt: string; importedBy: string };
@@ -47,8 +48,13 @@ export type AccountingBankMatch = { statementId: string; lineIndex: number; bank
 export type AccountingPeriodLock = { id: string; lockedThrough: string; reason: string; createdAt: string; createdBy: string };
 export type AccountingReversal = { targetEntryId: string; date: string; reason: string; createdAt: string; createdBy: string };
 export type AccountingCreditNote = { id: string; documentId: string; number: string; date: string; reason: string; items: Array<{ itemIndex: number; quantity: number }>; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
-export type AccountingSourcePosting = { id: string; sourceType: 'receipt'; sourceId: number; workspaceContext: 'cost' | 'sales'; sourceUpdatedAt: string; date: string; description: string; reference: string; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
-export type AccountingSourceCandidate = { id: number; workspaceContext: 'cost' | 'sales'; status: string; date: string; description: string; totalAmount: number | null; reference: string | null; eligible: boolean; reason: string | null; postedAt: string | null; sourceChangedAfterPosting: boolean };
+export type AccountingSourcePosting = { id: string; sourceType: 'receipt'; sourceId: number; workspaceContext: 'cost' | 'sales'; sourceUpdatedAt: string; date: string; taxDate?: string; vatCode?: AccountingVatCode; description: string; reference: string; netPence: number; vatPence: number; totalPence: number; createdAt: string; createdBy: string };
+export type AccountingSourceCandidate = { id: number; workspaceContext: 'cost' | 'sales'; status: string; date: string; description: string; totalAmount: number | null; netAmount: number | null; vatAmount: number | null; reference: string | null; eligible: boolean; reason: string | null; postedAt: string | null; sourceChangedAfterPosting: boolean };
+export type AccountingVatBoxes = { box1: number; box2: number; box3: number; box4: number; box5: number; box6: number; box7: number; box8: number; box9: number };
+export type AccountingVatRow = { id: string; entryId: string; taxDate: string; reference: string; description: string; code: string; boxes: Omit<AccountingVatBoxes, 'box3' | 'box5'> };
+export type AccountingVatIssue = { entryId: string; date: string; reference: string; description: string; reason: string };
+export type AccountingVatReport = { fromDate: string; toDate: string; boxes: AccountingVatBoxes; rows: AccountingVatRow[]; issues: AccountingVatIssue[]; ready: boolean; digest: string };
+export type AccountingVatClose = { id: string; fromDate: string; toDate: string; boxes: AccountingVatBoxes; digest: string; rowCount: number; closedAt: string; closedBy: string };
 export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; payments: AccountingPayment[]; creditNotes: AccountingCreditNote[]; reversals: AccountingReversal[]; sourcePostings: AccountingSourcePosting[]; periodLocks: AccountingPeriodLock[]; lockedThrough: string | null; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
 
 export function getAccounting(token: string): Promise<AccountingData> {
@@ -62,7 +68,7 @@ export async function postAccountingJournal(token: string, payload: Pick<Account
   const result = await apiFetch<{ entry: AccountingEntry }>('/accounting/journals', token, { method: 'POST', body: JSON.stringify(payload) });
   return result.entry;
 }
-export async function postAccountingDocument(token: string, payload: Pick<AccountingDocument, 'kind' | 'number' | 'contactName' | 'issuerName' | 'issuerAddress' | 'contactAddress' | 'vatNumber' | 'paymentInstructions' | 'date' | 'dueDate' | 'items'>): Promise<AccountingDocument> {
+export async function postAccountingDocument(token: string, payload: Pick<AccountingDocument, 'kind' | 'number' | 'contactName' | 'issuerName' | 'issuerAddress' | 'contactAddress' | 'vatNumber' | 'paymentInstructions' | 'date' | 'dueDate' | 'items'> & { taxDate: string }): Promise<AccountingDocument> {
   const result = await apiFetch<{ document: AccountingDocument }>('/accounting/documents', token, { method: 'POST', body: JSON.stringify(payload) });
   return result.document;
 }
@@ -96,8 +102,18 @@ export async function listAccountingSourceCandidates(token: string): Promise<Acc
   const result = await apiFetch<{ candidates: AccountingSourceCandidate[] }>('/accounting/source-candidates', token);
   return result.candidates;
 }
-export async function postAccountingSource(token: string, receiptId: number): Promise<{ posting: AccountingSourcePosting; alreadyPosted: boolean }> {
-  return apiFetch('/accounting/source-postings', token, { method: 'POST', body: JSON.stringify({ receiptId, confirmNoDuplicate: true }) });
+export async function postAccountingSource(token: string, receiptId: number, vatCode: AccountingVatCode, taxDate: string): Promise<{ posting: AccountingSourcePosting; alreadyPosted: boolean }> {
+  return apiFetch('/accounting/source-postings', token, { method: 'POST', body: JSON.stringify({ receiptId, vatCode, taxDate, confirmNoDuplicate: true }) });
+}
+export async function getAccountingVatReport(token: string, fromDate: string, toDate: string): Promise<{ report: AccountingVatReport; closes: AccountingVatClose[] }> {
+  return apiFetch(`/accounting/vat?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}`, token);
+}
+export async function classifyAccountingVat(token: string, payload: { entryId: string; taxDate: string; reason: string; boxes: Omit<AccountingVatBoxes, 'box3' | 'box5'> }): Promise<void> {
+  await apiFetch('/accounting/vat-classifications', token, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function closeAccountingVatPeriod(token: string, fromDate: string, toDate: string): Promise<AccountingVatClose> {
+  const result = await apiFetch<{ close: AccountingVatClose }>('/accounting/vat-closes', token, { method: 'POST', body: JSON.stringify({ fromDate, toDate, standardAccrualConfirmed: true }) });
+  return result.close;
 }
 
 type AuthResponse =
