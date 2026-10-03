@@ -129,7 +129,7 @@ export default function AccountingReconciliation({ data, token, onRefresh }: { d
   async function saveTransfer(event: React.FormEvent) {
     event.preventDefault();
     await act(async () => {
-      await postAccountingBankTransfer(token, { fromAccountId: transfer.fromAccountId, toAccountId: transfer.toAccountId, date: transfer.date, amountPence: parseMoney(transfer.amount), reference: transfer.reference });
+      await postAccountingBankTransfer(token, { requestId: transfer.requestId, fromAccountId: transfer.fromAccountId, toAccountId: transfer.toAccountId, date: transfer.date, amountPence: parseMoney(transfer.amount), reference: transfer.reference });
       setTransfer({ ...transfer, requestId: crypto.randomUUID(), amount: '', reference: '' });
     }, 'Transfer posted as equal and opposite bank movements. Match each side to its statement.');
   }
