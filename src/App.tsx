@@ -1596,7 +1596,7 @@ function DashboardShell(props: {
   const location = useLocation();
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
-  const accountingUnlocked = businessAdmin && props.session.user.status === "active" && props.session.user.email.trim().toLowerCase() === "terryreedbfv@outlook.com";
+  const accountingUnlocked = props.session.user.status === "active" && props.session.user.email.trim().toLowerCase() === "terryreedbfv@outlook.com";
   const approvalWorkflowsEnabled = hasSessionFeature(props.session, "approval_workflows");
   const costReviewCount = props.store.costs.filter((receipt) => countsAsManualReview(receipt)).length;
   const salesReviewCount = props.store.sales.filter((receipt) => countsAsManualReview(receipt)).length;
@@ -1632,7 +1632,7 @@ function DashboardShell(props: {
       })
     : [
         { to: "/dropbox", label: "My Costs", icon: "costs" },
-        { to: "/accounting", label: "Accounting", icon: "billing", locked: true, activating: false },
+        { to: "/accounting", label: "Accounting", icon: "billing", locked: !accountingUnlocked, activating: false },
         ...(isRouteAllowed(props.session, "/employee/sales") ? [{ to: "/employee/sales", label: "My Sales", icon: "sales" }] : []),
         {
           to: "/employee/vault",
@@ -2163,7 +2163,7 @@ function DashboardShell(props: {
             </>
           ) : (
             <>
-              <Route path="/accounting" element={<AccountingPage token={props.session.token} unlocked={false} organisationName="" />} />
+              <Route path="/accounting" element={<AccountingPage token={props.session.token} unlocked={accountingUnlocked} organisationName={props.store.settings?.organisationName ?? ''} />} />
               <Route
                 path="/dropbox"
                 element={<EmployeeDocumentsPage title="My costs" description="Upload and view your own receipts. Personal expenses can be added to reimbursement claims after they are approved." records={props.store.costs} workspaceContext="cost" settings={props.store.settings} onUpload={(files) => props.onUpload("cost", files)} uploadBusy={uploadBusy} />}

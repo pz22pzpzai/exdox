@@ -2,7 +2,7 @@
 
 ## Private accounting pilot (2026-10-03)
 
-- Dashboard navigation now shows Accounting for every signed-in user. It is locked unless the active, business-admin account email is `terryreedbfv@outlook.com`. The corresponding API independently verifies the current user record and email; the browser lock is only a visual cue.
+- Dashboard navigation now shows Accounting for every signed-in user. It is locked unless the active account email is `terryreedbfv@outlook.com`. The corresponding API independently verifies the current user record and email; the browser lock is only a visual cue.
 - `src/AccountingPage.tsx` is a separate workspace for chart of accounts, balanced GBP journals, a posted journal export, trial balance, profit and loss, and balance sheet. It does not alter the existing Costs, Sales, Xero, billing, or Android flows. API deployment must precede the website update.
 - The Accounting workspace now has a separate Invoices & bills screen. It posts itemised GBP invoices and bills to the ledger, shows outstanding amounts, accepts partial/full payments, and prints sales invoices with user-entered business/customer details. It does not send invoices or alter the existing Sales and Costs workspaces.
 - This is a private double-entry foundation, not feature parity with Xero. Bank feeds, VAT returns, payroll, period locks, email sending, and automatic posting from Exdox documents remain absent. Do not represent it as a full accounting replacement until those workflows are implemented and verified.
