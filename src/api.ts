@@ -50,6 +50,9 @@ export type AccountingPayment = { id: string; documentId: string; bankAccountId?
 export type AccountingStatementLine = { index: number; date: string; description: string; reference: string; amountPence: number };
 export type AccountingBankStatement = { id: string; accountId?: string; name: string; openingPence: number; closingPence: number; fromDate: string; toDate: string; lines: AccountingStatementLine[]; importedAt: string; importedBy: string };
 export type AccountingBankMatch = { statementId: string; lineIndex: number; bankEntryId: string; amountPence: number; matchedAt: string; matchedBy: string };
+export type AccountingFeedTransaction = { id: string; connectionId: string; remoteAccountId: string; localAccountId: string; providerTransactionId: string; date: string; description: string; amountPence: number; importedAt: string };
+export type AccountingFeedMatch = { transactionId: string; bankEntryId: string; matchedAt: string; matchedBy: string };
+export type AccountingFeedStatus = { configured: boolean; environment: 'sandbox' | 'production'; connectionState: 'not_connected' | 'authorization_pending' | 'connected' | 'reconnect_required' | 'temporarily_unavailable'; accounts: Array<{ id: string; currency: string; label: string }>; mappings: Array<{ remoteId: string; localId: string; label: string; lastSyncedAt?: string }>; pending: boolean; pendingRequest?: { remoteId: string; localId: string; from: string; to: string } };
 export type AccountingBankRule = { id: string; version: number; accountId: string; contains: string; direction: 'in' | 'out' | 'both'; counterAccountId: string; enabled: boolean; createdAt: string; createdBy: string };
 export type AccountingMatchSuggestion = { statementId: string; lineIndex: number; bankEntryId: string; score: number; reason: string };
 export type AccountingRuleSuggestion = { statementId: string; lineIndex: number; ruleId: string; counterAccountId: string };
@@ -65,7 +68,7 @@ export type AccountingVatReport = { fromDate: string; toDate: string; boxes: Acc
 export type AccountingVatClose = { id: string; fromDate: string; toDate: string; boxes: AccountingVatBoxes; digest: string; rowCount: number; closedAt: string; closedBy: string };
 export type AccountingVatFilingPreview = { fromDate: string; toDate: string; sourceDigest: string; closedAt: string | null; internallyReady: boolean; blockers: string[]; fields: { vatDueSales: number; vatDueAcquisitions: number; totalVatDue: number; vatReclaimedCurrPeriod: number; netVatDue: number; totalValueSalesExVAT: number; totalValuePurchasesExVAT: number; totalValueGoodsSuppliedExVAT: number; totalAcquisitionsExVAT: number }; submissionAvailable: false; connectionMessage: string };
 export type AccountingHmrcStatus = { environment: 'sandbox'; configured: boolean; connected: boolean; connectionState: 'not_connected' | 'connected' | 'reconnect_required' | 'temporarily_unavailable'; connectedAt: string | null; redirectUri: string; obligationsAvailable: false; submissionAvailable: false };
-export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; drafts: AccountingDraft[]; contacts: AccountingContact[]; audit: AccountingAudit[]; payments: AccountingPayment[]; settlements: AccountingSettlement[]; refunds: AccountingRefund[]; creditNotes: AccountingCreditNote[]; reversals: AccountingReversal[]; sourcePostings: AccountingSourcePosting[]; periodLocks: AccountingPeriodLock[]; lockedThrough: string | null; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; bankRules: AccountingBankRule[]; bankSuggestions: AccountingMatchSuggestion[]; ruleSuggestions: AccountingRuleSuggestion[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
+export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; drafts: AccountingDraft[]; contacts: AccountingContact[]; audit: AccountingAudit[]; payments: AccountingPayment[]; settlements: AccountingSettlement[]; refunds: AccountingRefund[]; creditNotes: AccountingCreditNote[]; reversals: AccountingReversal[]; sourcePostings: AccountingSourcePosting[]; periodLocks: AccountingPeriodLock[]; lockedThrough: string | null; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; feedTransactions: AccountingFeedTransaction[]; feedMatches: AccountingFeedMatch[]; bankRules: AccountingBankRule[]; bankSuggestions: AccountingMatchSuggestion[]; ruleSuggestions: AccountingRuleSuggestion[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
 
 export function getAccounting(token: string): Promise<AccountingData> {
   return apiFetch('/accounting', token);
@@ -111,6 +114,20 @@ export async function postAccountingPayment(token: string, payload: { requestId?
 }
 export async function importAccountingBankStatement(token: string, payload: { accountId: string; name: string; openingPence: number; closingPence: number; lines: Array<Omit<AccountingStatementLine, 'index'>> }): Promise<{ statement: AccountingBankStatement; alreadyImported: boolean }> {
   return apiFetch('/accounting/bank-statements', token, { method: 'POST', body: JSON.stringify(payload) });
+}
+export function getAccountingFeedStatus(token: string): Promise<AccountingFeedStatus> { return apiFetch('/accounting/bank-feed', token); }
+export async function startAccountingFeedConnect(token: string): Promise<string> {
+  const result = await apiFetch<{ authorizationUrl: string }>('/accounting/bank-feed/connect', token, { method: 'POST' });
+  return result.authorizationUrl;
+}
+export function syncAccountingFeed(token: string, payload: { remoteAccountId: string; localAccountId: string; from: string; to: string }): Promise<{ status: 'pending' | 'complete'; imported: number }> {
+  return apiFetch('/accounting/bank-feed/sync', token, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function matchAccountingFeed(token: string, payload: { transactionId: string; bankEntryId: string }): Promise<void> {
+  await apiFetch('/accounting/bank-feed/matches', token, { method: 'POST', body: JSON.stringify(payload) });
+}
+export async function unmatchAccountingFeed(token: string, transactionId: string): Promise<void> {
+  await apiFetch('/accounting/bank-feed/matches', token, { method: 'DELETE', body: JSON.stringify({ transactionId }) });
 }
 export async function saveAccountingBankRule(token: string, payload: Partial<AccountingBankRule> & Pick<AccountingBankRule, 'accountId' | 'contains' | 'direction' | 'counterAccountId' | 'enabled'>): Promise<AccountingBankRule> {
   const result = await apiFetch<{ rule: AccountingBankRule }>('/accounting/bank-rules', token, { method: 'POST', body: JSON.stringify(payload) });

@@ -28,7 +28,7 @@ function csvDownload(filename: string, rows: Array<Array<string | number>>) {
 
 export default function AccountingPage({ token, unlocked, organisationName }: { token: string; unlocked: boolean; organisationName: string }) {
   const [data, setData] = useState<AccountingData | null>(null);
-  const [section, setSection] = useState<'overview' | 'documents' | 'reconciliation' | 'accounts' | 'journals' | 'reports' | 'corrections' | 'exdox' | 'vat'>('overview');
+  const [section, setSection] = useState<'overview' | 'documents' | 'reconciliation' | 'accounts' | 'journals' | 'reports' | 'corrections' | 'exdox' | 'vat'>(() => new URLSearchParams(window.location.search).get('bank') === 'returned' ? 'reconciliation' : 'overview');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');

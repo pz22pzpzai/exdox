@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { importAccountingBankStatement, matchAccountingBankLine, postAccountingBankRule, postAccountingBankTransfer, saveAccountingBankRule, unmatchAccountingBankLine, type AccountingData, type AccountingStatementLine } from './api';
+import AccountingBankFeed from './AccountingBankFeed';
 
 const pounds = (pence: number) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(pence / 100);
 type ImportedLine = Omit<AccountingStatementLine, 'index'>;
@@ -135,6 +136,7 @@ export default function AccountingReconciliation({ data, token, onRefresh }: { d
   }
 
   return <>
+    <AccountingBankFeed data={data} token={token} onRefresh={onRefresh} />
     <section className="panel"><h3>Import a bank statement</h3><p>Upload a GBP CSV for a selected bank account. This is a manual import, not a live bank feed. Exact reimports are recognised; overlapping transaction exports are rejected so they cannot be counted twice.</p><div className="accounting-form">
       <label>Bank account<select value={accountId} onChange={(event) => setAccountId(event.target.value)}>{bankAccounts.map((item) => <option key={item.id} value={item.id}>{item.code} {item.name}</option>)}</select></label>
       <label>CSV file<input type="file" accept=".csv,text/csv" onChange={(event) => void loadFile(event.target.files?.[0])} /></label>
