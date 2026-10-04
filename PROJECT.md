@@ -1,5 +1,9 @@
 # Exdox website
 
+## Private Accounting recurring drafts (2026-10-04)
+
+The locked Accounting Invoices & bills area now creates weekly/monthly invoice and bill schedules from saved draft templates, lists their next date and status, and allows pause/resume. Due items appear in the existing approval list as editable drafts. They are not posted or emailed automatically. The server's `/accounting/recurrences` route and daily job must deploy before this website source. The owner checks the live website and deployment workflow. Never delete or move mobile signing keystores or signing details.
+
 ## Private accounting pilot (2026-10-03)
 
 - TrueLayer bank feed foundation (2026-10-04): Bank reconciliation now has hosted consent, user-initiated settled GBP transaction sync with progress polling, review of feed rows, and one-to-one matching/unmatching against posted bank movements. Existing CSV import remains available for non-overlapping dates. The connection control is available only with approved live production credentials; sandbox configuration cannot expose it. This is not automatic background import and cannot connect a real bank until TrueLayer production access and bank consent are in place. Deploy server before website; owner checks deployment/live. Never record secrets or move/delete signing details.

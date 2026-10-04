@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addAccountingAccount, approveAccountingDraft, getAccounting, postAccountingJournal, postAccountingPayment, postAccountingRefund, postAccountingSettlement, saveAccountingContact, saveAccountingDraft, sendAccountingInvoice, type AccountingAccount, type AccountingContact, type AccountingData, type AccountingDocument, type AccountingDraft, type AccountingEntry } from './api';
+import { addAccountingAccount, approveAccountingDraft, getAccounting, postAccountingJournal, postAccountingPayment, postAccountingRefund, postAccountingSettlement, saveAccountingContact, saveAccountingDraft, saveAccountingRecurrence, sendAccountingInvoice, type AccountingAccount, type AccountingContact, type AccountingData, type AccountingDocument, type AccountingDraft, type AccountingEntry } from './api';
 import AccountingReconciliation from './AccountingReconciliation';
 import AccountingControls from './AccountingControls';
 import AccountingSources from './AccountingSources';
@@ -40,6 +40,7 @@ export default function AccountingPage({ token, unlocked, organisationName }: { 
   const [documentItems, setDocumentItems] = useState([{ description: '', quantity: '1', unitPrice: '', vatRate: '20', vatCode: 'S20' }]);
   const [payment, setPayment] = useState({ requestId: crypto.randomUUID(), documentId: '', bankAccountId: '1000', date: today(), amount: '', reference: '' });
   const [contact, setContact] = useState({ id: '', version: 0, role: 'customer' as AccountingContact['role'], name: '', email: '', address: '' });
+  const [recurrence, setRecurrence] = useState({ draftId: '', label: '', frequency: 'monthly' as 'weekly' | 'monthly', nextDate: today(), dueDays: '14', numberPrefix: '' });
   const [send, setSend] = useState({ documentId: '', recipient: '' });
   const [settlement, setSettlement] = useState({ requestId: crypto.randomUUID(), kind: 'invoice' as 'invoice' | 'bill', bankAccountId: '1000', date: today(), reference: '' });
   const [allocations, setAllocations] = useState([{ documentId: '', amount: '' }]);
@@ -141,6 +142,16 @@ export default function AccountingPage({ token, unlocked, organisationName }: { 
     event.preventDefault();
     await action(async () => { await saveAccountingContact(token, { ...contact, id: contact.id || undefined, version: contact.version || undefined }); setContact({ id: '', version: 0, role: 'customer', name: '', email: '', address: '' }); }, 'Contact saved.');
   }
+  async function saveRecurrence(event: React.FormEvent) {
+    event.preventDefault();
+    await action(async () => {
+      await saveAccountingRecurrence(token, { ...recurrence, dueDays: Number(recurrence.dueDays) });
+      setRecurrence({ draftId: '', label: '', frequency: 'monthly', nextDate: today(), dueDays: '14', numberPrefix: '' });
+    }, 'Recurring schedule saved. Due items will appear as drafts for approval.');
+  }
+  async function setRecurrencePaused(id: string, paused: boolean) {
+    await action(() => saveAccountingRecurrence(token, { action: paused ? 'resume' : 'pause', id }), `Schedule ${paused ? 'resumed' : 'paused'}.`);
+  }
   async function approve(draft: AccountingDraft) {
     await action(() => approveAccountingDraft(token, draft.id, draft.version), `${draft.document.kind === 'invoice' ? 'Invoice' : 'Bill'} approved and posted.`);
   }
@@ -174,6 +185,10 @@ export default function AccountingPage({ token, unlocked, organisationName }: { 
     {data && section === 'exdox' ? <AccountingSources token={token} onRefresh={async () => setData(await getAccounting(token))} /> : null}
     {data && section === 'vat' ? <AccountingVat token={token} data={data} /> : null}
     {data && section === 'documents' ? <>
+      <section className="panel"><h3>Recurring invoices and bills</h3><p>Choose a saved draft as the template. A new dated draft is created on each scheduled day, including when this page has not been opened. Review and approve each draft before it enters the ledger or VAT report. Nothing is emailed automatically.</p>
+        <form className="accounting-form" onSubmit={saveRecurrence}><label>Template draft<select required value={recurrence.draftId} onChange={(event) => setRecurrence({ ...recurrence, draftId: event.target.value })}><option value="">Choose a saved draft</option>{(data.drafts ?? []).map((item) => <option key={item.id} value={item.id}>{item.document.kind === 'invoice' ? 'Invoice' : 'Bill'} {item.document.number} — {item.document.contactName}</option>)}</select></label><label>Schedule name<input required maxLength={100} value={recurrence.label} onChange={(event) => setRecurrence({ ...recurrence, label: event.target.value })} /></label><label>Repeat<select value={recurrence.frequency} onChange={(event) => setRecurrence({ ...recurrence, frequency: event.target.value as 'weekly' | 'monthly' })}><option value="monthly">Monthly</option><option value="weekly">Weekly</option></select></label><label>First draft date<input required type="date" min={today()} value={recurrence.nextDate} onChange={(event) => setRecurrence({ ...recurrence, nextDate: event.target.value })} /></label><label>Days until due<input required type="number" min="0" max="365" value={recurrence.dueDays} onChange={(event) => setRecurrence({ ...recurrence, dueDays: event.target.value })} /></label><label>Number prefix<input required maxLength={50} placeholder="e.g. RENT" pattern="[A-Za-z0-9_-]+" value={recurrence.numberPrefix} onChange={(event) => setRecurrence({ ...recurrence, numberPrefix: event.target.value })} /></label><button className="primary-action" disabled={busy}>Create schedule</button></form>
+        {(data.recurrences ?? []).length ? <div className="accounting-table-wrap"><table className="accounting-table"><thead><tr><th>Schedule</th><th>Type</th><th>Repeat</th><th>Next draft</th><th>Status</th><th></th></tr></thead><tbody>{data.recurrences.map((item) => <tr key={item.id}><td>{item.label}</td><td>{item.kind}</td><td>{item.frequency}</td><td>{item.nextDate}</td><td>{item.lastError || (item.paused ? 'Paused' : 'Active')}</td><td>{!item.lastError && <button type="button" disabled={busy} onClick={() => setRecurrencePaused(item.id, item.paused)}>{item.paused ? 'Resume' : 'Pause'}</button>}</td></tr>)}</tbody></table></div> : <p>No recurring schedules yet.</p>}
+      </section>
       <section className="panel"><h3>Contacts</h3><p>Saved contact details can be used when preparing a draft. Posted documents keep their own snapshot.</p>
         <div className="accounting-table-wrap"><table className="accounting-table"><thead><tr><th>Name</th><th>Type</th><th>Email</th><th></th></tr></thead><tbody>{(data.contacts ?? []).map((item) => <tr key={item.id}><td>{item.name}</td><td>{item.role}</td><td>{item.email || '—'}</td><td><button type="button" onClick={() => setContact(item)}>Edit</button></td></tr>)}</tbody></table></div>
         <form className="accounting-form" onSubmit={saveContact}><label>Contact type<select value={contact.role} onChange={(event) => setContact({ ...contact, role: event.target.value as AccountingContact['role'] })}><option value="customer">Customer</option><option value="supplier">Supplier</option><option value="both">Both</option></select></label><label>Name<input required value={contact.name} onChange={(event) => setContact({ ...contact, name: event.target.value })} /></label><label>Email<input type="email" value={contact.email} onChange={(event) => setContact({ ...contact, email: event.target.value })} /></label><label>Address<textarea rows={2} value={contact.address} onChange={(event) => setContact({ ...contact, address: event.target.value })} /></label><button className="secondary-action" type="submit" disabled={busy}>{contact.id ? 'Update contact' : 'Add contact'}</button>{contact.id && <button type="button" onClick={() => setContact({ id: '', version: 0, role: 'customer', name: '', email: '', address: '' })}>Cancel edit</button>}</form>
