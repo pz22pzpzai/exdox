@@ -51,8 +51,8 @@ export default function AccountingBankFeed({ data, token, onRefresh }: { data: A
     {error && <div className="notice-banner" role="alert">{error}</div>}{message && <div className="success-banner" role="status">{message}</div>}
     {!status && !error && <p>Checking bank feed…</p>}
     {status && <>
-      <p>Provider: TrueLayer {status.environment === 'sandbox' ? 'test environment' : 'live environment'} · {status.connectionState.replaceAll('_', ' ')}</p>
-      {!status.configured ? <p>The bank feed is awaiting provider credentials. CSV import remains available below.</p> : status.connectionState !== 'connected' ? <><button className="secondary-action" type="button" disabled={busy} onClick={() => void connect()}>{status.connectionState === 'not_connected' ? 'Connect bank' : 'Reconnect bank'}</button>{status.connectionState === 'authorization_pending' && <p>Finish the bank authorization, then return here to check the connection.</p>}</> : <>
+      {status.configured && <p>Provider: TrueLayer live · {status.connectionState.replaceAll('_', ' ')}</p>}
+      {!status.configured ? <p>Live bank access is not yet available. CSV import remains available below.</p> : status.connectionState !== 'connected' ? <><button className="secondary-action" type="button" disabled={busy} onClick={() => void connect()}>{status.connectionState === 'not_connected' ? 'Connect bank' : 'Reconnect bank'}</button>{status.connectionState === 'authorization_pending' && <p>Finish the bank authorization, then return here to check the connection.</p>}</> : <>
         <div className="accounting-form">
           <label>Connected GBP bank<select value={remoteId} disabled={status.pending} onChange={(event) => setRemoteId(event.target.value)}>{status.accounts.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label>Accounting bank account<select value={localId} disabled={status.pending || Boolean(mapped)} onChange={(event) => setLocalId(event.target.value)}>{data.accounts.filter((item) => item.bank).map((item) => <option key={item.id} value={item.id}>{item.code} {item.name}</option>)}</select></label>
