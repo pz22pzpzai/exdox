@@ -10058,7 +10058,7 @@ function RegisterState(props: {
                       required={!soleTraderFlow}
                     />
                   </label>
-                  <p className="registration-plan-summary">14 days of core Exdox access. Choose a paid plan in Billing only if you decide to continue. Xero is a separate paid option; Accounting is currently a private pilot.</p>
+                  <p className="registration-plan-summary">14 days of Exdox access free.</p>
                 </>
               ) : null}
               <label>
