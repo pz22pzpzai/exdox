@@ -1,5 +1,9 @@
 # Exdox website
 
+## Private Accounting aged balances (2026-10-04)
+
+Accounting Reports now displays aged customer invoice and supplier bill balances for the selected through date, shows current and overdue buckets, credit balances, individual documents, control-account differences, and CSV export. It calls the private `/accounting/aging` API, so server source must deploy first. The Accounting tab remains locked to the pilot owner. The owner checks live website/workflow after push. Never delete or move signing keystores or details.
+
 ## Private Accounting recurring drafts (2026-10-04)
 
 The locked Accounting Invoices & bills area now creates weekly/monthly invoice and bill schedules from saved draft templates, lists their next date and status, and allows pause/resume. Due items appear in the existing approval list as editable drafts. They are not posted or emailed automatically. The server's `/accounting/recurrences` route and daily job must deploy before this website source. The owner checks the live website and deployment workflow. Never delete or move mobile signing keystores or signing details.

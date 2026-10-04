@@ -44,6 +44,10 @@ export type AccountingDocument = { id: string; draftId?: string; contactId?: str
 export type AccountingContact = { id: string; version: number; role: 'customer' | 'supplier' | 'both'; name: string; email: string; address: string; updatedAt: string; updatedBy: string };
 export type AccountingDraft = { id: string; version: number; contactId: string; document: Omit<AccountingDocument, 'id' | 'createdAt' | 'createdBy'>; updatedAt: string; updatedBy: string };
 export type AccountingRecurrence = { id: string; sourceDraftId: string; kind: 'invoice' | 'bill'; label: string; frequency: 'weekly' | 'monthly'; dayOfMonth: number; nextDate: string; dueDays: number; numberPrefix: string; paused: boolean; lastError?: string; createdAt: string; createdBy: string };
+export type AccountingAgingBucket = 'current' | 'days1to30' | 'days31to60' | 'days61to90' | 'days91plus' | 'credit';
+export type AccountingAgingRow = { documentId: string; number: string; contactName: string; issueDate: string; dueDate: string; originalPence: number; outstandingPence: number; daysOverdue: number; bucket: AccountingAgingBucket };
+export type AccountingAgingSide = { rows: AccountingAgingRow[]; buckets: Record<AccountingAgingBucket, number>; documentBalancePence: number; ledgerBalancePence: number; differencePence: number };
+export type AccountingAgingReport = { asOf: string; receivables: AccountingAgingSide; payables: AccountingAgingSide };
 export type AccountingAudit = { id: string; action: string; subjectId: string; detail: string; at: string; by: string };
 export type AccountingSettlement = { id: string; kind: 'invoice' | 'bill'; bankAccountId?: string; date: string; reference: string; allocations: Array<{ documentId: string; amountPence: number }>; totalPence: number; createdAt: string; createdBy: string };
 export type AccountingRefund = { id: string; creditId: string; bankAccountId?: string; date: string; reference: string; amountPence: number; createdAt: string; createdBy: string };
@@ -73,6 +77,10 @@ export type AccountingData = { accounts: AccountingAccount[]; entries: Accountin
 
 export function getAccounting(token: string): Promise<AccountingData> {
   return apiFetch('/accounting', token);
+}
+export async function getAccountingAging(token: string, asOf: string): Promise<AccountingAgingReport> {
+  const result = await apiFetch<{ report: AccountingAgingReport }>(`/accounting/aging?asOf=${encodeURIComponent(asOf)}`, token);
+  return result.report;
 }
 export async function addAccountingAccount(token: string, payload: Pick<AccountingAccount, 'code' | 'name' | 'type'> & { bank?: boolean }): Promise<AccountingAccount> {
   const result = await apiFetch<{ account: AccountingAccount }>('/accounting/accounts', token, { method: 'POST', body: JSON.stringify(payload) });
