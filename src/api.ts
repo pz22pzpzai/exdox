@@ -50,6 +50,8 @@ export type AccountingAgingSide = { rows: AccountingAgingRow[]; buckets: Record<
 export type AccountingAgingReport = { asOf: string; receivables: AccountingAgingSide; payables: AccountingAgingSide };
 export type AccountingEmailRecord = { id: string; documentId: string; recipient: string; kind: 'invoice' | 'reminder'; milestoneDay?: number; status: 'pending' | 'accepted' | 'delivered' | 'delayed' | 'bounced' | 'complained' | 'rejected' | 'uncertain'; requestedAt: string; acceptedAt?: string; deliveredAt?: string; messageId?: string };
 export type AccountingReminderSettings = { enabled: boolean; days: number[]; replyToEmail: string; excludedDocumentIds: string[]; updatedAt: string; updatedBy: string };
+export type AccountingInvoiceLink = { documentId: string; url: string };
+export type AccountingInvoicePaymentException = { documentId: string; receivedPence: number; duePence: number; reason: string };
 export type AccountingAudit = { id: string; action: string; subjectId: string; detail: string; at: string; by: string };
 export type AccountingSettlement = { id: string; kind: 'invoice' | 'bill'; bankAccountId?: string; date: string; reference: string; allocations: Array<{ documentId: string; amountPence: number }>; totalPence: number; createdAt: string; createdBy: string };
 export type AccountingRefund = { id: string; creditId: string; bankAccountId?: string; date: string; reference: string; amountPence: number; createdAt: string; createdBy: string };
@@ -75,7 +77,38 @@ export type AccountingVatReport = { fromDate: string; toDate: string; boxes: Acc
 export type AccountingVatClose = { id: string; fromDate: string; toDate: string; boxes: AccountingVatBoxes; digest: string; rowCount: number; closedAt: string; closedBy: string };
 export type AccountingVatFilingPreview = { fromDate: string; toDate: string; sourceDigest: string; closedAt: string | null; internallyReady: boolean; blockers: string[]; fields: { vatDueSales: number; vatDueAcquisitions: number; totalVatDue: number; vatReclaimedCurrPeriod: number; netVatDue: number; totalValueSalesExVAT: number; totalValuePurchasesExVAT: number; totalValueGoodsSuppliedExVAT: number; totalAcquisitionsExVAT: number }; submissionAvailable: false; connectionMessage: string };
 export type AccountingHmrcStatus = { environment: 'sandbox'; configured: boolean; connected: boolean; connectionState: 'not_connected' | 'connected' | 'reconnect_required' | 'temporarily_unavailable'; connectedAt: string | null; redirectUri: string; obligationsAvailable: false; submissionAvailable: false };
-export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; drafts: AccountingDraft[]; contacts: AccountingContact[]; recurrences: AccountingRecurrence[]; emailRecords: AccountingEmailRecord[]; reminderSettings: AccountingReminderSettings; audit: AccountingAudit[]; payments: AccountingPayment[]; settlements: AccountingSettlement[]; refunds: AccountingRefund[]; creditNotes: AccountingCreditNote[]; reversals: AccountingReversal[]; sourcePostings: AccountingSourcePosting[]; periodLocks: AccountingPeriodLock[]; lockedThrough: string | null; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; feedTransactions: AccountingFeedTransaction[]; feedMatches: AccountingFeedMatch[]; bankRules: AccountingBankRule[]; bankSuggestions: AccountingMatchSuggestion[]; ruleSuggestions: AccountingRuleSuggestion[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
+export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; drafts: AccountingDraft[]; contacts: AccountingContact[]; recurrences: AccountingRecurrence[]; emailRecords: AccountingEmailRecord[]; reminderSettings: AccountingReminderSettings; invoiceLinks: AccountingInvoiceLink[]; invoicePaymentExceptions: AccountingInvoicePaymentException[]; audit: AccountingAudit[]; payments: AccountingPayment[]; settlements: AccountingSettlement[]; refunds: AccountingRefund[]; creditNotes: AccountingCreditNote[]; reversals: AccountingReversal[]; sourcePostings: AccountingSourcePosting[]; periodLocks: AccountingPeriodLock[]; lockedThrough: string | null; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; feedTransactions: AccountingFeedTransaction[]; feedMatches: AccountingFeedMatch[]; bankRules: AccountingBankRule[]; bankSuggestions: AccountingMatchSuggestion[]; ruleSuggestions: AccountingRuleSuggestion[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
+
+export type PublicAccountingInvoice = { document: Pick<AccountingDocument, 'number' | 'contactName' | 'issuerName' | 'issuerAddress' | 'contactAddress' | 'vatNumber' | 'paymentInstructions' | 'date' | 'taxDate' | 'dueDate' | 'items' | 'netPence' | 'vatPence' | 'totalPence'>; outstandingPence: number; canPay: boolean };
+export const accountingInvoicePdfUrl = (token: string) => `${API_BASE_URL}/accounting/invoice/${encodeURIComponent(token)}/pdf`;
+async function publicAccountingFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, cache: 'no-store', referrerPolicy: 'no-referrer' });
+  const result = await response.json() as T & { message?: string };
+  if (!response.ok) throw new Error(result.message || 'Invoice request failed.');
+  return result;
+}
+export async function getPublicAccountingInvoice(token: string): Promise<PublicAccountingInvoice> {
+  const result = await publicAccountingFetch<PublicAccountingInvoice>(`/accounting/invoice/${encodeURIComponent(token)}`);
+  return result;
+}
+export async function startPublicAccountingInvoiceCheckout(token: string): Promise<string> {
+  const result = await publicAccountingFetch<{ url: string }>(`/accounting/invoice/${encodeURIComponent(token)}/checkout`, { method: 'POST' });
+  return result.url;
+}
+export async function saveAccountingInvoiceLink(token: string, documentId: string, action: 'create' | 'revoke'): Promise<string | null> {
+  const result = await apiFetch<{ url: string | null }>('/accounting/invoice-links', token, { method: 'POST', body: JSON.stringify({ documentId, action }) });
+  return result.url;
+}
+export async function getAccountingInvoicePaymentConnection(token: string): Promise<{ configured: boolean; connected: boolean; accountReady: boolean; eventsReady: boolean; ready: boolean }> {
+  return apiFetch('/accounting/invoice-payment-connection', token);
+}
+export async function startAccountingInvoicePaymentConnection(token: string): Promise<string> {
+  const result = await apiFetch<{ url: string }>('/accounting/invoice-payment-connection', token, { method: 'POST' });
+  return result.url;
+}
+export async function resolveAccountingInvoicePaymentReview(token: string, documentId: string, resolution: string): Promise<void> {
+  await apiFetch('/accounting/invoice-payment-reviews', token, { method: 'POST', body: JSON.stringify({ documentId, resolution, confirm: true }) });
+}
 
 export function getAccounting(token: string): Promise<AccountingData> {
   return apiFetch('/accounting', token);

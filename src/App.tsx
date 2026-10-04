@@ -10,6 +10,7 @@ import {
   useParams,
 } from "react-router-dom";
 import AccountingPage from "./AccountingPage";
+import PublicAccountingInvoice from "./PublicAccountingInvoice";
 
 import {
   clearStoredSession,
@@ -1088,6 +1089,10 @@ export function App() {
 
   if (session && location.pathname === "/confirm-email") {
     return <Navigate to={getDefaultRoute(session)} replace />;
+  }
+
+  if (location.pathname.startsWith('/invoice/')) {
+    return <PublicAccountingInvoice token={location.pathname.slice('/invoice/'.length)} />;
   }
 
   if (location.pathname === forgotPasswordPagePath) {
