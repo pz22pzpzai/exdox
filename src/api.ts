@@ -64,6 +64,7 @@ export type AccountingVatIssue = { entryId: string; date: string; reference: str
 export type AccountingVatReport = { fromDate: string; toDate: string; boxes: AccountingVatBoxes; rows: AccountingVatRow[]; issues: AccountingVatIssue[]; ready: boolean; digest: string };
 export type AccountingVatClose = { id: string; fromDate: string; toDate: string; boxes: AccountingVatBoxes; digest: string; rowCount: number; closedAt: string; closedBy: string };
 export type AccountingVatFilingPreview = { fromDate: string; toDate: string; sourceDigest: string; closedAt: string | null; internallyReady: boolean; blockers: string[]; fields: { vatDueSales: number; vatDueAcquisitions: number; totalVatDue: number; vatReclaimedCurrPeriod: number; netVatDue: number; totalValueSalesExVAT: number; totalValuePurchasesExVAT: number; totalValueGoodsSuppliedExVAT: number; totalAcquisitionsExVAT: number }; submissionAvailable: false; connectionMessage: string };
+export type AccountingHmrcStatus = { environment: 'sandbox'; configured: boolean; connected: boolean; connectedAt: string | null; redirectUri: string; obligationsAvailable: false; submissionAvailable: false };
 export type AccountingData = { accounts: AccountingAccount[]; entries: AccountingEntry[]; documents: AccountingDocument[]; drafts: AccountingDraft[]; contacts: AccountingContact[]; audit: AccountingAudit[]; payments: AccountingPayment[]; settlements: AccountingSettlement[]; refunds: AccountingRefund[]; creditNotes: AccountingCreditNote[]; reversals: AccountingReversal[]; sourcePostings: AccountingSourcePosting[]; periodLocks: AccountingPeriodLock[]; lockedThrough: string | null; bankStatements: AccountingBankStatement[]; bankMatches: AccountingBankMatch[]; bankRules: AccountingBankRule[]; bankSuggestions: AccountingMatchSuggestion[]; ruleSuggestions: AccountingRuleSuggestion[]; report: { balances: AccountingBalance[]; profitPence: number; assetsPence: number; liabilitiesPence: number; equityPence: number; journalCount: number } };
 
 export function getAccounting(token: string): Promise<AccountingData> {
@@ -149,6 +150,13 @@ export async function postAccountingSource(token: string, receiptId: number, vat
 }
 export async function getAccountingVatReport(token: string, fromDate: string, toDate: string): Promise<{ report: AccountingVatReport; closes: AccountingVatClose[]; filingPreview: AccountingVatFilingPreview }> {
   return apiFetch(`/accounting/vat?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}`, token);
+}
+export async function getAccountingHmrcStatus(token: string): Promise<AccountingHmrcStatus> {
+  return apiFetch('/accounting/hmrc/status', token);
+}
+export async function startAccountingHmrcConnect(token: string): Promise<string> {
+  const result = await apiFetch<{ authorizationUrl: string }>('/accounting/hmrc/connect', token, { method: 'POST' });
+  return result.authorizationUrl;
 }
 export async function classifyAccountingVat(token: string, payload: { entryId: string; taxDate: string; reason: string; boxes: Omit<AccountingVatBoxes, 'box3' | 'box5'> }): Promise<void> {
   await apiFetch('/accounting/vat-classifications', token, { method: 'POST', body: JSON.stringify(payload) });

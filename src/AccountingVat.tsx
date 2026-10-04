@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { classifyAccountingVat, closeAccountingVatPeriod, getAccountingVatReport, type AccountingData, type AccountingVatBoxes, type AccountingVatClose, type AccountingVatFilingPreview, type AccountingVatReport } from './api';
+import { classifyAccountingVat, closeAccountingVatPeriod, getAccountingHmrcStatus, getAccountingVatReport, startAccountingHmrcConnect, type AccountingData, type AccountingHmrcStatus, type AccountingVatBoxes, type AccountingVatClose, type AccountingVatFilingPreview, type AccountingVatReport } from './api';
 
 const money = (pence: number) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(pence / 100);
 const amount = (pence: number) => (pence / 100).toFixed(2);
@@ -50,6 +50,7 @@ export default function AccountingVat({ token, data }: { token: string; data: Ac
   const [report, setReport] = useState<AccountingVatReport | null>(null);
   const [closes, setCloses] = useState<AccountingVatClose[]>([]);
   const [filingPreview, setFilingPreview] = useState<AccountingVatFilingPreview | null>(null);
+  const [hmrcStatus, setHmrcStatus] = useState<AccountingHmrcStatus | null>(null);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
   const [busy, setBusy] = useState(false);
@@ -64,6 +65,12 @@ export default function AccountingVat({ token, data }: { token: string; data: Ac
     setReport(result.report); setCloses(result.closes); setFilingPreview(result.filingPreview);
   }
   useEffect(() => { let active = true; getAccountingVatReport(token, range.fromDate, range.toDate).then((result) => { if (active) { setReport(result.report); setCloses(result.closes); setFilingPreview(result.filingPreview); } }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load VAT report.'); }); return () => { active = false; }; }, [token]);
+  useEffect(() => { let active = true; getAccountingHmrcStatus(token).then((result) => { if (active) setHmrcStatus(result); }).catch(() => { if (active) setHmrcStatus(null); }); return () => { active = false; }; }, [token]);
+  async function connectHmrc() {
+    setBusy(true); setError('');
+    try { window.location.assign(await startAccountingHmrcConnect(token)); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not start HMRC sandbox connection.'); setBusy(false); }
+  }
   async function refresh() { setBusy(true); setError(''); setFeedback(''); try { await load(); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not load VAT report.'); } finally { setBusy(false); } }
   const detailEntry = data.entries.find((item) => item.id === detailId);
   const showingSelectedRange = report?.fromDate === range.fromDate && report?.toDate === range.toDate;
@@ -85,6 +92,7 @@ export default function AccountingVat({ token, data }: { token: string; data: Ac
   }
   return <>
     <section className="panel"><h3>VAT review</h3><p>Draft UK standard invoice-basis VAT figures from Accounting entries. Check recoverability, tax points, special schemes, international transactions, and supporting invoices before relying on these figures. This page does not submit a return to HMRC.</p><div className="accounting-form"><label>From<input type="date" value={range.fromDate} onChange={(event) => setRange({ ...range, fromDate: event.target.value })} /></label><label>To<input type="date" value={range.toDate} onChange={(event) => setRange({ ...range, toDate: event.target.value })} /></label><button type="button" className="primary-action" disabled={busy} onClick={() => void refresh()}>Show period</button></div></section>
+    <section className="panel"><h3>HMRC VAT sandbox</h3><p>{hmrcStatus?.connected ? `Test account connected ${hmrcStatus.connectedAt?.slice(0, 10)}.` : hmrcStatus?.configured ? 'Ready to connect an HMRC test user.' : 'Sandbox credentials need to be added to the protected server configuration.'} This is a test connection only. VAT obligations and submission are not enabled yet.</p>{new URLSearchParams(window.location.search).get('hmrc') === 'connected' && <div className="success-banner" role="status">HMRC sandbox authorised this Accounting workspace.</div>}{new URLSearchParams(window.location.search).get('hmrc') === 'failed' && <div className="notice-banner" role="alert">HMRC sandbox connection failed. Check the redirect URI and credentials.</div>}{new URLSearchParams(window.location.search).get('hmrc') === 'denied' && <div className="notice-banner" role="alert">HMRC sandbox authorisation was declined.</div>}<button type="button" className="secondary-action" disabled={busy || !hmrcStatus?.configured} onClick={() => void connectHmrc()}>{hmrcStatus?.connected ? 'Reconnect test user' : 'Connect HMRC test user'}</button></section>
     {error && <div className="notice-banner" role="alert">{error}</div>}{feedback && <div className="success-banner" role="status">{feedback}</div>}
     {report && <>
       <section className="panel"><div className="accounting-section-heading"><h3>Nine-box VAT review</h3><button type="button" className="secondary-action" onClick={() => exportCsv(report)}>Export evidence CSV</button></div><p>{report.ready ? 'All VAT-relevant entries in this selected period are classified.' : `${report.issues.length} item(s) need VAT review before this period can be closed.`} {closed ? `Closed ${closed.closedAt.slice(0, 10)}.` : 'Open draft.'}</p>{closed && closed.digest !== report.digest && <div className="notice-banner" role="alert">The current report differs from its closed snapshot. Review the audit history.</div>}<div className="accounting-table-wrap"><table className="accounting-table"><thead><tr><th>Box</th><th>Description</th><th>GBP</th></tr></thead><tbody>{([
