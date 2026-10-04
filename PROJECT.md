@@ -2,6 +2,7 @@
 
 ## Private accounting pilot (2026-10-03)
 
+- HMRC continuation (2026-10-04): the private VAT screen now reports whether the sandbox test authorisation is connected, needs reconnection, or cannot be checked temporarily. The server renews near-expiry tokens under a lock. Obligation retrieval and filing remain disabled pending HMRC fraud-header requirements. Deploy the server before this UI; the owner checks live behaviour. Never delete or move signing details.
 - HMRC sandbox connection (2026-10-04): the private VAT screen displays sandbox configuration/connection status and can start the HMRC test-user authorisation flow. It does not retrieve obligations or submit a return. The server connection routes and protected credentials must be deployed first. The owner checks live deployment; never delete or move signing details.
 - HMRC VAT filing preparation (2026-10-04): the private VAT review displays an API-generated HMRC nine-field preview, internal blockers, and the requirements for connecting to HMRC. It shows whole-pound values for boxes 6–9 and an unsigned box 5 repayment amount. The preview does not retrieve an HMRC obligation, connect an HMRC account, file a return, or claim MTD compatibility. The server API change must deploy first; the owner checks the live site. Never delete or move signing keystores or signing details.
 
