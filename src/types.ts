@@ -218,6 +218,7 @@ export type OrganisationSettings = {
 
 export type XeroIntegrationStatus = {
   configured: boolean;
+  priceCurrency: string;
   available: boolean;
   billingStatus: BillingStatus;
   lockedReason: string | null;

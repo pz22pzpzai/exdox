@@ -235,8 +235,8 @@ const pricingSliderSteps: Array<{
     markerLabel: "1",
     users: 1,
     documents: 100,
-    monthlyPrice: 5,
-    annualMonthlyPrice: 4,
+    monthlyPrice: 3,
+    annualMonthlyPrice: 3,
     planId: "capture",
   },
   {
@@ -8207,7 +8207,7 @@ function AccountingIntegrationsPage({ session, workspaceSettings }: { session: S
     setError(null);
     void confirmAccountingIntegrationUnlock(session.token, accountingUnlockSessionId)
       .then(async (result) => { await refresh(true); return result; })
-      .then((result) => { if (active) setFeedback(result.creditAmountPence ? "Your £5 payment is confirmed. Xero is unlocked for the trial and will be credited against your first paid invoice." : "Your £5 payment is confirmed. Xero is unlocked and your sole trader subscription is set to £10 per month."); })
+      .then((result) => { if (active) setFeedback(result.creditAmountPence ? "Your Xero payment is confirmed. Xero is unlocked for the trial and will be credited against your first paid invoice." : "Your Xero payment is confirmed. Xero is unlocked and your sole trader subscription has been updated."); })
       .catch((unlockError) => { if (active) setError(unlockError instanceof Error ? unlockError.message : "Could not confirm the accounting integration payment."); })
       .finally(() => { if (active) setBusy(null); });
     return () => { active = false; };
@@ -8218,15 +8218,15 @@ function AccountingIntegrationsPage({ session, workspaceSettings }: { session: S
     {callbackResult === "connected" ? <div className="success-banner">Xero authorised this Exdox workspace. Its accounting lists are loading below.</div> : null}
     {callbackResult === "failed" ? <div className="error-banner">Xero was not connected. Try again and choose the organisation you want Exdox to use.</div> : null}
     {callbackResult === "locked" ? <div className="error-banner">Xero was not connected because this workspace is still in its trial or does not have an active paid plan.</div> : null}
-    {accountingUnlockResult === "cancelled" ? <div className="notice-banner">The £5 payment was cancelled. Xero remains locked.</div> : null}
+    {accountingUnlockResult === "cancelled" ? <div className="notice-banner">The Xero payment was cancelled. Xero remains locked.</div> : null}
     {error ? <div className="error-banner">{error}</div> : null}
     {feedback ? <div className="success-banner">{feedback}</div> : null}
 
     <section className="panel">
       <div className="panel-heading"><div><h3>Xero accounting</h3><p>Available only to business admins for this Exdox workspace.</p></div><SignalPill tone={status?.available && status.connected ? "info" : "warning"}>{status?.available ? status.connected ? "Connected" : "Not connected" : "Locked"}</SignalPill></div>
-      {status && !status.available ? <div className="notice-banner"><strong>{session.billing?.planId === "trial" ? "Xero is a paid option during the free trial." : "Xero is not included in this subscription."}</strong><span>{status.lockedReason ?? "An active paid plan is required."}</span>{status.trialUnlockEligible ? <span>The £5 trial payment is credited against your first subscription invoice.</span> : null}{session.user.isOwner && (status.trialUnlockEligible || status.soleTraderXeroUpgradeEligible) ? <button className="primary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("unlock-checkout"); setError(null); setFeedback(null); void createAccountingIntegrationUnlockCheckout(session.token).then((result) => { if (result.alreadyUnlocked) return refresh(true); if (result.checkoutUrl) window.location.href = result.checkoutUrl; else throw new Error("Stripe did not return a checkout page."); }).catch((unlockError) => setError(unlockError instanceof Error ? unlockError.message : "Could not open the £5 payment checkout.")).finally(() => setBusy(null)); }}>{busy === "unlock-checkout" ? "Opening secure checkout…" : status.soleTraderXeroUpgradeEligible ? "Add Xero: £5 now, then £10/month" : "Pay £5 once and unlock"}</button> : status.trialUnlockEligible || status.soleTraderXeroUpgradeEligible ? <span>Ask the workspace owner to add Xero.</span> : session.user.isOwner ? <Link className="secondary-action link-action" to="/billing">Manage subscription</Link> : <span>Ask the workspace owner to activate the subscription.</span>}</div> : null}
-      {status?.billingStatus === "trialing" && status.trialUnlockPurchasedAt ? <div className="success-banner">Xero is unlocked for this trial. Your £5 payment will be credited against the first subscription invoice when you choose a plan.</div> : null}
-      {status?.soleTraderXeroActive ? <div className="success-banner">Xero is included with this sole trader subscription at £10 per month.</div> : null}
+      {status && !status.available ? <div className="notice-banner"><strong>{session.billing?.planId === "trial" ? "Xero is a paid option during the free trial." : "Xero is not included in this subscription."}</strong><span>{status.lockedReason ?? "An active paid plan is required."}</span>{status.trialUnlockEligible ? <span>The {currency(5, status.priceCurrency)} trial payment is credited against your first subscription invoice.</span> : null}{session.user.isOwner && (status.trialUnlockEligible || status.soleTraderXeroUpgradeEligible) ? <button className="primary-action" type="button" disabled={busy !== null} onClick={() => { setBusy("unlock-checkout"); setError(null); setFeedback(null); void createAccountingIntegrationUnlockCheckout(session.token).then((result) => { if (result.alreadyUnlocked) return refresh(true); if (result.checkoutUrl) window.location.href = result.checkoutUrl; else throw new Error("Stripe did not return a checkout page."); }).catch((unlockError) => setError(unlockError instanceof Error ? unlockError.message : "Could not open the Xero payment checkout.")).finally(() => setBusy(null)); }}>{busy === "unlock-checkout" ? "Opening secure checkout…" : status.soleTraderXeroUpgradeEligible ? `Add Xero: ${currency(5, status.priceCurrency)} now, then ${currency(10, status.priceCurrency)}/month` : `Pay ${currency(5, status.priceCurrency)} once and unlock`}</button> : status.trialUnlockEligible || status.soleTraderXeroUpgradeEligible ? <span>Ask the workspace owner to add Xero.</span> : session.user.isOwner ? <Link className="secondary-action link-action" to="/billing">Manage subscription</Link> : <span>Ask the workspace owner to activate the subscription.</span>}</div> : null}
+      {status?.billingStatus === "trialing" && status.trialUnlockPurchasedAt ? <div className="success-banner">Xero is unlocked for this trial. Your {currency(5, status.priceCurrency)} payment will be credited against the first subscription invoice when you choose a plan.</div> : null}
+      {status?.soleTraderXeroActive ? <div className="success-banner">Xero is included with this sole trader subscription at {currency(10, status.priceCurrency)} per month.</div> : null}
       <div className="summary-list">
         <div><strong>Organisation</strong>{status?.available && status.availableTenants?.length && status.availableTenants.length > 1 ? <select value={status.tenantId ?? ""} disabled={busy !== null} onChange={(event) => { const tenantId = event.target.value; setBusy("tenant"); setError(null); setFeedback(null); void selectXeroTenant(session.token, tenantId).then((selected) => { setStatus((current) => current ? { ...current, tenantId: selected.tenantId, tenantName: selected.tenantName } : current); setReferenceData(null); return refresh(true); }).then(() => setFeedback("Connected Xero organisation changed and its lists refreshed.")).catch((tenantError) => setError(tenantError instanceof Error ? tenantError.message : "Could not change Xero organisation.")).finally(() => setBusy(null)); }}>{status.availableTenants.map((tenant) => <option key={tenant.tenantId} value={tenant.tenantId}>{tenant.tenantName}</option>)}</select> : <span>{status?.available ? status.tenantName ?? "Connect a Xero organisation" : "Unlock with an active paid plan"}</span>}</div>
         <div><strong>Data Exdox uses</strong><span>Chart of accounts, suppliers and customers, tax rates, tracking categories, bank accounts, invoices, bills, and source attachments.</span></div>
@@ -8688,7 +8688,7 @@ function SettingsPage(props: {
         </label>
         <label>Approved mileage rate per mile<input type="number" min="0" step="0.01" value={draft.mileageRate} disabled={saving} onChange={(event) => setDraft({ ...draft, mileageRate: Number(event.target.value) })} /></label>
       </div>
-      <p>{draft.country === 'GB' ? 'This is the reporting currency for the whole workspace. Receipt OCR preserves the source currency and records its equivalent in the workspace currency. Subscription billing remains in GBP.' : 'This is the reporting currency for new workspace records. Receipt OCR preserves the source currency and records its equivalent in the workspace currency. Existing records keep their original converted values after a currency change; review any reports spanning that change. Subscription billing remains in GBP.'}</p>
+      <p>{draft.country === 'GB' ? 'This is the reporting currency for the whole workspace. Receipt OCR preserves the source currency and records its equivalent in the workspace currency. New one-user subscriptions use the workspace country currency; larger plans are billed in GBP.' : 'This is the reporting currency for new workspace records. Receipt OCR preserves the source currency and records its equivalent in the workspace currency. Existing records keep their original converted values after a currency change; review any reports spanning that change. New one-user subscriptions use the workspace country currency; larger plans are billed in GBP.'}</p>
       <p>{draft.country === 'GB' ? 'Turn VAT off to force downstream extraction toward gross-only treatment and a `No VAT` tax tier across incoming receipt processing.' : 'Local tax rates and recoverability vary by location and transaction. Review the tax printed on each document; Exdox does not calculate tax due or file returns.'}</p>
       {countryTaxGuidance(draft.country) ? <p className="field-hint">{countryTaxGuidance(draft.country)!.text} <a href={countryTaxGuidance(draft.country)!.url} target="_blank" rel="noopener noreferrer">Official tax guidance</a></p> : null}
       <div className="toolbar">
@@ -11102,7 +11102,7 @@ function TermsSection() {
           heading: "Customers outside the UK",
           body: (
             <>
-              <p>Exdox is operated from the United Kingdom and may be used by business customers in the UK, European Union, United States, Australia, and Canada. The service is currently priced and billed in GBP; your bank or payment provider may convert the charge or apply its own fees. Check the price and billing details presented before confirming a subscription.</p>
+              <p>Exdox is operated from the United Kingdom and may be used by business customers in the UK, European Union, United States, Australia, and Canada. New one-user subscriptions are billed in the currency shown for the workspace country; larger plans are priced and billed in GBP. Your bank or payment provider may convert a charge or apply its own fees. Check the price and billing details presented before confirming a subscription.</p>
               <p>Tax rules for an Exdox subscription and for documents recorded in a workspace can differ by country or region. Exdox provides document capture and workflow tools, not a determination that a particular tax, accounting, mileage, or reimbursement treatment is correct for your business. You are responsible for reviewing records and applying the rules relevant to your organisation.</p>
               <p>Nothing in these terms removes consumer or other rights that cannot be excluded under a law that applies to you.</p>
             </>
@@ -11768,11 +11768,11 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
         <div className="pricing-page-main">
           <article className="slider-pricing-card">
             <div className="slider-price-row">
-              <strong>{referenceRate ? `≈ ${currency(selectedPrice * referenceRate.value, referenceRate.currency)}` : currency(selectedPrice)}</strong>
+              <strong>{selectedStep.users === 1 ? currency(3, countryCurrency(selectedCountry)) : referenceRate ? `≈ ${currency(selectedPrice * referenceRate.value, referenceRate.currency)}` : currency(selectedPrice)}</strong>
               <span>Per Month</span>
             </div>
             <span className="slider-vat-note">
-              {selectedCountry === 'GB' ? 'GBP, includes VAT' : `Charged in GBP: ${currency(selectedPrice)} per month. ${referenceRate ? `Local amount is an estimate using the ${referenceRate.date} reference rate; your card issuer sets the final conversion.` : 'Local currency estimate is temporarily unavailable.'} Review the final charge in Stripe.`}
+              {selectedStep.users === 1 ? `${countryCurrency(selectedCountry)} per month${selectedCountry === 'GB' ? ', includes VAT' : ''}. Review the final charge in Stripe.` : selectedCountry === 'GB' ? 'GBP, includes VAT' : `Charged in GBP: ${currency(selectedPrice)} per month. ${referenceRate ? `Local amount is an estimate using the ${referenceRate.date} reference rate; your card issuer sets the final conversion.` : 'Local currency estimate is temporarily unavailable.'} Review the final charge in Stripe.`}
             </span>
             <div className="slider-capacity-copy">
               <strong>{selectedStep.documents.toLocaleString()}</strong>
@@ -12120,6 +12120,8 @@ function WorkspaceContactPage({ session }: { session: SessionState }) {
 
 function BillingPage(props: { session: SessionState }) {
   const navigate = useNavigate();
+  const selectedCountry = useSelectedCountry();
+  const [billingCountry, setBillingCountry] = useState<Country | null>(null);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [trialPlanIndex, setTrialPlanIndex] = useState(0);
@@ -12136,6 +12138,12 @@ function BillingPage(props: { session: SessionState }) {
     void getXeroIntegrationStatus(props.session.token)
       .then((status) => { if (active) setTrialXeroPurchased(Boolean(status.trialUnlockPurchasedAt)); })
       .catch(() => { if (active) setMessage("Could not check the Xero add-on price. Refresh Billing before checkout."); });
+    return () => { active = false; };
+  }, [planFreeTrial, props.session.token]);
+  useEffect(() => {
+    if (!planFreeTrial) return;
+    let active = true;
+    void getSettings(props.session.token).then((settings) => { if (active) setBillingCountry(settings.country); }).catch(() => { if (active) setMessage("Could not check this workspace's billing currency. Refresh Billing before checkout."); });
     return () => { active = false; };
   }, [planFreeTrial, props.session.token]);
   const trialSetupRequired = billing?.status === "inactive" && !billing?.stripeSubscriptionId;
@@ -12203,10 +12211,10 @@ function BillingPage(props: { session: SessionState }) {
             <p>Choose a monthly plan when you are ready. No payment has been taken for the trial. Your selected plan starts after you confirm its price in Stripe.</p>
             <label htmlFor="trial-paid-plan">Choose users and monthly documents</label>
             <select id="trial-paid-plan" value={trialPlanIndex} onChange={(event) => setTrialPlanIndex(Number(event.target.value))}>
-              {pricingSliderSteps.map((step, index) => <option key={`${step.planId}-${step.users}`} value={index}>{step.users} {step.users === 1 ? "user" : "users"} · {step.documents.toLocaleString()} documents · {step.users === 1 && trialXeroPurchased ? "£10" : currency(priceWithVat(step.monthlyPrice))}/month</option>)}
+              {pricingSliderSteps.map((step, index) => <option key={`${step.planId}-${step.users}`} value={index}>{step.users} {step.users === 1 ? "user" : "users"} · {step.documents.toLocaleString()} documents · {step.users === 1 ? currency(trialXeroPurchased ? 10 : 3, countryCurrency(billingCountry ?? selectedCountry)) : currency(priceWithVat(step.monthlyPrice))}/month</option>)}
             </select>
-            {trialXeroPurchased ? <p>Your £5 Xero trial payment is credited against your first invoice. {chosenPaidStep.users === 1 ? "The sole trader price shown above includes Xero." : "Xero is included in the selected business plan."}</p> : null}
-            <button className="primary-action" type="button" disabled={busyPlan !== null || !billing.stripeConfigured || trialXeroPurchased === null} onClick={async () => {
+            {trialXeroPurchased ? <p>Your {currency(5, countryCurrency(billingCountry ?? selectedCountry))} Xero trial payment is credited against your first invoice. {chosenPaidStep.users === 1 ? "The sole trader price shown above includes Xero." : "Xero is included in the selected business plan."}</p> : null}
+            <button className="primary-action" type="button" disabled={busyPlan !== null || !billing.stripeConfigured || trialXeroPurchased === null || (chosenPaidStep.users === 1 && billingCountry === null)} onClick={async () => {
               setBusyPlan("checkout");
               setMessage(null);
               try {
