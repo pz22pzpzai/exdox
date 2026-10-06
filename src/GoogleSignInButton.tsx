@@ -61,11 +61,11 @@ export function GoogleSignInButton({ onCredential, text = 'continue_with', disab
         },
       });
       target.current.replaceChildren();
-      window.google.accounts.id.renderButton(target.current, { theme: 'outline', size: 'large', text, width: 300 });
+      window.google.accounts.id.renderButton(target.current, { theme: 'outline', size: 'large', text, width: 288 });
     }).catch((loadError: unknown) => { if (active) setError(loadError instanceof Error ? loadError.message : 'Google sign-in could not load.'); });
     return () => { active = false; };
   }, [clientId, text]);
 
   if (!clientId) return null;
-  return <div className="google-sign-in" style={disabled ? { pointerEvents: 'none', opacity: .55 } : undefined}><div ref={target} /><span className="muted-copy">Use the same Google account on the website and app.</span>{error ? <div className="error-banner">{error}</div> : null}</div>;
+  return <div className={`google-sign-in${disabled ? ' google-sign-in-disabled' : ''}`}><div className="google-sign-in-control" ref={target} style={disabled ? { pointerEvents: 'none' } : undefined} /><span className="muted-copy">Use the same Google account on the website and app.</span>{error ? <div className="error-banner">{error}</div> : null}</div>;
 }
