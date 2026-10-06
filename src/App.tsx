@@ -102,6 +102,7 @@ import { cookieConsentStorageKey, setGoogleAnalyticsConsent, type CookieConsentC
 import type {
   BillingCycle,
   BillingPlanId,
+  BillingSummary,
   ClaimRecord,
   EmployeeReimbursementPaymentRow,
   Department,
@@ -1583,6 +1584,49 @@ export function App() {
   );
 }
 
+function TrialCountdownBanner({ billing, isOwner }: { billing: BillingSummary; isOwner: boolean }) {
+  const [now, setNow] = useState(() => Date.now());
+  const trialEndsAt = billing.trialEndsAt;
+
+  useEffect(() => {
+    setNow(Date.now());
+    const endTime = trialEndsAt ? Date.parse(trialEndsAt) : NaN;
+    if (!Number.isFinite(endTime) || endTime <= Date.now()) return;
+    const timer = window.setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= endTime) window.clearInterval(timer);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [trialEndsAt]);
+
+  if (!trialEndsAt || (billing.planId !== "trial" && billing.status !== "trialing")) return null;
+  const endTime = Date.parse(trialEndsAt);
+  if (!Number.isFinite(endTime)) return null;
+
+  const secondsLeft = Math.max(0, Math.ceil((endTime - now) / 1000));
+  const days = Math.floor(secondsLeft / 86_400);
+  const hours = Math.floor((secondsLeft % 86_400) / 3_600);
+  const minutes = Math.floor((secondsLeft % 3_600) / 60);
+  const seconds = secondsLeft % 60;
+  const endLabel = new Date(endTime).toLocaleString("en-GB", {
+    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+
+  return (
+    <div className={`trial-countdown-banner${secondsLeft === 0 ? " trial-countdown-ended" : ""}`} aria-label={`Free trial ends ${endLabel}`}>
+      <strong>{secondsLeft === 0 ? "Free trial ended" : "Free trial ends in"}</strong>
+      {secondsLeft > 0 ? (
+        <span className="trial-countdown-time" aria-live="off">
+          {days}d {String(hours).padStart(2, "0")}h {String(minutes).padStart(2, "0")}m {String(seconds).padStart(2, "0")}s
+        </span>
+      ) : null}
+      <span className="trial-countdown-date">{endLabel}</span>
+      {isOwner ? <Link to="/billing">{billing.planId === "trial" ? "Choose a plan" : "Billing"}</Link> : null}
+    </div>
+  );
+}
+
 function DashboardShell(props: {
   session: SessionState;
   store: AppStore;
@@ -1914,14 +1958,9 @@ function DashboardShell(props: {
           </div>
         </header>
 
-        {props.session.billing?.planId === "trial" && props.session.billing.trialEndsAt ? (
-          <div className="success-banner" role="status">
-            {Date.parse(props.session.billing.trialEndsAt) > Date.now()
-              ? `${Math.ceil((Date.parse(props.session.billing.trialEndsAt) - Date.now()) / 86_400_000)} day(s) left in your free trial. `
-              : "Your free trial has ended. "}
-            {props.session.user.isOwner ? <Link to="/billing">Choose a plan when ready</Link> : null}
-          </div>
-        ) : null}
+        {props.session.billing?.trialEndsAt && (props.session.billing.planId === "trial" || props.session.billing.status === "trialing")
+          ? <TrialCountdownBanner billing={props.session.billing} isOwner={Boolean(props.session.user.isOwner)} />
+          : null}
 
         {props.error ? <div className="error-banner">{props.error}</div> : null}
 

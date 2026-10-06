@@ -2026,6 +2026,43 @@ input {
   color: #1d7043;
 }
 
+.trial-countdown-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-height: 42px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border: 1px solid #bdd9f0;
+  border-radius: 10px;
+  background: #f1f8ff;
+  color: #17385d;
+  font-size: 0.82rem;
+}
+
+.trial-countdown-time {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.trial-countdown-date {
+  color: #536779;
+}
+
+.trial-countdown-banner a {
+  margin-left: auto;
+  color: #075e9b;
+  font-weight: 700;
+}
+
+.trial-countdown-ended {
+  border-color: #efcf98;
+  background: #fff8ec;
+  color: #6b470e;
+}
+
 .email-confirmation-notice {
   display: flex;
   align-items: center;

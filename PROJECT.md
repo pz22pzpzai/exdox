@@ -1,5 +1,9 @@
 # Exdox website
 
+## Workspace trial countdown (2026-10-06)
+
+The signed-in dashboard shell shows a compact countdown immediately below its top bar for any workspace with a `billing.trialEndsAt` and an active trial, including older Stripe trials. It reads the current session's organisation billing end time, updates days/hours/minutes/seconds once per second, and stops at expiry. A plan-free trial keeps an ended notice and owner link to Billing; paid accounts do not show the banner. The owner checks live deployment after the website source push. Never delete or move app keystores or signing details.
+
 ## Terms for Google and plan-free trial signup (2026-10-06)
 
 The public `/terms` page now explains email/password and Google workspace creation, the same Google workspace across website and app, no automatic linking to existing email accounts, and email confirmation for password signup. It says a new business or sole trader trial starts at workspace creation, needs no plan or card, does not convert or charge automatically, and pauses workspace use after 14 days if the owner has not chosen and paid for a plan. Billing remains available for recovery. Paid monthly billing begins only when the first Stripe payment succeeds; paid subscription cancellation remains separate from the no-charge trial. The displayed last-updated date and the website email-registration `termsVersion` are both 2026-10-06. Preserve the older card-authorised trial and statutory-rights clauses. Only website source changed; the owner checks live deployment after the push. Never delete or move app keystores or signing details.
