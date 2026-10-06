@@ -211,7 +211,7 @@ const forgotPasswordPagePath = "/forgot-password";
 const resetPasswordPagePath = "/reset-password";
 const termsPagePath = "/terms";
 const accountDeletionPagePath = "/account-deletion";
-const termsVersion = "2026-08-31";
+const termsVersion = "2026-10-06";
 const includedPricingFeatures = [
   "Mobile receipt and invoice capture",
   "Costs and Sales inboxes with web review",
@@ -11122,7 +11122,7 @@ function TermsSection() {
   return (
     <PolicyLayout
       title="Exdox Terms and Conditions"
-      updatedOn="23 September 2026"
+      updatedOn="6 October 2026"
       sections={[
         {
           heading: "Who these terms apply to",
@@ -11134,11 +11134,22 @@ function TermsSection() {
           ),
         },
         {
+          heading: "Creating an account",
+          body: (
+            <>
+              <p>A business or sole trader owner can create a new workspace using an email address and password or Google sign-in on the Exdox website or app. An employee joining an existing workspace does not create a separate trial.</p>
+              <p>Google sign-up uses the verified email address from the Google account you choose. The same Google account signs in to the same Exdox workspace on the website and app. An existing Exdox email and password account is not automatically linked to Google sign-in; if its email address is already registered, use the existing sign-in method or a different Google address for a new workspace.</p>
+              <p>If you register with an email address and password, you must confirm that address within three days to keep access. Google sign-up uses the email address verified by Google.</p>
+            </>
+          ),
+        },
+        {
           heading: "Free trial and monthly billing",
           body: (
             <>
-              <p>A new workspace starts with a 14-day free trial without choosing a plan or providing payment details. If the owner does not choose and pay for a plan, workspace access pauses when the trial ends and no subscription invoice is created.</p>
-              <p>To continue, the owner chooses a monthly plan and completes the first payment in secure Stripe Checkout. The monthly billing cycle starts on that payment date and renews monthly until cancelled. Earlier card-authorised trials remain subject to the payment terms accepted when they began.</p>
+              <p>A new business or sole trader workspace starts a 14-day free trial when it is created, whether you sign up with an email address and password or with Google. You do not need to choose a paid plan or provide card details to start. This new trial does not automatically turn into a paid subscription or charge you when the 14 days end.</p>
+              <p>The owner can choose a monthly plan in Billing on the Exdox website during or after the trial. To continue using the workspace after the trial, the owner must complete the first payment in secure Stripe Checkout. If no plan is chosen and paid for, workspace use pauses when the trial ends and the trial alone creates no subscription invoice. The owner can still sign in to Billing to choose a plan.</p>
+              <p>When the first payment succeeds, the paid monthly billing cycle begins on that payment date and renews monthly until cancelled. Earlier card-authorised trials remain subject to the payment terms accepted when they began.</p>
             </>
           ),
         },
@@ -11147,8 +11158,8 @@ function TermsSection() {
           body: (
             <>
               <p>Paid subscriptions renew automatically on the billing cycle shown at checkout unless cancelled before the next renewal date.</p>
-              <p>You can manage or cancel your trial or subscription from the billing area of the Exdox website, including the linked billing portal where available. Cancelling during the trial prevents it from becoming a paid billing period.</p>
-              <p>Cancellation stops future renewal charges. Unless we tell you otherwise, access continues until the end of the current trial or paid billing period.</p>
+              <p>You do not need to cancel a new card-free trial to avoid a charge. If you do not choose and pay for a plan, it ends after 14 days without becoming a paid subscription.</p>
+              <p>Once you have a paid subscription, you can manage or cancel it from Billing on the Exdox website, including the linked billing portal where available. Cancellation stops future renewal charges. Unless we tell you otherwise, access continues until the end of the current paid billing period.</p>
             </>
           ),
         },

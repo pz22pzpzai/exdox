@@ -1,5 +1,9 @@
 # Exdox website
 
+## Terms for Google and plan-free trial signup (2026-10-06)
+
+The public `/terms` page now explains email/password and Google workspace creation, the same Google workspace across website and app, no automatic linking to existing email accounts, and email confirmation for password signup. It says a new business or sole trader trial starts at workspace creation, needs no plan or card, does not convert or charge automatically, and pauses workspace use after 14 days if the owner has not chosen and paid for a plan. Billing remains available for recovery. Paid monthly billing begins only when the first Stripe payment succeeds; paid subscription cancellation remains separate from the no-charge trial. The displayed last-updated date and the website email-registration `termsVersion` are both 2026-10-06. Preserve the older card-authorised trial and statutory-rights clauses. Only website source changed; the owner checks live deployment after the push. Never delete or move app keystores or signing details.
+
 ## Google sign-in and plan-free trial (2026-10-06)
 
 The Login and owner/sole-trader Register screens have a Google Identity Services button. Register keeps account type, workspace country, business name, and Terms acceptance before sending the Google ID token to `POST /auth/google`. A new Google account starts the same 14-day trial without a card or selected paid plan. Existing email/password accounts are not merged; using their email with Google returns a clear conflict. A returning Google user shares their Exdox workspace with Android through the server's stable Google identity binding. The website loads the public OAuth web client ID from `GET /auth/google` and allows only Google's documented GIS paths in its CSP. The server and Google Cloud configuration must be ready first. The owner checks the deployment workflow and live site after pushes. Never delete or move app keystores or signing details.
