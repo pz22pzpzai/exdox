@@ -10019,6 +10019,9 @@ function RegisterState(props: {
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [registrationMethod, setRegistrationMethod] = useState<"email" | "google" | null>(
+    props.inviteToken || props.initialAudience === "employee" ? "email" : null,
+  );
   const selectedCountry = useSelectedCountry();
   const [signupCountry, setSignupCountry] = useState<Country>(selectedCountry);
   useEffect(() => setSignupCountry(selectedCountry), [selectedCountry]);
@@ -10064,6 +10067,8 @@ function RegisterState(props: {
             <h1>
               {invitedFlow
                 ? "Activate Exdox Access"
+                : registrationMethod === null
+                  ? "Start Your Free Trial"
                 : audience === null
                   ? "How Will You Use Exdox?"
                   : employeeFlow
@@ -10075,15 +10080,29 @@ function RegisterState(props: {
             <p>
               {invitedFlow
                 ? "Set a password to activate access to the invited workspace."
+                : registrationMethod === null
+                  ? "Choose how to register. Your 14-day trial needs no card details."
                 : audience === null
                   ? "Choose the account type that matches how you will submit or manage expenses."
                 : employeeFlow
                   ? "Use your company email address to join its existing Exdox workspace. No card setup is required."
                   : soleTraderFlow
-                    ? "Start your 14-day free trial using a personal or business email address. No payment details needed."
-                    : "Create your company workspace and start the 14-day trial without choosing a plan or entering payment details."}
+                    ? registrationMethod === "google" ? "Start your 14-day free trial with your Google account. No payment details needed." : "Start your 14-day free trial using a personal or business email address. No payment details needed."
+                    : registrationMethod === "google" ? "Create your company workspace with Google and start the 14-day trial without payment details." : "Create your company workspace and start the 14-day trial without choosing a plan or entering payment details."}
             </p>
-            {!invitedFlow && audience === null ? (
+            {!invitedFlow && registrationMethod === null ? (
+              <div className="registration-audience-grid" role="group" aria-label="Choose registration method">
+                <button className="registration-audience-option" type="button" onClick={() => setRegistrationMethod("email")}>
+                  <strong>Register with email</strong>
+                  <span>Create your workspace with an email address and password.</span>
+                </button>
+                <button className="registration-audience-option" type="button" onClick={() => setRegistrationMethod("google")}>
+                  <strong>Register with Google</strong>
+                  <span>Use your Google account to start the same 14-day trial.</span>
+                </button>
+              </div>
+            ) : null}
+            {!invitedFlow && registrationMethod !== null && audience === null ? (
               <div className="registration-audience-grid" role="group" aria-label="Choose account type">
                 <button className="registration-audience-option" type="button" onClick={() => setAudience("business")}>
                   <strong>A business</strong>
@@ -10093,10 +10112,10 @@ function RegisterState(props: {
                   <strong>A sole trader</strong>
                   <span>Create your workspace and start the free trial.</span>
                 </button>
-                <button type="button" onClick={() => setAudience("employee")}>
+                {registrationMethod === "email" ? <button type="button" onClick={() => setAudience("employee")}>
                   <strong>An employee of a business</strong>
                   <span>I submit expenses for a company that already uses Exdox.</span>
-                </button>
+                </button> : null}
               </div>
             ) : null}
             {enterpriseSignupRequested ? (
@@ -10104,7 +10123,7 @@ function RegisterState(props: {
                 Enterprise rollout is coming soon. Choose an available user and document allowance on Pricing to start a trial today.
               </div>
             ) : null}
-            {audience !== null ? <form
+            {audience !== null && registrationMethod === "email" ? <form
               className="login-form"
               onSubmit={async (event) => {
                 event.preventDefault();
@@ -10266,23 +10285,37 @@ function RegisterState(props: {
                 </button>
               )}
               {resendMessage ? <div className="success-banner">{resendMessage}</div> : null}
-              {!invitedFlow && props.initialAudience === null ? (
-                <button className="registration-back-button" type="button" onClick={() => setAudience(null)}>
-                  Choose a different account type
-                </button>
-              ) : null}
             </form> : null}
-            {!invitedFlow && audience !== null && !employeeFlow ? (
-              <div className="login-google-option">
-                <span>Or start your 14-day free trial with Google</span>
+            {!invitedFlow && audience !== null && registrationMethod === "google" && !employeeFlow ? (
+              <div className="login-form registration-google-form">
+                <label>
+                  Country or territory
+                  <select value={signupCountry} onChange={(event) => { const next = event.target.value as Country; setSignupCountry(next); selectCountry(next); }} required>
+                    {countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
+                  </select>
+                </label>
+                <label>
+                  {soleTraderFlow ? "Trading name (optional)" : "Organisation name"}
+                  <input type="text" autoComplete="organization" value={organisationName} onChange={(event) => setOrganisationName(event.target.value)} placeholder={soleTraderFlow ? "Your trading name" : "Your business or organisation"} required={!soleTraderFlow} />
+                </label>
+                <label className="checkbox-field">
+                  <input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} required />
+                  <span>I agree to the <Link to={termsPagePath}>Terms and Conditions</Link> and understand the free trial ends after 14 days. Monthly billing starts only if I choose a plan and my first payment succeeds.</span>
+                </label>
                 <p className="muted-copy">No card details needed. Google verifies your email, and you choose a plan in Billing to continue after the trial.</p>
-                {acceptedTerms && (soleTraderFlow || organisationName.trim()) ? (
-                  <GoogleSignInButton text="signup_with" disabled={props.busy} onCredential={(idToken) => { void props.onGoogleRegister(idToken, {
-                    accountType: soleTraderFlow ? 'sole_trader' : 'owner',
-                    organisationName: organisationName.trim() || undefined,
-                    country: signupCountry,
-                  }); }} />
-                ) : <p className="muted-copy">{!acceptedTerms ? 'Accept the Terms and Conditions above to continue with Google.' : 'Enter your organisation name to continue with Google.'}</p>}
+                <GoogleSignInButton text="signup_with" disabled={props.busy || !acceptedTerms || (!soleTraderFlow && !organisationName.trim())} onCredential={(idToken) => { void props.onGoogleRegister(idToken, {
+                  accountType: soleTraderFlow ? 'sole_trader' : 'owner',
+                  organisationName: organisationName.trim() || undefined,
+                  country: signupCountry,
+                }); }} />
+                {!acceptedTerms || (!soleTraderFlow && !organisationName.trim()) ? <p className="muted-copy">{!acceptedTerms ? 'Accept the Terms and Conditions above to continue with Google.' : 'Enter your organisation name to continue with Google.'}</p> : null}
+                {props.error ? <div className="error-banner">{props.error}</div> : null}
+              </div>
+            ) : null}
+            {!invitedFlow && registrationMethod !== null ? (
+              <div className="registration-back-actions">
+                {props.initialAudience === null && audience !== null ? <button className="registration-back-button" type="button" onClick={() => setAudience(null)}>Choose a different account type</button> : null}
+                {props.initialAudience !== "employee" ? <button className="registration-back-button" type="button" onClick={() => { setRegistrationMethod(null); setAudience(props.initialAudience); }}>Choose another registration method</button> : null}
               </div>
             ) : null}
             <div className="login-links">
