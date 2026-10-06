@@ -6061,6 +6061,9 @@ input {
 .two-factor-qr { width: fit-content; max-width: 100%; padding: .5rem; background: #fff; border: 1px solid #d9e0e7; border-radius: 10px; }
 .two-factor-qr svg { display: block; max-width: 100%; height: auto; }
 .two-factor-login { display: grid; gap: .75rem; }
+.login-google-option { display: grid; justify-items: start; gap: .6rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #dce7ef; }
+.login-google-option > span { color: #34485b; font-weight: 600; }
+.google-sign-in { display: grid; gap: .4rem; max-width: 100%; }
 .accounting-page { max-width: 1200px; }
 .accounting-heading, .accounting-section-heading, .accounting-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .accounting-heading h2 { margin: .3rem 0; }

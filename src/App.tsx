@@ -11,6 +11,7 @@ import {
 } from "react-router-dom";
 import AccountingPage from "./AccountingPage";
 import PublicAccountingInvoice from "./PublicAccountingInvoice";
+import { GoogleSignInButton } from "./GoogleSignInButton";
 
 import {
   clearStoredSession,
@@ -48,6 +49,7 @@ import {
   listReconciliation,
   listRules,
   loginWithEmail,
+  authenticateWithGoogle,
   loadStoredSession,
   requestPasswordReset,
   resetPasswordWithToken,
@@ -1238,6 +1240,21 @@ export function App() {
                   setAuthBusy(false);
                 }
               }}
+              onGoogleRegister={async (idToken, input) => {
+                setAuthBusy(true);
+                setAuthError(null);
+                setError(null);
+                try {
+                  const result = await authenticateWithGoogle({ idToken, mode: 'register', ...input, termsAccepted: true });
+                  if (result.kind !== 'confirmed') throw new Error(result.kind === 'two_factor' ? 'Complete two-factor setup through Exdox support.' : result.message);
+                  await loadWorkspace(result.session.token, result.session, result.sessionHydrated);
+                } catch (googleError) {
+                  setSession(null);
+                  setAuthError(googleError instanceof Error ? googleError.message : 'Google registration failed.');
+                } finally {
+                  setAuthBusy(false);
+                }
+              }}
               onResendConfirmation={async (email) => {
                 const response = await resendConfirmationEmail({ email });
                 return response.message;
@@ -1296,6 +1313,22 @@ export function App() {
               } catch (loginError) {
                 setSession(null);
                 setAuthError(loginError instanceof Error ? loginError.message : "Sign in failed.");
+              } finally {
+                setAuthBusy(false);
+              }
+            }}
+            onGoogleLogin={async (idToken, twoFactorCode, twoFactorMethod) => {
+              setAuthBusy(true);
+              setAuthError(null);
+              setError(null);
+              try {
+                const result = await authenticateWithGoogle({ idToken, mode: 'login', twoFactorCode, twoFactorMethod });
+                if (result.kind === 'two_factor') return result;
+                if (result.kind !== 'confirmed') throw new Error(result.message);
+                await loadWorkspace(result.session.token, result.session, result.sessionHydrated);
+              } catch (googleError) {
+                setSession(null);
+                setAuthError(googleError instanceof Error ? googleError.message : 'Google sign-in failed.');
               } finally {
                 setAuthBusy(false);
               }
@@ -9523,12 +9556,17 @@ function LoginState(props: {
   accountDeleted?: boolean;
   embeddedInPublicShell?: boolean;
   onLogin: (email: string, password: string, code?: string, method?: "email" | "authenticator" | "recovery") => Promise<{ kind: "two_factor"; emailEnabled: boolean; authenticatorEnabled: boolean; message: string } | void>;
+  onGoogleLogin: (idToken: string, code?: string, method?: "email" | "authenticator" | "recovery") => Promise<{ kind: "two_factor"; emailEnabled: boolean; authenticatorEnabled: boolean; message: string } | void>;
 }) {
   const [email, setEmail] = useState(props.initialEmail);
   const [password, setPassword] = useState("");
   const [twoFactor, setTwoFactor] = useState<{ emailEnabled: boolean; authenticatorEnabled: boolean; message: string } | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [twoFactorMethod, setTwoFactorMethod] = useState<"email" | "authenticator" | "recovery">("email");
+  const [googleToken, setGoogleToken] = useState<string | null>(null);
+  const [googleTwoFactor, setGoogleTwoFactor] = useState<{ emailEnabled: boolean; authenticatorEnabled: boolean; message: string } | null>(null);
+  const [googleCode, setGoogleCode] = useState('');
+  const [googleMethod, setGoogleMethod] = useState<"email" | "authenticator" | "recovery">('email');
   const loginStateClassName = props.embeddedInPublicShell ? "login-state login-state-embedded" : "login-state";
   const loginShellClassName = props.embeddedInPublicShell ? "login-shell login-shell-embedded" : "login-shell";
   const needsEmailConfirmation =
@@ -9652,6 +9690,36 @@ function LoginState(props: {
                 {props.busy ? "Signing in..." : twoFactor ? "Verify and log in" : props.trialReminder === "ended" ? "Continue to payment" : "Log in"}
               </button>
             </form>
+            <div className="login-google-option">
+              <span>Or sign in with Google</span>
+              <GoogleSignInButton disabled={props.busy} onCredential={(idToken) => {
+                setGoogleToken(idToken);
+                setGoogleTwoFactor(null);
+                setGoogleCode('');
+                void props.onGoogleLogin(idToken).then((result) => {
+                  if (result?.kind === 'two_factor') {
+                    setGoogleTwoFactor(result);
+                    setGoogleMethod(result.emailEnabled ? 'email' : 'authenticator');
+                  }
+                });
+              }} text="signin_with" />
+              {googleTwoFactor && googleToken ? (
+                <form className="two-factor-login" onSubmit={(event) => { event.preventDefault(); void props.onGoogleLogin(googleToken, googleCode, googleMethod); }}>
+                  <p>{googleTwoFactor.message}</p>
+                  <label>Verification method
+                    <select value={googleMethod} onChange={(event) => setGoogleMethod(event.target.value as "email" | "authenticator" | "recovery")}>
+                      {googleTwoFactor.emailEnabled ? <option value="email">Email code</option> : null}
+                      {googleTwoFactor.authenticatorEnabled ? <option value="authenticator">Authenticator app</option> : null}
+                      <option value="recovery">Recovery code</option>
+                    </select>
+                  </label>
+                  <label>Exdox verification code
+                    <input value={googleCode} onChange={(event) => setGoogleCode(event.target.value)} autoComplete="one-time-code" required />
+                  </label>
+                  <button className="primary-action" type="submit" disabled={props.busy}>Verify and sign in</button>
+                </form>
+              ) : null}
+            </div>
             <div className="login-links">
               <Link to={`${forgotPasswordPagePath}?email=${encodeURIComponent(email)}`}>Forgot Password?</Link>
               <Link to="/register">Register</Link>
@@ -9899,6 +9967,7 @@ function RegisterState(props: {
     termsVersion?: string;
   }) => Promise<string | null>;
   onResendConfirmation: (email: string) => Promise<string>;
+  onGoogleRegister: (idToken: string, input: { accountType: 'owner' | 'sole_trader'; organisationName?: string; country: Country }) => Promise<void>;
 }) {
   const [fullName, setFullName] = useState("");
   const [organisationName, setOrganisationName] = useState("");
@@ -10164,6 +10233,19 @@ function RegisterState(props: {
                 </button>
               ) : null}
             </form> : null}
+            {!invitedFlow && audience !== null && !employeeFlow ? (
+              <div className="login-google-option">
+                <span>Or start your 14-day free trial with Google</span>
+                <p className="muted-copy">No card details needed. Google verifies your email, and you choose a plan in Billing to continue after the trial.</p>
+                {acceptedTerms && (soleTraderFlow || organisationName.trim()) ? (
+                  <GoogleSignInButton text="signup_with" disabled={props.busy} onCredential={(idToken) => { void props.onGoogleRegister(idToken, {
+                    accountType: soleTraderFlow ? 'sole_trader' : 'owner',
+                    organisationName: organisationName.trim() || undefined,
+                    country: signupCountry,
+                  }); }} />
+                ) : <p className="muted-copy">{!acceptedTerms ? 'Accept the Terms and Conditions above to continue with Google.' : 'Enter your organisation name to continue with Google.'}</p>}
+              </div>
+            ) : null}
             <div className="login-links">
               <Link to="/login">Already have an account? Log in</Link>
               <Link to={`${supportPagePath}?subject=${encodeURIComponent("Onboarding help")}`}>Need help activating?</Link>

@@ -397,6 +397,46 @@ export async function loginWithEmail(input: { email: string; password: string; t
   };
 }
 
+export async function authenticateWithGoogle(input: {
+  idToken: string;
+  mode: 'login' | 'register';
+  accountType?: 'owner' | 'sole_trader';
+  organisationName?: string;
+  country?: import('./region').Country;
+  termsAccepted?: boolean;
+  twoFactorCode?: string;
+  twoFactorMethod?: 'email' | 'authenticator' | 'recovery';
+}): Promise<LoginResult> {
+  const response = await fetch(`${API_BASE_URL}/auth/google`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+  });
+  const payload = await response.json() as AuthResponse;
+  if (!response.ok || !payload.success) throw new Error(('message' in payload && payload.message) || 'Google sign-in failed.');
+  if ('requiresTwoFactor' in payload && payload.requiresTwoFactor) {
+    return { kind: 'two_factor', emailEnabled: payload.emailEnabled, authenticatorEnabled: payload.authenticatorEnabled, message: payload.message };
+  }
+  if (!('token' in payload)) throw new Error('Google sign-in did not return a session.');
+  let hydrated: SessionState;
+  let sessionHydrated = false;
+  try {
+    const session = await fetchSession(payload.token);
+    hydrated = { ...session, token: payload.token };
+    sessionHydrated = true;
+  } catch (error) {
+    if (isBillingAccessError(error)) throw error;
+    hydrated = buildFallbackSession(payload.token, payload.user);
+  }
+  saveStoredSession(hydrated);
+  return { kind: 'confirmed', session: hydrated, sessionHydrated };
+}
+
+export async function getGoogleClientId(): Promise<string | null> {
+  const response = await fetch(`${API_BASE_URL}/auth/google`, { cache: 'no-store' });
+  if (!response.ok) return null;
+  const payload = await response.json() as { clientId?: string | null };
+  return payload.clientId || null;
+}
+
 export type TwoFactorStatus = { emailEnabled: boolean; authenticatorEnabled: boolean };
 export async function getTwoFactorStatus(token: string): Promise<TwoFactorStatus> {
   return apiFetch<TwoFactorStatus>("/two-factor", token);

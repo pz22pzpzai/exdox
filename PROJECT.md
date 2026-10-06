@@ -1,5 +1,9 @@
 # Exdox website
 
+## Google sign-in and plan-free trial (2026-10-06)
+
+The Login and owner/sole-trader Register screens have a Google Identity Services button. Register keeps account type, workspace country, business name, and Terms acceptance before sending the Google ID token to `POST /auth/google`. A new Google account starts the same 14-day trial without a card or selected paid plan. Existing email/password accounts are not merged; using their email with Google returns a clear conflict. A returning Google user shares their Exdox workspace with Android through the server's stable Google identity binding. The website loads the public OAuth web client ID from `GET /auth/google` and allows only Google's documented GIS paths in its CSP. The server and Google Cloud configuration must be ready first. The owner checks the deployment workflow and live site after pushes. Never delete or move app keystores or signing details.
+
 ## Private Accounting aged balances (2026-10-04)
 
 Accounting Reports now displays aged customer invoice and supplier bill balances for the selected through date, shows current and overdue buckets, credit balances, individual documents, control-account differences, and CSV export. It calls the private `/accounting/aging` API, so server source must deploy first. The Accounting tab remains locked to the pilot owner. The owner checks live website/workflow after push. Never delete or move signing keystores or details.
