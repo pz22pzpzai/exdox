@@ -1,5 +1,9 @@
 # Exdox website
 
+## Internal Dext feature checklist (2026-10-07)
+
+`docs/dext-partner-feature-checklist.md` inventories the named capabilities on Dext's UK partner pricing page and linked product pages against the current Exdox website, API and Android source. Ticks mean a broadly usable equivalent in the main product; unchecked items include missing, narrower and private Accounting pilot features. It is an internal roadmap, not a public parity claim. Refresh Dext's changing plan matrix and verify Exdox end-to-end behaviour before changing ticks or publishing comparisons. The owner checks GitHub deployment and live website; never delete or move mobile signing keystores or signing details.
+
 ## Public Exdox vs Dext page (2026-10-07)
 
 `/compare/dext` is a public, indexable UK small-business comparison page, linked from the Product footer and sitemap. It compares the current five-user/250-document Exdox £15/month including VAT plan against Dext Business's public annual £290 excluding VAT option (equivalent £29/month including standard UK VAT, £348 billed upfront). It also notes the Exdox one-user/100-document £3/month including VAT plan. Feature rows distinguish Exdox's Xero/web-review workflow from Dext's broader integrations, statement tools, and included extraction credits. Dext pricing and plan claims were checked against `https://dext.com/uk/business/pricing` and `https://help.dext.com/en/articles/647776-dext-plans-for-businesses` on 2026-10-07; refresh competitor terms before changing or promoting the page. `src/App.tsx` owns the route, content, and SEO; `src/styles.css` owns the layout; `public/sitemap.xml` lists it. Keep the comparison fair, sourced, and explicit about VAT and annual versus monthly billing. The owner checks live deployment and the website after the source push. Never delete or move mobile signing keystores or signing details.
