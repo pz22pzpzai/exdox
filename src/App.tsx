@@ -11834,7 +11834,8 @@ function ReceiptStorySection({ session = null, platformPage = false }: { session
     { number: "02", title: "Capture the receipt", detail: "Keep the original receipt with the purchase record.", image: "/branding/exdox-receipt-example.jpg", alt: "Example receipt from Green Leaf Station Kiosk" },
     { number: "03", title: "Review and submit", detail: "Check the purchase details and payment method, then submit.", image: "/branding/exdox-receipt-review.jpg", alt: "Exdox purchase review screen with Submit button" },
     { number: "04", title: "Find it in Purchases", detail: "The scanned receipt appears in Purchases, ready for review.", image: "/branding/exdox-receipt-purchases.jpg", alt: "Scanned Green Leaf receipt in Exdox Purchases marked To review" },
-    { number: "05", title: "Open Reports", detail: "View payment rounds and the receipts in each round from Reports.", image: "/branding/exdox-receipt-reports.jpg", alt: "Exdox Reports screen showing payment rounds" },
+    { number: "05", title: "Review in the web dashboard", detail: "The Costs Inbox shows the receipt's supplier, VAT, total and Review status, ready to open.", image: "/branding/exdox-receipt-dashboard-review.svg", alt: "Exdox web Costs Inbox showing the Green Leaf receipt awaiting review" },
+    { number: "06", title: "Open Reports", detail: "View payment rounds and the receipts in each round from Reports.", image: "/branding/exdox-receipt-reports.jpg", alt: "Exdox Reports screen showing payment rounds" },
   ];
 
   return (
@@ -11844,11 +11845,11 @@ function ReceiptStorySection({ session = null, platformPage = false }: { session
           <p className="section-kicker">Receipt capture in the app</p>
           <h2 id={platformPage ? "platform-receipt-story-title" : "home-receipt-story-title"}>From scanned receipt to a clearer view of spending</h2>
         </div>
-        <p>See the scan, review and Purchases screens, then explore payment rounds in Reports.</p>
+        <p>See the scan and Purchases screens, review the receipt on the web, then explore payment rounds in Reports.</p>
       </div>
       <div className="product-journey-grid receipt-story-grid">
         {steps.map((step) => (
-          <article className="product-journey-step receipt-story-step" key={step.number}>
+          <article className={`product-journey-step receipt-story-step ${step.number === "05" ? "receipt-story-dashboard" : ""}`} key={step.number}>
             <div className={`product-journey-image ${step.number === "02" ? "receipt-story-paper" : ""}`}>
               <img src={step.image} alt={step.alt} loading="lazy" />
             </div>

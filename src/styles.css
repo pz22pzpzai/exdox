@@ -4320,11 +4320,12 @@ input {
 }
 
 .receipt-story-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
-.receipt-story-step { grid-column: span 2; }
-.receipt-story-step:nth-last-child(-n + 2) { grid-column: span 3; }
+.receipt-story-step { grid-column: span 3; }
+.receipt-story-dashboard { grid-column: span 8; }
+.receipt-story-step:last-child { grid-column: span 4; }
 .receipt-story + .product-journey { border-top: 1px solid #e2e9f0; }
 
 .receipt-story-paper img {
@@ -4333,6 +4334,15 @@ input {
   max-height: 345px;
   border: 1px solid #e2e9f0;
   border-radius: 8px 8px 0 0;
+  box-shadow: 0 13px 28px rgba(17, 38, 79, 0.12);
+}
+
+.receipt-story-dashboard .product-journey-image { align-items: center; padding: 16px; }
+.receipt-story-dashboard .product-journey-image img {
+  width: min(100%, 650px);
+  max-height: 100%;
+  border: 1px solid #cbd8e6;
+  border-radius: 10px;
   box-shadow: 0 13px 28px rgba(17, 38, 79, 0.12);
 }
 
@@ -5426,6 +5436,11 @@ input {
   .product-journey-grid,
   .home-benefits-grid { gap: 12px; }
 
+  .receipt-story-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .receipt-story-step { grid-column: auto; }
+  .receipt-story-dashboard,
+  .receipt-story-step:last-child { grid-column: span 2; }
+
   .capabilities-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -5546,12 +5561,17 @@ input {
   .home-benefits { width: calc(100% - 28px); padding: 38px 0; }
   .product-journey-grid,
   .home-benefits-grid { grid-template-columns: 1fr; gap: 16px; }
+  .receipt-story-grid { grid-template-columns: 1fr; }
   .product-journey-step { display: grid; grid-template-columns: minmax(0, 42%) minmax(0, 1fr); }
   .receipt-story-step,
-  .receipt-story-step:nth-last-child(-n + 2) { grid-column: auto; }
+  .receipt-story-dashboard,
+  .receipt-story-step:last-child { grid-column: auto; }
   .product-journey-image { height: 230px; padding: 10px 4px 0; }
   .product-journey-image img { width: min(95%, 100px); }
   .receipt-story-paper img { width: auto; max-width: 95%; max-height: none; }
+  .receipt-story-dashboard { display: block; }
+  .receipt-story-dashboard .product-journey-image { height: auto; padding: 12px; }
+  .receipt-story-dashboard .product-journey-image img { width: 100%; max-height: none; }
   .product-journey-copy { align-self: center; padding: 14px; }
   .product-journey-copy h3 { font-size: 1.05rem; }
 
