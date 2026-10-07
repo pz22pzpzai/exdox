@@ -10457,9 +10457,10 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
       <PublicLayout activePath="/platform" session={session}>
         <PublicPageIntro
           kicker="Platform"
-          title="A finance workspace built for operational review."
-          body="Receipt capture, invoice review, claims, vault storage, supplier rules, approvals, and data health sit inside one connected Exdox platform."
+          title="From a receipt on your phone to a claim ready for review."
+          body="Capture receipts, build mileage claims and review the details in one workspace that stays in sync across the app and website."
         />
+        <ProductJourneySection session={session} platformPage />
         <PlatformCapabilitiesSection session={session} linkTarget={null} />
         <CoverageSection session={session} linkTarget={null} />
         <FlowSection session={session} linkTarget={null} />
@@ -10619,10 +10620,10 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
       <section className="public-hero">
         <div className="public-hero-copy">
           <span className="public-availability">Now available in the UK, USA, Australia, Canada and EU</span>
-          <h1>Capture, review and publish business spend without chasing paper.</h1>
+          <h1>Keep receipts and expense claims moving, from phone to workspace.</h1>
           <p>
-            Exdox gives businesses one synced workspace across mobile and web for receipt capture,
-            invoice review, document vault storage, expense claims, supplier rules and approval workflows.
+            Scan a receipt, create a mileage claim or upload an invoice in the app. Review and
+            approve everything in the same Exdox workspace on the web.
           </p>
           <div className="hero-actions">
             {session ? (
@@ -10636,8 +10637,8 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
               </>
             ) : (
               <>
-                <Link className="public-primary" to="/register">Open Free Trial Signup</Link>
-                <Link className="secondary-inline-link" to="/pricing">See pricing structure</Link>
+                <Link className="public-primary" to="/register">Start your 14-day free trial</Link>
+                <Link className="secondary-inline-link" to="/platform">See how Exdox works</Link>
               </>
             )}
           </div>
@@ -10661,17 +10662,13 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
               <span className="store-badge-interest-action">Register your interest</span>
             </Link>
           </div>
-          <span>No payment details are needed to start. After 14 days, pay for your first month only if you choose to continue.</span>
+          <span className="hero-trial-note">No card needed. Choose a plan at the end of your trial if you want to continue.</span>
         </div>
-        <img
-          src="/branding/exdox-platform-hero-1400.webp"
-          srcSet="/branding/exdox-platform-hero-720.webp 720w, /branding/exdox-platform-hero-1400.webp 1400w"
-          sizes="(max-width: 650px) calc(100vw - 28px), (max-width: 1050px) 55vw, 672px"
-          width="1717"
-          height="916"
-          fetchPriority="high"
-          alt="Connected exdox accounting workspace"
-        />
+        <div className="hero-product-visual" aria-label="Exdox app showing a mileage claim and route options">
+          <div className="hero-product-label"><strong>See the app in action</strong><span>Real Exdox screens</span></div>
+          <img className="hero-phone hero-phone-back" src="/branding/exdox-mileage-routes.jpg" width="593" height="1280" alt="Exdox app showing route options for a mileage claim" />
+          <img className="hero-phone hero-phone-front" src="/branding/exdox-mileage-entry.jpg" width="593" height="1280" alt="Exdox app showing mileage postcodes and a route map" fetchPriority="high" />
+        </div>
       </section>
       <section className="xero-integration-strip" aria-label="Integrated with Xero">
         <span>Integrated with</span>
@@ -10699,8 +10696,16 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
           </video>
         </div>
       </section>
-      <PlatformCapabilitiesSection session={session} />
-      <FlowSection session={session} />
+      <ProductJourneySection session={session} />
+      <section className="home-benefits" aria-labelledby="home-benefits-title">
+        <div className="section-heading"><div><p className="section-kicker">More than capture</p><h2 id="home-benefits-title">One place for the work after upload</h2></div><p>Give your team a clear path from submitted evidence to a reviewed record.</p></div>
+        <div className="home-benefits-grid">
+          <article><NavIcon name="costs" /><h3>Receipts and invoices</h3><p>Send documents from your phone or the web, then check the extracted details.</p></article>
+          <article><NavIcon name="workflow" /><h3>Reviews and approvals</h3><p>See what needs attention and move claims and documents forward.</p></article>
+          <article><NavIcon name="claims" /><h3>Evidence in one place</h3><p>Keep the original file alongside the record so it is easy to find later.</p></article>
+        </div>
+        <Link className="secondary-inline-link" to="/platform">Explore all Exdox features</Link>
+      </section>
       <PricingTeaserSection session={session} />
     </PublicLayout>
   );
@@ -11821,6 +11826,40 @@ function AccountDeletionSection() {
   );
 }
 
+function ProductJourneySection({ session = null, platformPage = false }: { session?: SessionState | null; platformPage?: boolean }) {
+  const steps = [
+    { number: "01", title: "Enter your journey", detail: "Add your postcodes in the app and see the route on a map.", image: "/branding/exdox-mileage-entry.jpg", alt: "Exdox mileage claim with postcodes and a route map" },
+    { number: "02", title: "Choose the route", detail: "Compare the suggested route with an alternative before submitting.", image: "/branding/exdox-mileage-routes.jpg", alt: "Exdox showing mileage route choices" },
+    { number: "03", title: "Submit your claim", detail: "Confirm the miles and send the claim into your synced workspace for review.", image: "/branding/exdox-mileage-claim.jpg", alt: "Exdox mileage claim ready to submit" },
+  ];
+
+  return (
+    <section className={`product-journey ${platformPage ? "product-journey-platform" : ""}`} aria-labelledby={platformPage ? "platform-journey-title" : "home-journey-title"}>
+      <div className="section-heading">
+        <div>
+          <p className="section-kicker">A real Exdox workflow</p>
+          <h2 id={platformPage ? "platform-journey-title" : "home-journey-title"}>See how a mileage claim takes shape</h2>
+        </div>
+        <p>These screens show the app itself. Claims submitted on your phone are available in your Exdox workspace for review.</p>
+      </div>
+      <div className="product-journey-grid">
+        {steps.map((step) => (
+          <article className="product-journey-step" key={step.number}>
+            <div className="product-journey-image"><img src={step.image} alt={step.alt} width="593" height="1280" loading="lazy" /></div>
+            <div className="product-journey-copy"><span>{step.number}</span><h3>{step.title}</h3><p>{step.detail}</p></div>
+          </article>
+        ))}
+      </div>
+      <div className="product-journey-action">
+        <Link className="public-button" to={session ? signedInPublicPrimaryRoute(session) : "/register"}>
+          {session ? signedInPublicPrimaryHeroLabel(session) : "Start your 14-day free trial"}
+        </Link>
+        <span>No card details needed to get started.</span>
+      </div>
+    </section>
+  );
+}
+
 function PlatformCapabilitiesSection({ session = null, linkTarget = "/platform" }: { session?: SessionState | null; linkTarget?: string | null }) {
   const CapabilityCard = ({ icon, title, detail }: { icon: string; title: string; detail: string }) =>
     linkTarget ? (
@@ -12045,15 +12084,6 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
           Every price includes the core Exdox tools. Choose the user and monthly document allowance that fits your business.
         </p>
       </div>
-      <aside className="pricing-bespoke-callout">
-        <div>
-          <h2>Need a bespoke plan?</h2>
-          <p>Tell us how many users and documents you need each month, and we can discuss a tailored quote for your business.</p>
-        </div>
-        <Link className="public-button" to={`${contactPagePath}?subject=${encodeURIComponent("Bespoke pricing enquiry")}`}>
-          Ask about bespoke pricing
-        </Link>
-      </aside>
       <div className="pricing-page-layout">
         <div className="pricing-page-main">
           <article className="slider-pricing-card">
@@ -12161,6 +12191,15 @@ function PricingSection({ session = null }: { session?: SessionState | null }) {
           </div>
         </div>
       </div>
+      <aside className="pricing-bespoke-callout">
+        <div>
+          <h2>Need a bespoke plan?</h2>
+          <p>Tell us how many users and documents you need each month, and we can discuss a tailored quote for your business.</p>
+        </div>
+        <Link className="public-button" to={`${contactPagePath}?subject=${encodeURIComponent("Bespoke pricing enquiry")}`}>
+          Ask about bespoke pricing
+        </Link>
+      </aside>
     </section>
   );
 }
