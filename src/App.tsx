@@ -5679,6 +5679,28 @@ function DocumentWorkspacePage(props: {
           </div>
         </section>
 
+        {!isVaultRecord ? (
+          <section className="workspace-detail-section">
+            <div className="panel-heading"><h2>Smart Split allocations</h2><span>Net amounts sent as separate Xero lines after approval</span></div>
+            <p className="panel-copy">Check each category and amount. The allocations must total the document net amount.</p>
+            {!receipt.allocationLines?.length ? <p className="panel-copy">No split has been applied. Add lines here if this document needs separate categories.</p> : null}
+            {(receipt.allocationLines ?? []).map((allocation, index) => (
+              <div className="form-grid" key={index}>
+                <label>Category
+                  <select value={allocation.category} disabled={receiptPublished} onChange={(event) => setReceipt({ ...receipt, allocationLines: (receipt.allocationLines ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, category: event.target.value } : item) })}>
+                    {[...new Set([allocation.category, ...categoryOptions])].map((category) => <option key={category} value={category}>{category}</option>)}
+                  </select>
+                </label>
+                <label>Net amount
+                  <input type="number" min="0.01" step="0.01" value={allocation.netAmount} disabled={receiptPublished} onChange={(event) => setReceipt({ ...receipt, allocationLines: (receipt.allocationLines ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, netAmount: Number(event.target.value) } : item) })} />
+                </label>
+                <button className="secondary-action" type="button" disabled={receiptPublished} onClick={() => setReceipt({ ...receipt, allocationLines: (receipt.allocationLines ?? []).filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
+              </div>
+            ))}
+            <p>Total: {currency((receipt.allocationLines ?? []).reduce((sum, line) => sum + line.netAmount, 0), receiptCurrency(receipt))} of {currency(receipt.netAmount ?? 0, receiptCurrency(receipt))}</p>
+            <button className="secondary-action" type="button" disabled={receiptPublished} onClick={() => setReceipt({ ...receipt, allocationLines: [...(receipt.allocationLines ?? []), { category: receipt.category || categoryOptions[0] || "Uncategorised", netAmount: 0 }] })}>Add line</button>
+          </section>
+        ) : null}
         {lineItems.length ? (
           <section className="workspace-detail-section">
             <div className="panel-heading">
@@ -7371,6 +7393,8 @@ function RulesPage(props: {
     taxRate: countryDefaultTax(ruleCountry),
     paymentMethod: "business_card" as SupplierRule["paymentMethod"],
     isActive: true,
+    splitMode: "none" as NonNullable<SupplierRule["splitMode"]>,
+    splitAllocations: [] as NonNullable<SupplierRule["splitAllocations"]>,
   });
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -7424,6 +7448,7 @@ function RulesPage(props: {
             ? "Customer Rules standardise revenue category, tax, and payment defaults for repeat customers without changing purchase processing."
             : "Supplier Rules standardise supplier category and tax defaults. Manage card last-four matching and employee collision exceptions in Company Cards."}
         </p>
+        {workspaceContext === "cost" ? <p className="panel-copy">For suppliers without a rule, Exdox suggests the category used consistently on at least two previously approved Costs. A reviewer can change it, and a category chosen in the app is preserved when that upload syncs. No separate AI call is made for this suggestion.</p> : null}
         {error ? <div className="error-banner">{error}</div> : null}
         {feedback ? <div className="success-banner">{feedback}</div> : null}
         <div className="form-grid">
@@ -7473,6 +7498,32 @@ function RulesPage(props: {
             </button>
           </label>
         </div>
+        <div className="workspace-detail-section">
+          <h3>Smart Split</h3>
+          <p className="panel-copy">Divide a matching document's net amount across categories. You can check the amounts on each document before approval.</p>
+          <label>Split method
+            <select value={draft.splitMode} onChange={(event) => setDraft({ ...draft, splitMode: event.target.value as NonNullable<SupplierRule["splitMode"]>, splitAllocations: [] })}>
+              <option value="none">No split</option>
+              <option value="percentage">Percentages</option>
+              <option value="fixed">Fixed net amounts</option>
+            </select>
+          </label>
+          {draft.splitMode !== "none" && draft.splitAllocations.map((part, index) => (
+            <div className="form-grid" key={index}>
+              <label>Category
+                <select value={part.category} onChange={(event) => setDraft({ ...draft, splitAllocations: draft.splitAllocations.map((item, partIndex) => partIndex === index ? { ...item, category: event.target.value } : item) })}>
+                  <option value="">Choose category</option>
+                  {categoryChoices.map((category) => <option key={category} value={category}>{category}</option>)}
+                </select>
+              </label>
+              <label>{draft.splitMode === "percentage" ? "Percent" : "Net amount"}
+                <input type="number" min="0.01" step="0.01" value={part.value || ""} onChange={(event) => setDraft({ ...draft, splitAllocations: draft.splitAllocations.map((item, partIndex) => partIndex === index ? { ...item, value: Number(event.target.value) } : item) })} />
+              </label>
+              <button className="secondary-action" type="button" onClick={() => setDraft({ ...draft, splitAllocations: draft.splitAllocations.filter((_, partIndex) => partIndex !== index) })}>Remove</button>
+            </div>
+          ))}
+          {draft.splitMode !== "none" ? <button className="secondary-action" type="button" onClick={() => setDraft({ ...draft, splitAllocations: [...draft.splitAllocations, { category: "", value: 0 }] })}>Add allocation</button> : null}
+        </div>
         <div className="toolbar">
           <button
             className="primary-action"
@@ -7497,6 +7548,8 @@ function RulesPage(props: {
                   taxRate: countryDefaultTax(ruleCountry),
                   paymentMethod: "business_card",
                   isActive: true,
+                  splitMode: "none",
+                  splitAllocations: [],
                 });
                 setFeedback(draft.id ? "Rule updated." : "Rule created.");
               } catch (saveError) {
@@ -7522,6 +7575,8 @@ function RulesPage(props: {
                   taxRate: countryDefaultTax(ruleCountry),
                   paymentMethod: "business_card",
                   isActive: true,
+                  splitMode: "none",
+                  splitAllocations: [],
                 })
               }
             >
@@ -7584,7 +7639,7 @@ function RulesPage(props: {
                 <div>
                   <strong>IF {subjectLabel} contains "{rule.supplierMatchText}"</strong>
                   <p>
-                    Category = {rule.category} | Tax Rate = {rule.taxRate} | Payment Method = {rule.paymentMethod} | {rule.isActive ? "Active" : "Inactive"}
+                    Category = {rule.category} | Tax Rate = {rule.taxRate} | Payment Method = {rule.paymentMethod} | {rule.splitMode && rule.splitMode !== "none" ? `Smart Split: ${rule.splitMode} (${rule.splitAllocations?.length ?? 0} allocations) | ` : ""}{rule.isActive ? "Active" : "Inactive"}
                   </p>
                 </div>
                 <div className="toolbar">
@@ -7601,6 +7656,8 @@ function RulesPage(props: {
                         taxRate: rule.taxRate,
                         paymentMethod: rule.paymentMethod,
                         isActive: rule.isActive,
+                        splitMode: rule.splitMode ?? "none",
+                        splitAllocations: rule.splitAllocations ?? [],
                       })
                     }
                   >
@@ -7626,6 +7683,8 @@ function RulesPage(props: {
                             taxRate: countryDefaultTax(ruleCountry),
                             paymentMethod: "business_card",
                             isActive: true,
+                            splitMode: "none",
+                            splitAllocations: [],
                           });
                         }
                       } catch (deleteError) {
