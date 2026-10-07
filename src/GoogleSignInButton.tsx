@@ -4,7 +4,7 @@ import { getGoogleClientId } from './api';
 type GoogleIdentity = {
   accounts: { id: {
     initialize: (options: { client_id: string; callback: (response: { credential?: string }) => void; auto_select: boolean }) => void;
-    renderButton: (element: HTMLElement, options: { theme: string; size: string; text: string; width: number }) => void;
+    renderButton: (element: HTMLElement, options: { theme: string; size: string; text: string; shape: string; width: number }) => void;
   } };
 };
 
@@ -37,6 +37,7 @@ export function GoogleSignInButton({ onCredential, text = 'continue_with', disab
   const target = useRef<HTMLDivElement>(null);
   const callback = useRef(onCredential);
   const [error, setError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const [clientId, setClientId] = useState(import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID?.trim() || null);
   callback.current = onCredential;
 
@@ -50,6 +51,20 @@ export function GoogleSignInButton({ onCredential, text = 'continue_with', disab
   useEffect(() => {
     if (!clientId) return;
     let active = true;
+    let animationFrame = 0;
+    let loadTimeout = 0;
+    const showWhenStyled = () => {
+      if (!active) return;
+      const button = target.current?.querySelector('[role="button"]');
+      const label = target.current?.querySelector('#button-label');
+      const buttonStyle = button ? getComputedStyle(button) : null;
+      if (buttonStyle && parseFloat(buttonStyle.borderRadius) >= 16 && buttonStyle.borderStyle !== 'none' && label && getComputedStyle(label).display === 'none') {
+        window.clearTimeout(loadTimeout);
+        setReady(true);
+        return;
+      }
+      animationFrame = window.requestAnimationFrame(showWhenStyled);
+    };
     void loadGoogleScript().then(() => {
       if (!active || !target.current || !window.google) return;
       window.google.accounts.id.initialize({
@@ -60,12 +75,18 @@ export function GoogleSignInButton({ onCredential, text = 'continue_with', disab
           else setError('Google did not return a sign-in token. Try again.');
         },
       });
+      setReady(false);
       target.current.replaceChildren();
-      window.google.accounts.id.renderButton(target.current, { theme: 'outline', size: 'large', text, width: 288 });
+      window.google.accounts.id.renderButton(target.current, { theme: 'outline', size: 'large', text, shape: 'pill', width: 288 });
+      loadTimeout = window.setTimeout(() => {
+        window.cancelAnimationFrame(animationFrame);
+        if (active) setError('Google sign-in did not finish loading. Please refresh and try again.');
+      }, 10000);
+      showWhenStyled();
     }).catch((loadError: unknown) => { if (active) setError(loadError instanceof Error ? loadError.message : 'Google sign-in could not load.'); });
-    return () => { active = false; };
+    return () => { active = false; window.cancelAnimationFrame(animationFrame); window.clearTimeout(loadTimeout); };
   }, [clientId, text]);
 
   if (!clientId) return null;
-  return <div className={`google-sign-in${disabled ? ' google-sign-in-disabled' : ''}`}><div className="google-sign-in-control" ref={target} style={disabled ? { pointerEvents: 'none' } : undefined} /><span className="muted-copy">Use the same Google account on the website and app.</span>{error ? <div className="error-banner">{error}</div> : null}</div>;
+  return <div className={`google-sign-in${ready ? ' google-sign-in-ready' : ''}${disabled ? ' google-sign-in-disabled' : ''}`}><div className="google-sign-in-control" ref={target} style={disabled ? { pointerEvents: 'none' } : undefined} /><span className="muted-copy">Use the same Google account on the website and app.</span>{error ? <div className="error-banner">{error}</div> : null}</div>;
 }
