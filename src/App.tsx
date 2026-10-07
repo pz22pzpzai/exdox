@@ -1420,6 +1420,7 @@ export function App() {
               }}
               onReceiptSave={async (id, payload) => {
                 const saved = await saveReceipt(session.token, id, payload);
+                if (saved.autoPublishWarning) setError(saved.autoPublishWarning);
                 setStore((current) => ({
                   ...current,
                   costs: current.costs.map((item) => (String(item.id) === String(id) ? saved : item)),
@@ -4833,16 +4834,16 @@ function InboxPage({
         </section>
       ) : null}
 
-      {basePath === "/sales" ? (
+      {basePath === "/sales" || basePath === "/costs" ? (
         <section className="panel sales-pdf-options">
           <div>
             <strong>PDF document handling</strong>
-            <p>Choose how multi-page PDFs should enter Sales. This preference applies to the next Sales upload.</p>
+            <p>Choose how multi-page PDFs should enter {basePath === "/sales" ? "Sales" : "Costs"}. Each detected document keeps only its own pages and enters review. This preference applies to your next upload.</p>
           </div>
           <select
-            defaultValue={window.localStorage.getItem("exdox-sales-pdf-mode") || "auto_detect"}
-            onChange={(event) => window.localStorage.setItem("exdox-sales-pdf-mode", event.target.value)}
-            aria-label="Sales PDF document handling"
+            defaultValue={window.localStorage.getItem(`exdox-${basePath === "/sales" ? "sales" : "cost"}-pdf-mode`) || (basePath === "/sales" ? "auto_detect" : "single_document")}
+            onChange={(event) => window.localStorage.setItem(`exdox-${basePath === "/sales" ? "sales" : "cost"}-pdf-mode`, event.target.value)}
+            aria-label={`${basePath === "/sales" ? "Sales" : "Costs"} PDF document handling`}
           >
             <option value="auto_detect">Automatically detect documents</option>
             <option value="single_document">Treat the PDF as one document</option>
@@ -5842,9 +5843,13 @@ function DocumentWorkspacePage(props: {
                       };
                   setReceipt(nextReceipt);
                   await props.onSave(receipt.id, nextReceipt);
+                  const refreshed = await props.loadReceipt(receipt.id);
+                  setReceipt(refreshed.receipt);
                   setFeedback(
                     receiptApproved && !receiptPublished
                       ? "Approval removed. The expense is back in review."
+                      : refreshed.receipt.status === "Published"
+                        ? `${props.mode === "cost" ? "Expense" : "Sales document"} approved and published to Xero.`
                       : props.mode === "cost"
                         ? "Expense approved and moved out of review."
                         : "Sales document approved and moved out of review.",
@@ -6716,6 +6721,20 @@ function EmployeeDocumentsPage(props: {
         </div>
       </section>
       {feedback ? <div className="success-banner" role="status">{feedback}</div> : null}
+      {props.workspaceContext === "cost" || props.workspaceContext === "sales" ? (
+        <section className="panel sales-pdf-options">
+          <div><strong>PDF document handling</strong><p>Choose whether a multi-page PDF is one document, one document per page, or several automatically detected documents. Each result enters review.</p></div>
+          <select
+            defaultValue={window.localStorage.getItem(`exdox-${props.workspaceContext}-pdf-mode`) || (props.workspaceContext === "sales" ? "auto_detect" : "single_document")}
+            onChange={(event) => window.localStorage.setItem(`exdox-${props.workspaceContext}-pdf-mode`, event.target.value)}
+            aria-label={`${props.workspaceContext === "sales" ? "Sales" : "Costs"} PDF document handling`}
+          >
+            <option value="single_document">Treat the PDF as one document</option>
+            <option value="one_document_per_page">One document per page</option>
+            <option value="auto_detect">Automatically detect documents</option>
+          </select>
+        </section>
+      ) : null}
       <section className="panel table-panel">
         {filteredReceipts.length ? (
           <table className="data-table">
@@ -8354,6 +8373,7 @@ function AccountingIntegrationsPage({ session, workspaceSettings }: { session: S
           <label>Tracking category<select value={settings.trackingCategoryId ?? ""} onChange={(event) => setSettings({ ...settings, trackingCategoryId: event.target.value || null, trackingOptionId: null })}><option value="">No default tracking</option>{referenceData.trackingCategories.map((category) => <option key={category.trackingCategoryId} value={category.trackingCategoryId}>{category.name}</option>)}</select></label>
           <label>Tracking option<select value={settings.trackingOptionId ?? ""} disabled={!selectedTrackingCategory} onChange={(event) => setSettings({ ...settings, trackingOptionId: event.target.value || null })}><option value="">No default option</option>{selectedTrackingCategory?.options.map((option) => <option key={option.trackingOptionId} value={option.trackingOptionId}>{option.name}</option>)}</select></label>
           <label className="toggle-field">Attach source documents<button className={`toggle-button${settings.publishAttachments ? " on" : ""}`} type="button" onClick={() => setSettings({ ...settings, publishAttachments: !settings.publishAttachments })}>{settings.publishAttachments ? "On" : "Off"}</button></label>
+          <label className="toggle-field">Publish approved Costs and Sales uploads to Xero automatically<button className={`toggle-button${settings.autoPublishApprovedReceipts ? " on" : ""}`} type="button" onClick={() => setSettings({ ...settings, autoPublishApprovedReceipts: !settings.autoPublishApprovedReceipts })}>{settings.autoPublishApprovedReceipts ? "On" : "Off"}</button><span className="field-hint">Off by default. Exdox waits for admin approval, then uses the account and tax defaults above. Claimed expenses and native Sales invoices keep their current publishing steps.</span></label>
         </div>
         <section className="workspace-detail-section"><div className="panel-heading"><div><h4>Exdox category mapping</h4><p>Send each Exdox category to the correct Xero account instead of relying only on one default.</p></div></div><div className="form-grid">{costCategoryOptions.map((category) => <label key={`cost-${category}`}>Cost: {category}<select value={settings.categoryAccountMappings[category] ?? ""} onChange={(event) => setSettings({ ...settings, categoryAccountMappings: { ...settings.categoryAccountMappings, [category]: event.target.value } })}><option value="">Use default cost account</option>{purchaseAccounts.map((account) => <option key={account.accountId} value={account.code}>{account.code} — {account.name}</option>)}</select></label>)}{salesCategoryOptions.map((category) => <label key={`sales-${category}`}>Sales: {category}<select value={settings.categoryAccountMappings[category] ?? ""} onChange={(event) => setSettings({ ...settings, categoryAccountMappings: { ...settings.categoryAccountMappings, [category]: event.target.value } })}><option value="">Use default sales account</option>{salesAccounts.map((account) => <option key={account.accountId} value={account.code}>{account.code} — {account.name}</option>)}</select></label>)}</div></section>
         <section className="workspace-detail-section"><div className="panel-heading"><div><h4>Purchase {countryTaxLabel(taxCountry)} mapping</h4><p>Map cost and claim tax labels only to Xero tax codes that apply to expenses.</p></div></div><div className="form-grid">{mappingTaxRates.map((taxLabel) => <label key={`purchase-tax-${taxLabel}`}>Cost: {taxLabel}<select value={settings.purchaseTaxTypeMappings[taxLabel] ?? ""} onChange={(event) => setSettings({ ...settings, purchaseTaxTypeMappings: { ...settings.purchaseTaxTypeMappings, [taxLabel]: event.target.value } })}><option value="">Use default cost tax</option>{purchaseTaxes.map((tax) => <option key={tax.taxType} value={tax.taxType}>{tax.name}</option>)}</select></label>)}</div></section>

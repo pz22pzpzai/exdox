@@ -672,11 +672,11 @@ export async function saveReceipt(
   id: number,
   payload: Partial<ReceiptRecord>,
 ): Promise<ReceiptRecord> {
-  const response = await apiFetch<{ receipt: ReceiptRecord }>(`/receipts/${id}`, token, {
+  const response = await apiFetch<{ receipt: ReceiptRecord; warning?: string | null }>(`/receipts/${id}`, token, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  return normalizeVaultReceiptRecord(response.receipt);
+  return normalizeVaultReceiptRecord({ ...response.receipt, autoPublishWarning: response.warning ?? null });
 }
 
 export async function deleteReceipt(token: string, id: number): Promise<void> {
@@ -1067,8 +1067,8 @@ export async function uploadDocuments(
       const formData = new FormData();
       formData.set("file", file);
       formData.set("workspace_context", workspaceContext);
-      if (workspaceContext === "sales") {
-        formData.set("split_mode", window.localStorage.getItem("exdox-sales-pdf-mode") || "auto_detect");
+      if (workspaceContext === "sales" || workspaceContext === "cost") {
+        formData.set("split_mode", window.localStorage.getItem(`exdox-${workspaceContext}-pdf-mode`) || (workspaceContext === "sales" ? "auto_detect" : "single_document"));
       }
       if (workspaceContext === "sales" && ownerUserId) {
         formData.set("owner_user_id", String(ownerUserId));

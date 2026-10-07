@@ -13,6 +13,7 @@ export type TaxRate =
 
 export type ReceiptRecord = {
   id: number;
+  autoPublishWarning?: string | null;
   organisationId: number;
   uploadedByUserId?: number;
   uploadedByName?: string | null;
@@ -242,6 +243,7 @@ export type XeroIntegrationSettings = {
   purchaseStatus: "DRAFT" | "SUBMITTED" | "AUTHORISED";
   salesStatus: "DRAFT" | "SUBMITTED" | "AUTHORISED";
   publishAttachments: boolean;
+  autoPublishApprovedReceipts: boolean;
   companyCardBankAccountCode: string | null;
   trackingCategoryId: string | null;
   trackingOptionId: string | null;
