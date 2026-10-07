@@ -10667,8 +10667,8 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
         </div>
         <div className="hero-product-visual" aria-label="Exdox app showing a mileage claim and route options">
           <div className="hero-product-label"><strong>See the app in action</strong><span>Real Exdox screens</span></div>
-          <img className="hero-phone hero-phone-back" src="/branding/exdox-mileage-routes.jpg" width="593" height="1280" alt="Exdox app showing route options for a mileage claim" />
-          <img className="hero-phone hero-phone-front" src="/branding/exdox-mileage-entry.jpg" width="593" height="1280" alt="Exdox app showing mileage postcodes and a route map" fetchPriority="high" />
+          <img className="hero-phone hero-phone-back" src="/branding/exdox-mileage-routes.webp" width="593" height="1280" alt="Exdox app showing route options for a mileage claim" />
+          <img className="hero-phone hero-phone-front" src="/branding/exdox-mileage-entry.webp" width="593" height="1280" alt="Exdox app showing mileage postcodes and a route map" fetchPriority="high" />
         </div>
       </section>
       <section className="xero-integration-strip" aria-label="Integrated with Xero">
@@ -11830,12 +11830,12 @@ function AccountDeletionSection() {
 
 function ReceiptStorySection({ session = null, platformPage = false }: { session?: SessionState | null; platformPage?: boolean }) {
   const steps = [
-    { number: "01", title: "Start a scan", detail: "Tap Scan receipt or invoice in the Exdox app.", image: "/branding/exdox-receipt-scan.jpg", alt: "Exdox upload menu with Scan receipt or invoice selected" },
-    { number: "02", title: "Capture the receipt", detail: "Keep the original receipt with the purchase record.", image: "/branding/exdox-receipt-example.jpg", alt: "Example receipt from Green Leaf Station Kiosk" },
-    { number: "03", title: "Review and submit", detail: "Check the purchase details and payment method, then submit.", image: "/branding/exdox-receipt-review.jpg", alt: "Exdox purchase review screen with Submit button" },
-    { number: "04", title: "Find it in Purchases", detail: "The scanned receipt appears in Purchases, ready for review.", image: "/branding/exdox-receipt-purchases.jpg", alt: "Scanned Green Leaf receipt in Exdox Purchases marked To review" },
-    { number: "05", title: "Review in the web dashboard", detail: "The Costs Inbox shows the receipt's supplier, VAT, total and Review status, ready to open.", image: "/branding/exdox-receipt-dashboard-review.svg", alt: "Exdox web Costs Inbox showing the Green Leaf receipt awaiting review" },
-    { number: "06", title: "Open Reports", detail: "View payment rounds and the receipts in each round from Reports.", image: "/branding/exdox-receipt-reports.jpg", alt: "Exdox Reports screen showing payment rounds" },
+    { number: "01", title: "Start a scan", detail: "Tap Scan receipt or invoice in the Exdox app.", image: "/branding/exdox-receipt-scan.webp", alt: "Exdox upload menu with Scan receipt or invoice selected" },
+    { number: "02", title: "Capture the receipt", detail: "Keep the original receipt with the purchase record.", image: "/branding/exdox-receipt-example.webp", alt: "Example receipt from Green Leaf Station Kiosk" },
+    { number: "03", title: "Review and submit", detail: "Check the purchase details and payment method, then submit.", image: "/branding/exdox-receipt-review.webp", alt: "Exdox purchase review screen with Submit button" },
+    { number: "04", title: "Find it in Purchases", detail: "The scanned receipt appears in Purchases, ready for review.", image: "/branding/exdox-receipt-purchases.webp", alt: "Scanned Green Leaf receipt in Exdox Purchases marked To review" },
+    { number: "05", title: "Review in the web dashboard", detail: "The Costs Inbox shows the receipt's supplier, VAT, total and Review status, ready to open.", image: "/branding/exdox-receipt-dashboard-review.webp", alt: "Exdox web Costs Inbox showing the Green Leaf receipt awaiting review" },
+    { number: "06", title: "Open Reports", detail: "View payment rounds and the receipts in each round from Reports.", image: "/branding/exdox-receipt-reports.webp", alt: "Exdox Reports screen showing payment rounds" },
   ];
 
   return (
@@ -11869,9 +11869,9 @@ function ReceiptStorySection({ session = null, platformPage = false }: { session
 
 function ProductJourneySection({ session = null, platformPage = false }: { session?: SessionState | null; platformPage?: boolean }) {
   const steps = [
-    { number: "01", title: "Enter your journey", detail: "Add your postcodes in the app and see the route on a map.", image: "/branding/exdox-mileage-entry.jpg", alt: "Exdox mileage claim with postcodes and a route map" },
-    { number: "02", title: "Choose the route", detail: "Compare the suggested route with an alternative before submitting.", image: "/branding/exdox-mileage-routes.jpg", alt: "Exdox showing mileage route choices" },
-    { number: "03", title: "Submit your claim", detail: "Confirm the miles and send the claim into your synced workspace for review.", image: "/branding/exdox-mileage-claim.jpg", alt: "Exdox mileage claim ready to submit" },
+    { number: "01", title: "Enter your journey", detail: "Add your postcodes in the app and see the route on a map.", image: "/branding/exdox-mileage-entry.webp", alt: "Exdox mileage claim with postcodes and a route map" },
+    { number: "02", title: "Choose the route", detail: "Compare the suggested route with an alternative before submitting.", image: "/branding/exdox-mileage-routes.webp", alt: "Exdox showing mileage route choices" },
+    { number: "03", title: "Submit your claim", detail: "Confirm the miles and send the claim into your synced workspace for review.", image: "/branding/exdox-mileage-claim.webp", alt: "Exdox mileage claim ready to submit" },
   ];
 
   return (
