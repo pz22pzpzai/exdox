@@ -10457,9 +10457,10 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
       <PublicLayout activePath="/platform" session={session}>
         <PublicPageIntro
           kicker="Platform"
-          title="From a receipt on your phone to a claim ready for review."
+          title="See receipts and mileage claims move through Exdox."
           body="Capture receipts, build mileage claims and review the details in one workspace that stays in sync across the app and website."
         />
+        <ReceiptStorySection session={session} platformPage />
         <ProductJourneySection session={session} platformPage />
         <PlatformCapabilitiesSection session={session} linkTarget={null} />
         <CoverageSection session={session} linkTarget={null} />
@@ -10696,6 +10697,7 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
           </video>
         </div>
       </section>
+      <ReceiptStorySection session={session} />
       <ProductJourneySection session={session} />
       <section className="home-benefits" aria-labelledby="home-benefits-title">
         <div className="section-heading"><div><p className="section-kicker">More than capture</p><h2 id="home-benefits-title">One place for the work after upload</h2></div><p>Give your team a clear path from submitted evidence to a reviewed record.</p></div>
@@ -11823,6 +11825,44 @@ function AccountDeletionSection() {
         },
       ]}
     />
+  );
+}
+
+function ReceiptStorySection({ session = null, platformPage = false }: { session?: SessionState | null; platformPage?: boolean }) {
+  const steps = [
+    { number: "01", title: "Start a scan", detail: "Tap Scan receipt or invoice in the Exdox app.", image: "/branding/exdox-receipt-scan.jpg", alt: "Exdox upload menu with Scan receipt or invoice selected" },
+    { number: "02", title: "Capture the receipt", detail: "Keep the original receipt with the purchase record.", image: "/branding/exdox-receipt-example.jpg", alt: "Example receipt from Green Leaf Station Kiosk" },
+    { number: "03", title: "Review and submit", detail: "Check the purchase details and payment method, then submit.", image: "/branding/exdox-receipt-review.jpg", alt: "Exdox purchase review screen with Submit button" },
+    { number: "04", title: "Find it in Purchases", detail: "The scanned receipt appears in Purchases, ready for review.", image: "/branding/exdox-receipt-purchases.jpg", alt: "Scanned Green Leaf receipt in Exdox Purchases marked To review" },
+    { number: "05", title: "Open Reports", detail: "View payment rounds and the receipts in each round from Reports.", image: "/branding/exdox-receipt-reports.jpg", alt: "Exdox Reports screen showing payment rounds" },
+  ];
+
+  return (
+    <section className={`product-journey receipt-story ${platformPage ? "product-journey-platform" : ""}`} aria-labelledby={platformPage ? "platform-receipt-story-title" : "home-receipt-story-title"}>
+      <div className="section-heading">
+        <div>
+          <p className="section-kicker">Receipt capture in the app</p>
+          <h2 id={platformPage ? "platform-receipt-story-title" : "home-receipt-story-title"}>From scanned receipt to a clearer view of spending</h2>
+        </div>
+        <p>See the scan, review and Purchases screens, then explore payment rounds in Reports.</p>
+      </div>
+      <div className="product-journey-grid receipt-story-grid">
+        {steps.map((step) => (
+          <article className="product-journey-step receipt-story-step" key={step.number}>
+            <div className={`product-journey-image ${step.number === "02" ? "receipt-story-paper" : ""}`}>
+              <img src={step.image} alt={step.alt} loading="lazy" />
+            </div>
+            <div className="product-journey-copy"><span>{step.number}</span><h3>{step.title}</h3><p>{step.detail}</p></div>
+          </article>
+        ))}
+      </div>
+      <div className="product-journey-action">
+        <Link className="public-button" to={session ? signedInPublicPrimaryRoute(session) : "/register"}>
+          {session ? signedInPublicPrimaryHeroLabel(session) : "Start your 14-day free trial"}
+        </Link>
+        <span>No card details needed to get started.</span>
+      </div>
+    </section>
   );
 }
 

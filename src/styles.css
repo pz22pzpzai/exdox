@@ -4319,6 +4319,23 @@ input {
   box-shadow: 0 13px 28px rgba(17, 38, 79, 0.16);
 }
 
+.receipt-story-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.receipt-story-step { grid-column: span 2; }
+.receipt-story-step:nth-last-child(-n + 2) { grid-column: span 3; }
+.receipt-story + .product-journey { border-top: 1px solid #e2e9f0; }
+
+.receipt-story-paper img {
+  width: auto;
+  max-width: 90%;
+  max-height: 345px;
+  border: 1px solid #e2e9f0;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 13px 28px rgba(17, 38, 79, 0.12);
+}
+
 .product-journey-copy { padding: 20px; }
 .product-journey-copy > span { color: #087fc1; font-size: 0.82rem; font-weight: 800; letter-spacing: 0.08em; }
 .product-journey-copy h3,
@@ -5530,8 +5547,11 @@ input {
   .product-journey-grid,
   .home-benefits-grid { grid-template-columns: 1fr; gap: 16px; }
   .product-journey-step { display: grid; grid-template-columns: minmax(0, 42%) minmax(0, 1fr); }
+  .receipt-story-step,
+  .receipt-story-step:nth-last-child(-n + 2) { grid-column: auto; }
   .product-journey-image { height: 230px; padding: 10px 4px 0; }
   .product-journey-image img { width: min(95%, 100px); }
+  .receipt-story-paper img { width: auto; max-width: 95%; max-height: none; }
   .product-journey-copy { align-self: center; padding: 14px; }
   .product-journey-copy h3 { font-size: 1.05rem; }
 
