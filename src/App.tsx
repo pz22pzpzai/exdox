@@ -111,6 +111,7 @@ import type {
   TeamMember,
   MasterExpenseExportRow,
   OrganisationSettings,
+  PdfSplitMode,
   ReceiptRecord,
   RecycleBinItem,
   ReconciliationLine,
@@ -1382,7 +1383,7 @@ export function App() {
               session={session}
               store={store}
               error={error}
-              onUpload={async (workspaceContext, files, ownerUserId) => {
+              onUpload={async (workspaceContext, files, ownerUserId, pdfSplitMode) => {
                 const pendingReceipts = buildPendingReceipts(session, workspaceContext, files);
                 const targetKey =
                   workspaceContext === "cost" ? "costs" : workspaceContext === "sales" ? "sales" : "vault";
@@ -1393,7 +1394,7 @@ export function App() {
                 }));
 
                 try {
-                  const uploadResult = await uploadDocuments(session.token, workspaceContext, files, ownerUserId);
+                  const uploadResult = await uploadDocuments(session.token, workspaceContext, files, ownerUserId, pdfSplitMode);
                   const refreshed = await listReceipts(session.token, workspaceContext);
                   setStore((current) => ({
                     ...current,
@@ -1648,7 +1649,7 @@ function DashboardShell(props: {
   session: SessionState;
   store: AppStore;
   error: string | null;
-  onUpload: (workspaceContext: "cost" | "sales" | "vault", files: File[], ownerUserId?: number) => Promise<void>;
+  onUpload: (workspaceContext: "cost" | "sales" | "vault", files: File[], ownerUserId?: number, pdfSplitMode?: PdfSplitMode) => Promise<void>;
   onReceiptSave: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
   onReimbursementsMarkedPaid: () => Promise<number>;
   onReimbursementsExported: () => Promise<void>;
@@ -1926,10 +1927,11 @@ function DashboardShell(props: {
                 <UploadButton
                   busy={uploadBusy}
                   label="Upload Costs"
-                  onFiles={async (files) => {
+                  workspaceContext="cost"
+                  onFiles={async (files, pdfSplitMode) => {
                     setUploadBusy(true);
                     try {
-                      await props.onUpload("cost", files);
+                      await props.onUpload("cost", files, undefined, pdfSplitMode);
                     } finally {
                       setUploadBusy(false);
                     }
@@ -1938,10 +1940,11 @@ function DashboardShell(props: {
                 <UploadButton
                   busy={uploadBusy}
                   label="Upload Sales"
-                  onFiles={async (files) => {
+                  workspaceContext="sales"
+                  onFiles={async (files, pdfSplitMode) => {
                     setUploadBusy(true);
                     try {
-                      await props.onUpload("sales", files);
+                      await props.onUpload("sales", files, undefined, pdfSplitMode);
                     } finally {
                       setUploadBusy(false);
                     }
@@ -1951,6 +1954,7 @@ function DashboardShell(props: {
                   <UploadButton
                     busy={uploadBusy}
                     label="Upload Vault"
+                    workspaceContext="vault"
                     onFiles={async (files) => {
                       setUploadBusy(true);
                       try {
@@ -2089,7 +2093,7 @@ function DashboardShell(props: {
                       showEmployeeFilter
                       settings={props.store.settings}
                       uploadBusy={uploadBusy}
-                      onUpload={(files) => props.onUpload("cost", files)}
+                      onUpload={(files, _ownerUserId, pdfSplitMode) => props.onUpload("cost", files, undefined, pdfSplitMode)}
                       onReimbursementsMarkedPaid={props.onReimbursementsMarkedPaid}
                     />
                   }
@@ -2132,7 +2136,7 @@ function DashboardShell(props: {
                       sessionToken={props.session.token}
                       settings={props.store.settings}
                       uploadBusy={uploadBusy}
-                      onUpload={(files, ownerUserId) => props.onUpload("sales", files, ownerUserId)}
+                      onUpload={(files, ownerUserId, pdfSplitMode) => props.onUpload("sales", files, ownerUserId, pdfSplitMode)}
                       onReceiptSave={props.onReceiptSave}
                     />
                   }
@@ -2265,12 +2269,12 @@ function DashboardShell(props: {
               <Route path="/accounting" element={<AccountingPage token={props.session.token} unlocked={accountingUnlocked} organisationName={props.store.settings?.organisationName ?? ''} />} />
               <Route
                 path="/dropbox"
-                element={<EmployeeDocumentsPage title="My costs" description="Upload and view your own receipts. Personal expenses can be added to reimbursement claims after they are approved." records={props.store.costs} workspaceContext="cost" settings={props.store.settings} onUpload={(files) => props.onUpload("cost", files)} uploadBusy={uploadBusy} />}
+                element={<EmployeeDocumentsPage title="My costs" description="Upload and view your own receipts. Personal expenses can be added to reimbursement claims after they are approved." records={props.store.costs} workspaceContext="cost" settings={props.store.settings} onUpload={(files, pdfSplitMode) => props.onUpload("cost", files, undefined, pdfSplitMode)} uploadBusy={uploadBusy} />}
               />
               {isRouteAllowed(props.session, "/employee/sales") ? (
                 <Route
                   path="/employee/sales"
-                  element={<EmployeeDocumentsPage title="My sales" description="Upload and view your own sales documents. Company-wide sales review remains with your finance team." records={props.store.sales} workspaceContext="sales" settings={props.store.settings} onUpload={(files) => props.onUpload("sales", files)} uploadBusy={uploadBusy} />}
+                  element={<EmployeeDocumentsPage title="My sales" description="Upload and view your own sales documents. Company-wide sales review remains with your finance team." records={props.store.sales} workspaceContext="sales" settings={props.store.settings} onUpload={(files, pdfSplitMode) => props.onUpload("sales", files, undefined, pdfSplitMode)} uploadBusy={uploadBusy} />}
                 />
               ) : null}
               <Route
@@ -4462,7 +4466,7 @@ function InboxPage({
   showEmployeeFilter?: boolean;
   settings: OrganisationSettings | null;
   uploadBusy: boolean;
-  onUpload: (files: File[], ownerUserId?: number) => Promise<void>;
+  onUpload: (files: File[], ownerUserId?: number, pdfSplitMode?: PdfSplitMode) => Promise<void>;
   sessionToken?: string;
   onReceiptSave?: (id: number, payload: Partial<ReceiptRecord>) => Promise<void>;
   onReimbursementsMarkedPaid?: () => Promise<number>;
@@ -4834,25 +4838,8 @@ function InboxPage({
         </section>
       ) : null}
 
-      {basePath === "/sales" || basePath === "/costs" ? (
-        <section className="panel sales-pdf-options">
-          <div>
-            <strong>PDF document handling</strong>
-            <p>Choose how multi-page PDFs should enter {basePath === "/sales" ? "Sales" : "Costs"}. Each detected document keeps only its own pages and enters review. This preference applies to your next upload.</p>
-          </div>
-          <select
-            defaultValue={window.localStorage.getItem(`exdox-${basePath === "/sales" ? "sales" : "cost"}-pdf-mode`) || (basePath === "/sales" ? "auto_detect" : "single_document")}
-            onChange={(event) => window.localStorage.setItem(`exdox-${basePath === "/sales" ? "sales" : "cost"}-pdf-mode`, event.target.value)}
-            aria-label={`${basePath === "/sales" ? "Sales" : "Costs"} PDF document handling`}
-          >
-            <option value="auto_detect">Automatically detect documents</option>
-            <option value="single_document">Treat the PDF as one document</option>
-            <option value="one_document_per_page">One document per page</option>
-          </select>
-        </section>
-      ) : null}
-
       <UploadDropZone
+        workspaceContext={basePath === "/costs" ? "cost" : basePath === "/sales" ? "sales" : "vault"}
         title={
           basePath === "/costs"
             ? "Drop supplier bills, receipts, and invoices"
@@ -4868,7 +4855,7 @@ function InboxPage({
               : "Store reference files in a separate archive workspace and mark them as Processed once they are safely stored."
         }
         busy={uploadBusy}
-        onFiles={(files) => onUpload(files, salesOwnerId ? Number(salesOwnerId) : undefined)}
+        onFiles={(files, pdfSplitMode) => onUpload(files, salesOwnerId ? Number(salesOwnerId) : undefined, pdfSplitMode)}
       />
 
       <section className="panel table-panel">
@@ -6588,7 +6575,7 @@ function EmployeeDocumentsPage(props: {
   workspaceContext: "cost" | "sales" | "vault";
   settings: OrganisationSettings | null;
   uploadBusy: boolean;
-  onUpload: (files: File[]) => Promise<void>;
+  onUpload: (files: File[], pdfSplitMode?: PdfSplitMode) => Promise<void>;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -6716,25 +6703,12 @@ function EmployeeDocumentsPage(props: {
           <UploadButton
             busy={props.uploadBusy}
             label={`Upload ${props.workspaceContext === "cost" ? "costs" : props.workspaceContext === "sales" ? "sales" : "vault files"}`}
+            workspaceContext={props.workspaceContext}
             onFiles={props.onUpload}
           />
         </div>
       </section>
       {feedback ? <div className="success-banner" role="status">{feedback}</div> : null}
-      {props.workspaceContext === "cost" || props.workspaceContext === "sales" ? (
-        <section className="panel sales-pdf-options">
-          <div><strong>PDF document handling</strong><p>Choose whether a multi-page PDF is one document, one document per page, or several automatically detected documents. Each result enters review.</p></div>
-          <select
-            defaultValue={window.localStorage.getItem(`exdox-${props.workspaceContext}-pdf-mode`) || (props.workspaceContext === "sales" ? "auto_detect" : "single_document")}
-            onChange={(event) => window.localStorage.setItem(`exdox-${props.workspaceContext}-pdf-mode`, event.target.value)}
-            aria-label={`${props.workspaceContext === "sales" ? "Sales" : "Costs"} PDF document handling`}
-          >
-            <option value="single_document">Treat the PDF as one document</option>
-            <option value="one_document_per_page">One document per page</option>
-            <option value="auto_detect">Automatically detect documents</option>
-          </select>
-        </section>
-      ) : null}
       <section className="panel table-panel">
         {filteredReceipts.length ? (
           <table className="data-table">
@@ -9422,8 +9396,88 @@ function DeleteAccountPage({ session }: { session: SessionState }) {
   );
 }
 
-function UploadButton(props: { busy: boolean; label: string; onFiles: (files: File[]) => Promise<void> }) {
+function savedPdfUploadMode(workspaceContext: "cost" | "sales"): PdfSplitMode {
+  const saved = window.localStorage.getItem(`exdox-${workspaceContext}-pdf-mode`);
+  return saved === "single_document" || saved === "one_document_per_page" || saved === "auto_detect"
+    ? saved
+    : workspaceContext === "sales" ? "auto_detect" : "single_document";
+}
+
+function PdfUploadPrompt(props: {
+  files: File[];
+  workspaceContext: "cost" | "sales";
+  onCancel: () => void;
+  onConfirm: (mode: PdfSplitMode) => Promise<void>;
+}) {
+  const [mode, setMode] = useState<PdfSplitMode>(() => savedPdfUploadMode(props.workspaceContext));
+  const pdfCount = props.files.filter((file) => file.type === "application/pdf" || /\.pdf$/i.test(file.name)).length;
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") props.onCancel();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [props.onCancel]);
+
+  return (
+    <div className="pdf-upload-overlay" role="dialog" aria-modal="true" aria-labelledby="pdf-upload-heading">
+      <button className="pdf-upload-backdrop" type="button" aria-label="Cancel PDF upload" onClick={props.onCancel} />
+      <div className="pdf-upload-panel">
+        <h2 id="pdf-upload-heading">How should Exdox handle {pdfCount === 1 ? "this PDF" : "these PDFs"}?</h2>
+        <p>{pdfCount} PDF{pdfCount === 1 ? "" : "s"} selected for {props.workspaceContext === "sales" ? "Sales" : "Costs"}. Choose how to handle {pdfCount === 1 ? "it" : "them"} before uploading.</p>
+        <label>
+          PDF document handling
+          <select autoFocus value={mode} onChange={(event) => setMode(event.target.value as PdfSplitMode)}>
+            <option value="single_document">Keep each PDF as one document</option>
+            <option value="one_document_per_page">Make each page a separate document</option>
+            <option value="auto_detect">Automatically detect separate documents</option>
+          </select>
+        </label>
+        <p className="field-hint">For automatic detection, Exdox groups pages that appear to belong together. Check each result in Review.</p>
+        {props.files.length > pdfCount ? <p className="field-hint">The other {props.files.length - pdfCount} selected file{props.files.length - pdfCount === 1 ? " is" : "s are"} unaffected.</p> : null}
+        <div className="toolbar">
+          <button className="secondary-action" type="button" onClick={props.onCancel}>Cancel</button>
+          <button className="primary-action" type="button" onClick={() => void props.onConfirm(mode)}>Upload {props.files.length} file{props.files.length === 1 ? "" : "s"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function usePdfUploadChoice(props: {
+  workspaceContext: "cost" | "sales" | "vault";
+  busy: boolean;
+  onFiles: (files: File[], pdfSplitMode?: PdfSplitMode) => Promise<void>;
+}) {
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const selectFiles = async (files: File[]) => {
+    if (!files.length || props.busy) return;
+    if (props.workspaceContext !== "vault" && files.some((file) => file.type === "application/pdf" || /\.pdf$/i.test(file.name))) {
+      setPendingFiles(files);
+      return;
+    }
+    await props.onFiles(files);
+  };
+  const prompt = pendingFiles && props.workspaceContext !== "vault" ? (
+    <PdfUploadPrompt
+      files={pendingFiles}
+      workspaceContext={props.workspaceContext}
+      onCancel={() => setPendingFiles(null)}
+      onConfirm={async (mode) => {
+        const files = pendingFiles;
+        setPendingFiles(null);
+        window.localStorage.setItem(`exdox-${props.workspaceContext}-pdf-mode`, mode);
+        await props.onFiles(files, mode);
+      }}
+    />
+  ) : null;
+  return { selectFiles, prompt };
+}
+
+function UploadButton(props: { busy: boolean; label: string; workspaceContext: "cost" | "sales" | "vault"; onFiles: (files: File[], pdfSplitMode?: PdfSplitMode) => Promise<void> }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const { selectFiles, prompt } = usePdfUploadChoice(props);
 
   return (
     <>
@@ -9444,32 +9498,36 @@ function UploadButton(props: { busy: boolean; label: string; onFiles: (files: Fi
         onChange={async (event) => {
           const files = Array.from(event.target.files ?? []);
           if (files.length) {
-            await props.onFiles(files);
+            await selectFiles(files);
           }
           event.target.value = "";
         }}
       />
+      {prompt}
     </>
   );
 }
 
 function UploadDropZone(props: {
+  workspaceContext: "cost" | "sales" | "vault";
   title: string;
   subtitle: string;
   busy: boolean;
-  onFiles: (files: File[]) => Promise<void>;
+  onFiles: (files: File[], pdfSplitMode?: PdfSplitMode) => Promise<void>;
 }) {
   const [dragActive, setDragActive] = useState(false);
+  const { selectFiles, prompt } = usePdfUploadChoice(props);
 
   const pushFiles = async (fileList: FileList | null) => {
     const files = Array.from(fileList ?? []);
     if (!files.length || props.busy) {
       return;
     }
-    await props.onFiles(files);
+    await selectFiles(files);
   };
 
   return (
+    <>
     <section
       className={`panel dropzone-panel${dragActive ? " active" : ""}${props.busy ? " busy" : ""}`}
       onDragEnter={(event) => {
@@ -9516,6 +9574,8 @@ function UploadDropZone(props: {
         Drag multiple PDFs or images here, or use the picker to send them to the processing queue.
       </span>
     </section>
+    {prompt}
+    </>
   );
 }
 

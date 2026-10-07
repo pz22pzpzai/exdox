@@ -1,4 +1,5 @@
 export type InboxStatus = "Processing" | "Ready" | "Review" | "Published" | "Payment processing" | "Paid" | "Rejected";
+export type PdfSplitMode = "single_document" | "one_document_per_page" | "auto_detect";
 export type PaymentMethod =
   | "business_card"
   | "cash_personal"

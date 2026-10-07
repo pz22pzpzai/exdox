@@ -13,6 +13,7 @@ import type {
   InviteResendResult,
   TeamMember,
   OrganisationSettings,
+  PdfSplitMode,
   ReceiptRecord,
   RecycleBinItem,
   ReconciliationLine,
@@ -1058,6 +1059,7 @@ export async function uploadDocuments(
   workspaceContext: "cost" | "sales" | "vault",
   files: File[],
   ownerUserId?: number,
+  pdfSplitMode?: PdfSplitMode,
 ): Promise<{
   uploaded: string[];
   failed: Array<{ fileName: string; message: string }>;
@@ -1067,8 +1069,8 @@ export async function uploadDocuments(
       const formData = new FormData();
       formData.set("file", file);
       formData.set("workspace_context", workspaceContext);
-      if (workspaceContext === "sales" || workspaceContext === "cost") {
-        formData.set("split_mode", window.localStorage.getItem(`exdox-${workspaceContext}-pdf-mode`) || (workspaceContext === "sales" ? "auto_detect" : "single_document"));
+      if ((workspaceContext === "sales" || workspaceContext === "cost") && (file.type === "application/pdf" || /\.pdf$/i.test(file.name))) {
+        formData.set("split_mode", pdfSplitMode ?? (workspaceContext === "sales" ? "auto_detect" : "single_document"));
       }
       if (workspaceContext === "sales" && ownerUserId) {
         formData.set("owner_user_id", String(ownerUserId));
