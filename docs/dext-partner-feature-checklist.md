@@ -14,7 +14,7 @@ Checked 7 October 2026 against [Dext's UK partner pricing feature list](https://
 - [x] Extract supplier, date, invoice number, totals, tax and currency for review. [Extraction](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/shared/openaiExtraction.ts).
 - [x] Extract receipt/invoice line items. Exdox requests and stores line items; assess Dext-level grouping separately. [Extraction](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/shared/openaiExtraction.ts).
 - [ ] Automatic line-item grouping for posting. Exdox has extracted line items, but a comparable grouping and posting workflow was not established.
-- [ ] General smart split of mixed or multi-document submissions across channels. Exdox has one-document-per-page and auto-detect PDF splitting in a narrower Sales upload path. [Upload handler](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/handlers/processExpense.ts).
+- [ ] Automatically split a multi-document PDF into separate Cost or Sales records. Exdox has one-document-per-page and auto-detect PDF splitting for Sales web uploads, but not Costs. [Dext upload guide](https://help.dext.com/en/articles/106273-how-to-upload-costs-and-sales-documents-in-dext); [Exdox upload handler](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/handlers/processExpense.ts).
 - [x] Duplicate receipt checks and review signals. Exdox blocks exact duplicates and highlights likely repeats; a reviewer decides ambiguous matches. [API](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/shared/db.ts); [website](../src/App.tsx).
 - [ ] AI document detection across document types at Dext's advertised breadth. Exdox classifies/extracts receipts and invoices, but broader automatic document routing was not established.
 - [x] Secure document Vault. Exdox has an access-controlled Vault workspace and protected source retrieval. [Website](../src/App.tsx); [plans](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/shared/billing.ts).
@@ -25,6 +25,7 @@ Checked 7 October 2026 against [Dext's UK partner pricing feature list](https://
 ## Bookkeeping automation and integrations
 
 - [x] Supplier rules for recurring category, tax and payment-method defaults. Exdox applies saved rules before review. [API](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/shared/db.ts); [website](../src/App.tsx).
+- [ ] Dext Smart Split: supplier or customer rules that divide a transaction into fixed-amount or percentage line items with their own categories. Exdox supplier/customer rules set one category for the record; they do not allocate the total across categories. [Dext Smart Split guide](https://help.dext.com/en/articles/416726-how-to-use-smart-split-in-dext); [Exdox rule application](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/shared/db.ts).
 - [ ] Broad smart suggestions and automatic categorisation. Exdox has extraction, supplier defaults and review signals, but a comparable general suggestion engine was not established.
 - [x] Human approval of expenses and sales documents. Exdox has admin review, rejection and approval workflows. [Website](../src/App.tsx); [plan gates](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/shared/billing.ts).
 - [ ] Supplier-statement extraction and reconciliation against bills. No equivalent was found.
