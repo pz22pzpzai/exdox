@@ -1,5 +1,9 @@
 # Exdox website
 
+## Public Exdox vs Dext page (2026-10-07)
+
+`/compare/dext` is a public, indexable UK small-business comparison page, linked from the Product footer and sitemap. It compares the current five-user/250-document Exdox £15/month including VAT plan against Dext Business's public annual £290 excluding VAT option (equivalent £29/month including standard UK VAT, £348 billed upfront). It also notes the Exdox one-user/100-document £3/month including VAT plan. Feature rows distinguish Exdox's Xero/web-review workflow from Dext's broader integrations, statement tools, and included extraction credits. Dext pricing and plan claims were checked against `https://dext.com/uk/business/pricing` and `https://help.dext.com/en/articles/647776-dext-plans-for-businesses` on 2026-10-07; refresh competitor terms before changing or promoting the page. `src/App.tsx` owns the route, content, and SEO; `src/styles.css` owns the layout; `public/sitemap.xml` lists it. Keep the comparison fair, sourced, and explicit about VAT and annual versus monthly billing. The owner checks live deployment and the website after the source push. Never delete or move mobile signing keystores or signing details.
+
 ## Workspace trial countdown (2026-10-06)
 
 The signed-in dashboard shell shows a compact countdown immediately below its top bar for any workspace with a `billing.trialEndsAt` and an active trial, including older Stripe trials. It reads the current session's organisation billing end time, updates days/hours/minutes/seconds once per second, and stops at expiry. A plan-free trial keeps an ended notice and owner link to Billing; paid accounts do not show the banner. The owner checks live deployment after the website source push. Never delete or move app keystores or signing details.

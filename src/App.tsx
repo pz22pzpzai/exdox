@@ -481,7 +481,7 @@ function employeeRouteTitle(pathname: string) {
 }
 
 function isSignedInPublicPage(pathname: string) {
-  if (pathname === "/pricing" || pathname === "/account-deletion") {
+  if (pathname === "/pricing" || pathname === "/compare/dext" || pathname === "/account-deletion") {
     return true;
   }
   return pathname === "/platform"
@@ -552,6 +552,7 @@ function isPublicSeoPath(pathname: string) {
   return pathname === "/"
     || pathname === "/platform"
     || pathname === "/pricing"
+    || pathname === "/compare/dext"
     || pathname === "/faq"
     || pathname === "/company"
     || pathname === "/contact"
@@ -626,6 +627,21 @@ function buildSeoConfig(pathname: string, session: SessionState | null): SeoConf
           pageName: "Pricing",
           pageDescription:
             "Compare Exdox pricing for receipt capture, expense claims, supplier rules, document vault storage, and review workflows.",
+        }),
+      };
+    }
+    if (normalizedPath === "/compare/dext") {
+      return {
+        title: "Exdox vs Dext for a Small UK Business | Pricing and Features",
+        description:
+          "Compare Exdox and Dext Business for five users and 250 documents a month, with clear VAT and billing terms, workflow differences, and source links.",
+        canonicalPath: normalizedPath,
+        robots: "index,follow",
+        structuredData: buildPublicStructuredData({
+          path: normalizedPath,
+          pageName: "Exdox vs Dext for a small UK business",
+          pageDescription:
+            "A sourced comparison of Exdox and Dext Business pricing, allowances, and document workflows for a small UK business.",
         }),
       };
     }
@@ -10440,6 +10456,14 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
     );
   }
 
+  if (location.pathname === "/compare/dext") {
+    return (
+      <PublicLayout activePath="" session={session}>
+        <DextComparisonPage session={session} />
+      </PublicLayout>
+    );
+  }
+
   if (location.pathname === "/faq") {
     return (
       <PublicLayout activePath="/faq" session={session}>
@@ -10841,6 +10865,7 @@ function SiteFooterBlock() {
               <Link to="/">Home</Link>
               <Link to="/platform">Platform</Link>
               <Link to="/pricing">Pricing</Link>
+              <Link to="/compare/dext">Exdox vs Dext</Link>
             </div>
             <div>
               <strong>Support</strong>
@@ -10899,6 +10924,86 @@ function SiteFooterBlock() {
         </div>
       ) : null}
     </>
+  );
+}
+
+function DextComparisonPage({ session }: { session: SessionState | null }) {
+  const trialRoute = session ? signedInPublicPrimaryRoute(session) : "/register";
+  return (
+    <div className="comparison-page">
+      <section className="comparison-hero">
+        <p className="section-kicker">Small business comparison</p>
+        <h1>Exdox vs Dext: which fits your UK business?</h1>
+        <p>Both help you capture and review receipts and invoices. The better fit depends on your team size, accounting software, and whether you need Dext's wider automation tools.</p>
+        <div className="hero-actions">
+          <Link className="public-button" to={trialRoute}>{session ? signedInPublicPrimaryHeroLabel(session) : "Try Exdox free for 14 days"}</Link>
+          <Link className="secondary-inline-link" to="/pricing">See Exdox pricing</Link>
+        </div>
+      </section>
+
+      <section className="comparison-section" aria-labelledby="comparison-price-heading">
+        <div className="comparison-section-heading">
+          <p className="section-kicker">Like-for-like allowance</p>
+          <h2 id="comparison-price-heading">Five users and 250 documents a month</h2>
+          <p>The published prices below have different billing terms. Check the full charge and the features you need before choosing.</p>
+        </div>
+        <div className="comparison-price-grid">
+          <article className="comparison-price-card comparison-price-card-exdox">
+            <span>Exdox</span>
+            <strong>£15<span> / month</span></strong>
+            <p>Includes VAT. Billed monthly for five users and 250 documents per month.</p>
+          </article>
+          <article className="comparison-price-card">
+            <span>Dext Business</span>
+            <strong>£29<span> / month equivalent with UK VAT</span></strong>
+            <p>Dext advertises £24.17 per month equivalent excluding VAT on annual billing. £290 excluding VAT is billed upfront for the year; at 20% VAT that is £348.</p>
+          </article>
+        </div>
+        <p className="comparison-price-note">This compares Exdox's monthly plan with Dext's advertised annual option, so the payment commitment differs. Dext's monthly-billed price may differ. Both offer a 14-day trial without card details.</p>
+      </section>
+
+      <section className="comparison-section" aria-labelledby="comparison-details-heading">
+        <div className="comparison-section-heading">
+          <p className="section-kicker">What each plan does</p>
+          <h2 id="comparison-details-heading">Choose around your actual workflow</h2>
+        </div>
+        <div className="comparison-table-wrap">
+          <table className="comparison-table">
+            <thead><tr><th scope="col">Need</th><th scope="col">Exdox</th><th scope="col">Dext Business</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Receipt and invoice capture</th><td>Mobile capture and a web workspace for reviewing Costs and Sales.</td><td>Mobile, email and desktop capture with automatic extraction.</td></tr>
+              <tr><th scope="row">Expense claims and review</th><td>Claims, approvals and reimbursement summaries in the web workspace.</td><td>Expense submission and approval tools.</td></tr>
+              <tr><th scope="row">Accounting connections</th><td>Xero connection through the Exdox web workspace. No QuickBooks or Sage connection is currently offered.</td><td>Xero, QuickBooks, Sage and a wider range of accounting integrations.</td></tr>
+              <tr><th scope="row">Statement extraction</th><td>No customer-facing bank or supplier statement extraction in the standard Exdox workflow.</td><td>The starting plan includes 10 bank-statement sheets and 5 supplier statements per month; extra usage may cost more.</td></tr>
+              <tr><th scope="row">Detailed line items</th><td>Shows extracted receipt or invoice line items for review and CSV export when present.</td><td>Includes 5 line-item extractions per month, with paid options for more.</td></tr>
+              <tr><th scope="row">Document storage</th><td>Vault is included in the current Exdox feature set.</td><td>Core document storage is included; Dext advertises its separate Vault add-on with 100 MB free storage.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="comparison-section comparison-choice" aria-labelledby="comparison-choice-heading">
+        <div className="comparison-section-heading">
+          <p className="section-kicker">Which should you try?</p>
+          <h2 id="comparison-choice-heading">Start with the jobs you do every week</h2>
+        </div>
+        <div className="comparison-choice-grid">
+          <article><h3>Exdox may fit if...</h3><p>You want a lower monthly entry price for a small team, with mobile capture, web review, claims, approvals, Vault and Xero handoff in one workspace.</p></article>
+          <article><h3>Dext may fit if...</h3><p>You need a wider choice of accounting integrations, supplier or bank-statement extraction, or more established bookkeeping automation.</p></article>
+        </div>
+        <p>Working alone? Exdox also has a one-user, 100-document plan at £3 per month including VAT. The directly purchased Dext Business plan starts at five users; Dext's separate practice plans are outside this comparison.</p>
+      </section>
+
+      <section className="comparison-cta">
+        <div><p className="section-kicker">See the workflow yourself</p><h2>Try a real receipt in Exdox.</h2><p>Start a 14-day trial without a card, then see how capture and review work for your business.</p></div>
+        <Link className="public-button" to={trialRoute}>{session ? signedInPublicPrimaryHeroLabel(session) : "Start free trial"}</Link>
+      </section>
+
+      <aside className="comparison-sources">
+        <h2>How this comparison was checked</h2>
+        <p>Checked 7 October 2026. Exdox prices and features reflect the current website and product source. Dext details are from its public UK <a href="https://dext.com/uk/business/pricing" target="_blank" rel="noopener noreferrer">Business pricing page</a> and <a href="https://help.dext.com/en/articles/647776-dext-plans-for-businesses" target="_blank" rel="noopener noreferrer">Business plan guide</a>. The VAT-inclusive Dext figure applies the <a href="https://www.gov.uk/vat-rates" target="_blank" rel="noopener noreferrer">UK standard 20% VAT rate</a> to Dext's advertised price. Plans and prices can change. Dext is a trademark of its owner; this is an independent comparison by Exdox.</p>
+      </aside>
+    </div>
   );
 }
 
