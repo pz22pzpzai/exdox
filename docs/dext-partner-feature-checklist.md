@@ -9,7 +9,7 @@ The categories identify which **client code** would need changing to deliver or 
 ## Website
 
 - [x] Web upload of receipts and invoices. Exdox has Costs and Sales upload and review. [Website](../src/App.tsx); [API](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/handlers/processExpense.ts).
-- [ ] Email-forwarded purchase receipts and supplier bills to a dedicated inbox. Exdox has a Sales inbound token path, but that is narrower than Dext's general expense and supplier-invoice email capture. [Sales inbound](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/handlers/salesInbound.ts).
+- [ ] Email-forwarded purchase receipts and supplier bills to a dedicated inbox. The private Costs address and SES processing source is pushed, but Cloudflare MX and SES verification for `costs.exdox.co.uk` and a representative delivery check remain. The website address panel is held until routing is ready. [Costs receiver](https://github.com/pz22pzpzai/exdox-server/blob/main/src/aws/handlers/costsEmailReceive.ts).
 - [ ] WhatsApp document submission. No equivalent was found in Exdox source.
 - [ ] Automatic invoice fetch from authorised suppliers. No equivalent was found.
 - [x] Automatic line-item grouping for posting. Supplier and customer rules can group extracted lines by description (keeping tax rates separate) or tax rate, apply named description groups and categories, and send reviewed grouped allocations to Xero. Check OCR amounts and grouped lines in Review before publishing.
