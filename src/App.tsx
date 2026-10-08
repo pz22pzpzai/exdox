@@ -36,6 +36,7 @@ import {
   fetchSession,
   getClaim,
   getClaimEvidenceAssetUrl,
+  getCostsEmail,
   getTeam,
   getReceipt,
   getReceiptAssetUrl,
@@ -61,6 +62,7 @@ import {
   assignTeamMemberDepartment,
   removeTeamMember,
   removeRule,
+  rotateCostsEmail,
   removeCompanyCard,
   removeCompanyCardException,
   saveStoredSession,
@@ -94,6 +96,7 @@ import {
   syncXeroCustomers,
   publishToXero,
   type TwoFactorStatus,
+  type CostsEmailSubmission,
 } from "./api";
 import { clearWorkspaceCachesForUser, readWorkspaceCache, workspaceCacheScope, writeWorkspaceCache } from "./workspaceCache";
 import { MileageRoutePicker } from "./MileageRoutePicker";
@@ -4483,6 +4486,10 @@ function InboxPage({
   const [departmentFilter, setDepartmentFilter] = useState("All");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest_total" | "lowest_total" | "lowest_confidence">("newest");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [costsEmail, setCostsEmail] = useState<string | null>(null);
+  const [costsEmailSubmissions, setCostsEmailSubmissions] = useState<CostsEmailSubmission[]>([]);
+  const [costsEmailBusy, setCostsEmailBusy] = useState(false);
+  const [costsEmailError, setCostsEmailError] = useState<string | null>(null);
   const [markingPaymentsPaid, setMarkingPaymentsPaid] = useState(false);
   const [filtersReady, setFiltersReady] = useState(false);
   const [selectedSalesIds, setSelectedSalesIds] = useState<Set<number>>(new Set());
@@ -4492,6 +4499,20 @@ function InboxPage({
   const hydratedSearchRef = useRef<string | null>(null);
   const deferredQuery = useDeferredValue(query);
   const vatTrackingEnabled = isVatTrackingEnabled(settings);
+
+  useEffect(() => {
+    if (basePath !== "/costs" || !sessionToken) return;
+    let active = true;
+    getCostsEmail(sessionToken).then((result) => {
+      if (!active) return;
+      setCostsEmail(result.address.address);
+      setCostsEmailSubmissions(result.submissions);
+      setCostsEmailError(null);
+    }).catch((error) => {
+      if (active) setCostsEmailError(error instanceof Error ? error.message : "Could not load the email address.");
+    });
+    return () => { active = false; };
+  }, [basePath, sessionToken]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -4835,6 +4856,51 @@ function InboxPage({
             </select>
           </label>
           <p>Business admins can upload sales documents on behalf of an active team member. Ownership controls which employee can see the document.</p>
+        </section>
+      ) : null}
+
+      {basePath === "/costs" ? (
+        <section className="panel" aria-label="Email receipts and supplier bills">
+          <h3>Email receipts and supplier bills</h3>
+          <p>Forward PDFs or receipt images to your private Costs address. Each attachment enters Costs Review for you to check.</p>
+          {costsEmail ? (
+            <>
+              <div className="toolbar">
+                <strong style={{ overflowWrap: "anywhere" }}>{costsEmail}</strong>
+                <button className="secondary-action" type="button" onClick={() => void navigator.clipboard.writeText(costsEmail).then(() => setFeedback("Costs email address copied.")).catch(() => setFeedback("Could not copy the email address."))}>Copy address</button>
+                <button className="secondary-action" type="button" disabled={costsEmailBusy} onClick={async () => {
+                  if (!sessionToken) return;
+                  setCostsEmailBusy(true);
+                  try {
+                    const result = await getCostsEmail(sessionToken);
+                    setCostsEmailSubmissions(result.submissions);
+                    setFeedback("Email submissions refreshed.");
+                  } catch (error) { setFeedback(error instanceof Error ? error.message : "Could not refresh email submissions."); }
+                  finally { setCostsEmailBusy(false); }
+                }}>Refresh submissions</button>
+                <button className="secondary-action" type="button" disabled={costsEmailBusy} onClick={async () => {
+                  if (!sessionToken || !window.confirm("Replace your private Costs email address? The old address will stop accepting documents.")) return;
+                  setCostsEmailBusy(true);
+                  try {
+                    const result = await rotateCostsEmail(sessionToken);
+                    setCostsEmail(result.address.address);
+                    setFeedback("Costs email address replaced. Update any forwarding rules that used the old address.");
+                  } catch (error) { setFeedback(error instanceof Error ? error.message : "Could not replace the address."); }
+                  finally { setCostsEmailBusy(false); }
+                }}>Replace address</button>
+              </div>
+              <p className="field-hint">Supported attachments: PDF, JPG, PNG and WebP, up to 15 MB each and 30 MB per email. Your document allowance applies.</p>
+            </>
+          ) : <p>{costsEmailError ?? "Loading your private Costs address..."}</p>}
+          {costsEmailSubmissions.length ? (
+            <details><summary>Recent email submissions</summary><ul>
+              {costsEmailSubmissions.slice(0, 10).map((submission) => (
+                <li key={submission.id}>{new Date(submission.receivedAt).toLocaleString()}: {submission.subject} — {submission.status}
+                  {submission.failures.length ? ` (${submission.failures.join("; ")})` : ""}
+                </li>
+              ))}
+            </ul></details>
+          ) : null}
         </section>
       ) : null}
 

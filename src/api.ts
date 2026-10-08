@@ -862,6 +862,23 @@ export async function listRules(token: string, workspaceContext: "cost" | "sales
   return response.rules;
 }
 
+export type CostsEmailSubmission = {
+  id: string;
+  receivedAt: string;
+  subject: string;
+  status: 'completed' | 'partial' | 'duplicate' | 'failed';
+  receiptIds: number[];
+  failures: string[];
+};
+
+export async function getCostsEmail(token: string): Promise<{ address: { address: string }; submissions: CostsEmailSubmission[] }> {
+  return apiFetch('/costs-email', token);
+}
+
+export async function rotateCostsEmail(token: string): Promise<{ address: { address: string } }> {
+  return apiFetch('/costs-email/rotate', token, { method: 'POST' });
+}
+
 export async function saveRule(
   token: string,
   payload: Partial<SupplierRule> & Pick<SupplierRule, "supplierMatchText" | "category" | "taxRate" | "paymentMethod" | "isActive">,
