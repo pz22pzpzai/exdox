@@ -75,7 +75,7 @@ export type ReceiptRecord = {
     total: number | null;
     taxAmount: number | null;
   }>;
-  allocationLines?: Array<{ category: string; netAmount: number }>;
+  allocationLines?: Array<{ category: string; netAmount: number; description?: string; taxRateApplied?: string | null }>;
   taxBreakdown?: Array<{
     label: string;
     rate: number | null;
@@ -158,6 +158,8 @@ export type SupplierRule = {
   isActive: boolean;
   splitMode?: "none" | "percentage" | "fixed";
   splitAllocations?: Array<{ category: string; value: number }>;
+  lineItemGroupMode?: "none" | "description" | "tax";
+  lineItemGroups?: Array<{ name: string; matchText: string; category: string }>;
 };
 
 export type CompanyCard = {

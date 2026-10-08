@@ -5686,6 +5686,9 @@ function DocumentWorkspacePage(props: {
             {!receipt.allocationLines?.length ? <p className="panel-copy">No split has been applied. Add lines here if this document needs separate categories.</p> : null}
             {(receipt.allocationLines ?? []).map((allocation, index) => (
               <div className="form-grid" key={index}>
+                <label>Description
+                  <input value={allocation.description ?? ""} disabled={receiptPublished} onChange={(event) => setReceipt({ ...receipt, allocationLines: (receipt.allocationLines ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, description: event.target.value } : item) })} />
+                </label>
                 <label>Category
                   <select value={allocation.category} disabled={receiptPublished} onChange={(event) => setReceipt({ ...receipt, allocationLines: (receipt.allocationLines ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, category: event.target.value } : item) })}>
                     {[...new Set([allocation.category, ...categoryOptions])].map((category) => <option key={category} value={category}>{category}</option>)}
@@ -5693,6 +5696,12 @@ function DocumentWorkspacePage(props: {
                 </label>
                 <label>Net amount
                   <input type="number" min="0.01" step="0.01" value={allocation.netAmount} disabled={receiptPublished} onChange={(event) => setReceipt({ ...receipt, allocationLines: (receipt.allocationLines ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, netAmount: Number(event.target.value) } : item) })} />
+                </label>
+                <label>Tax rate
+                  <select value={allocation.taxRateApplied ?? ""} disabled={receiptPublished} onChange={(event) => setReceipt({ ...receipt, allocationLines: (receipt.allocationLines ?? []).map((item, itemIndex) => itemIndex === index ? { ...item, taxRateApplied: event.target.value || null } : item) })}>
+                    <option value="">Use document rate</option>
+                    {[...new Set([allocation.taxRateApplied, ...countryTaxChoices(receiptCountry)].filter(Boolean))].map((rate) => <option key={rate} value={rate!}>{rate}</option>)}
+                  </select>
                 </label>
                 <button className="secondary-action" type="button" disabled={receiptPublished} onClick={() => setReceipt({ ...receipt, allocationLines: (receipt.allocationLines ?? []).filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
               </div>
@@ -7395,6 +7404,8 @@ function RulesPage(props: {
     isActive: true,
     splitMode: "none" as NonNullable<SupplierRule["splitMode"]>,
     splitAllocations: [] as NonNullable<SupplierRule["splitAllocations"]>,
+    lineItemGroupMode: "none" as NonNullable<SupplierRule["lineItemGroupMode"]>,
+    lineItemGroups: [] as NonNullable<SupplierRule["lineItemGroups"]>,
   });
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -7502,7 +7513,7 @@ function RulesPage(props: {
           <h3>Smart Split</h3>
           <p className="panel-copy">Divide a matching document's net amount across categories. You can check the amounts on each document before approval.</p>
           <label>Split method
-            <select value={draft.splitMode} onChange={(event) => setDraft({ ...draft, splitMode: event.target.value as NonNullable<SupplierRule["splitMode"]>, splitAllocations: [] })}>
+            <select value={draft.splitMode} onChange={(event) => setDraft({ ...draft, splitMode: event.target.value as NonNullable<SupplierRule["splitMode"]>, splitAllocations: [], lineItemGroupMode: "none", lineItemGroups: [] })}>
               <option value="none">No split</option>
               <option value="percentage">Percentages</option>
               <option value="fixed">Fixed net amounts</option>
@@ -7523,6 +7534,26 @@ function RulesPage(props: {
             </div>
           ))}
           {draft.splitMode !== "none" ? <button className="secondary-action" type="button" onClick={() => setDraft({ ...draft, splitAllocations: [...draft.splitAllocations, { category: "", value: 0 }] })}>Add allocation</button> : null}
+        </div>
+        <div className="workspace-detail-section">
+          <h3>Line-item grouping</h3>
+          <p className="panel-copy">Group extracted lines by description or tax before review and Xero publishing. Exdox only applies a group when extracted amounts reconcile to the document net amount.</p>
+          <label>Group lines by
+            <select value={draft.lineItemGroupMode} onChange={(event) => setDraft({ ...draft, lineItemGroupMode: event.target.value as NonNullable<SupplierRule["lineItemGroupMode"]>, lineItemGroups: event.target.value === "description" ? draft.lineItemGroups : [], splitMode: "none", splitAllocations: [] })}>
+              <option value="none">No grouping</option>
+              <option value="description">Description (tax rates kept separate)</option>
+              <option value="tax">Tax percentage</option>
+            </select>
+          </label>
+          {draft.lineItemGroupMode === "description" && draft.lineItemGroups.map((group, index) => (
+            <div className="form-grid" key={index}>
+              <label>Group name<input value={group.name} onChange={(event) => setDraft({ ...draft, lineItemGroups: draft.lineItemGroups.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item) })} /></label>
+              <label>Description contains<input value={group.matchText} onChange={(event) => setDraft({ ...draft, lineItemGroups: draft.lineItemGroups.map((item, itemIndex) => itemIndex === index ? { ...item, matchText: event.target.value } : item) })} /></label>
+              <label>Category<select value={group.category} onChange={(event) => setDraft({ ...draft, lineItemGroups: draft.lineItemGroups.map((item, itemIndex) => itemIndex === index ? { ...item, category: event.target.value } : item) })}><option value="">Choose category</option>{categoryChoices.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+              <button className="secondary-action" type="button" onClick={() => setDraft({ ...draft, lineItemGroups: draft.lineItemGroups.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button>
+            </div>
+          ))}
+          {draft.lineItemGroupMode === "description" ? <button className="secondary-action" type="button" onClick={() => setDraft({ ...draft, lineItemGroups: [...draft.lineItemGroups, { name: "", matchText: "", category: "" }] })}>Add description group</button> : null}
         </div>
         <div className="toolbar">
           <button
@@ -7550,6 +7581,8 @@ function RulesPage(props: {
                   isActive: true,
                   splitMode: "none",
                   splitAllocations: [],
+                  lineItemGroupMode: "none",
+                  lineItemGroups: [],
                 });
                 setFeedback(draft.id ? "Rule updated." : "Rule created.");
               } catch (saveError) {
@@ -7577,6 +7610,8 @@ function RulesPage(props: {
                   isActive: true,
                   splitMode: "none",
                   splitAllocations: [],
+                  lineItemGroupMode: "none",
+                  lineItemGroups: [],
                 })
               }
             >
@@ -7639,7 +7674,7 @@ function RulesPage(props: {
                 <div>
                   <strong>IF {subjectLabel} contains "{rule.supplierMatchText}"</strong>
                   <p>
-                    Category = {rule.category} | Tax Rate = {rule.taxRate} | Payment Method = {rule.paymentMethod} | {rule.splitMode && rule.splitMode !== "none" ? `Smart Split: ${rule.splitMode} (${rule.splitAllocations?.length ?? 0} allocations) | ` : ""}{rule.isActive ? "Active" : "Inactive"}
+                    Category = {rule.category} | Tax Rate = {rule.taxRate} | Payment Method = {rule.paymentMethod} | {rule.splitMode && rule.splitMode !== "none" ? `Smart Split: ${rule.splitMode} (${rule.splitAllocations?.length ?? 0} allocations) | ` : ""}{rule.lineItemGroupMode && rule.lineItemGroupMode !== "none" ? `Line grouping: ${rule.lineItemGroupMode.replaceAll("_", " ")} | ` : ""}{rule.isActive ? "Active" : "Inactive"}
                   </p>
                 </div>
                 <div className="toolbar">
@@ -7658,6 +7693,8 @@ function RulesPage(props: {
                         isActive: rule.isActive,
                         splitMode: rule.splitMode ?? "none",
                         splitAllocations: rule.splitAllocations ?? [],
+                        lineItemGroupMode: rule.lineItemGroupMode ?? "none",
+                        lineItemGroups: rule.lineItemGroups ?? [],
                       })
                     }
                   >
@@ -7685,6 +7722,8 @@ function RulesPage(props: {
                             isActive: true,
                             splitMode: "none",
                             splitAllocations: [],
+                            lineItemGroupMode: "none",
+                            lineItemGroups: [],
                           });
                         }
                       } catch (deleteError) {
