@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { authenticateWithGoogle, confirmEmailWithToken, loginWithEmail, registerWithEmail, requestPasswordReset, resetPasswordWithToken, resendConfirmationEmail, saveStoredSession, submitContactForm } from './api';
 import { GoogleSignInButton } from './GoogleSignInButton';
+import { GermanPricing } from './GermanPricing';
 import { cookieConsentStorageKey, setGoogleAnalyticsConsent, type CookieConsentChoice } from './googleAnalytics';
 import { countries, selectCountry, useSelectedCountry, type Country } from './region';
 import type { SessionState } from './types';
@@ -199,7 +200,6 @@ function Platform({ session }: { session: SessionState | null }) { return <div c
   <section className="workflow-band"><div className="section-heading"><div><p className="section-kicker">Ablauf</p><h2>Von der Erfassung bis zur Veröffentlichung – in einem Arbeitsbereich</h2></div><p>Exdox unterstützt die tägliche Buchhaltungsarbeit: Belege sammeln, Daten auslesen, Ausnahmen prüfen, Originaldateien aufbewahren und Freigaben im selben synchronisierten Arbeitsbereich weiterführen.</p></div><div className="process-grid">{platformProcess.map(([step, title, detail]) => <article className="process-card" key={step}><span>{step}</span><strong>{title}</strong><p>{detail}</p></article>)}</div></section>
   <section className="workflow-band"><div className="section-heading"><div><p className="section-kicker">Funktionsumfang</p><h2>Auf den Arbeitsablauf ausgerichtet, den Finanzteams von Dext kennen</h2></div><p>Erfassung, Prüfung, Regeln, Freigaben, Archiv und Exporte stehen im selben Exdox-Web-Arbeitsbereich zur Verfügung, der sich mit der App synchronisiert.</p></div><div className="workflow-grid">{platformWorkflows.map(([title, items]) => <article className="workflow-card" key={title}><strong>{title}</strong><ul>{items.map(item => <li key={item}>{item}</li>)}</ul></article>)}</div></section>
 </div>; }
-function Pricing() { return <Panel eyebrow="Preise" title="14 Tage kostenlos testen. Danach bewusst entscheiden."><p>Für einen neuen Arbeitsbereich brauchen Sie weder einen Tarif noch eine Karte. Nach 14 Tagen wählen Sie bei Bedarf im Bereich „Abrechnung“ einen Tarif und bezahlen erst dann.</p><Cards items={[{title:'1 Nutzer · 100 Dokumente',text:'Für einen neuen Arbeitsbereich mit Land Deutschland: 3 € pro Monat. Xero ist bei diesem Tarif eine gesonderte kostenpflichtige Option.'},{title:'5 Nutzer · 250 Dokumente',text:'15 £ pro Monat inklusive britischer Umsatzsteuer. Die Zahlung erfolgt in GBP; Ihre Bank kann Währungsumrechnung und Gebühren berechnen.'},{title:'Größere Teams',text:'Weitere Nutzer- und Dokumentkontingente sind im Arbeitsbereich verfügbar. Prüfen Sie den tatsächlichen Preis und die Abrechnungswährung vor der Zahlung.'}]} /><p>Preise und Verfügbarkeit können sich ändern. Es gelten die Angaben bei der Auswahl und im sicheren Stripe-Bezahlvorgang. Die Steuersituation Ihres Unternehmens prüfen Sie bitte selbst.</p><Link className="de-button" to={de('/register')}>Kostenlose Testphase starten</Link></Panel>; }
 const questions = [
   ['Brauche ich für die Testphase eine Karte?', 'Nein. Ein neuer Unternehmens- oder Selbstständigen-Arbeitsbereich startet mit einer 14-tägigen Testphase ohne Karte und ohne gewählten Tarif.'],
   ['Wird nach 14 Tagen automatisch abgebucht?', 'Nein. Erst wenn der Inhaber einen Tarif auswählt und die erste Zahlung abschließt, beginnt ein kostenpflichtiges Abonnement.'],
@@ -291,7 +291,7 @@ function Legal({ path }: { path: string }) {
 export function GermanSite({ session }: { session: SessionState | null }) {
   const location=useLocation(); const raw=location.pathname.slice(base.length); const path=raw===''||raw==='/'?'/':raw.replace(/\/+$/,'');
   let content:ReactNode;
-  if(path==='/') content=<Home session={session}/>; else if(path==='/platform') content=<Platform session={session}/>; else if(path==='/pricing') content=<Pricing/>; else if(path==='/faq') content=<Faq/>; else if(path==='/company') content=<Company/>; else if(path==='/contact') content=<Contact/>;
+  if(path==='/') content=<Home session={session}/>; else if(path==='/platform') content=<Platform session={session}/>; else if(path==='/pricing') content=<GermanPricing session={session}/>; else if(path==='/faq') content=<Faq/>; else if(path==='/company') content=<Company/>; else if(path==='/contact') content=<Contact/>;
   else if(path==='/register'||path==='/login'||path==='/confirm-email'||path==='/forgot-password'||path==='/reset-password') content=<Auth key={path} kind={path==='/register'?'register':path==='/login'?'login':path==='/confirm-email'?'confirm':path==='/forgot-password'?'forgot':'reset'}/>;
   else if(path==='/compare/dext') content=<Comparison/>;
   else if(legal.some(([url])=>url===path)) content=<Legal path={path}/>;

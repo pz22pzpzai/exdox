@@ -9,6 +9,8 @@
 .de-site .de-platform .capability-card{color:#fff}
 .de-site .de-platform .capability-card span{color:#b8c4d8}
 .de-site .de-platform .receipt-story + .product-journey{border-top:1px solid #e2e9f0}
+.de-site .de-pricing .public-button{color:#fff;text-decoration:none}
+.de-site .de-pricing h1{margin:0 0 20px;font-family:"Space Grotesk",sans-serif;font-size:clamp(2rem,3.4vw,2.8rem);letter-spacing:-.035em;line-height:1.08}
 .de-brand-stack{display:flex;align-items:center;gap:12px}.de-brand-stack .public-security-badge{display:inline-flex}.de-brand-stack .public-security-badge img{width:76.5px;height:14.25px}
 .de-footer{display:block}.de-footer-main{max-width:1200px;margin:auto;display:flex;justify-content:space-between;gap:48px;flex-wrap:wrap}.de-footer-brand{max-width:360px}.de-footer-brand>strong{font-size:1.35rem}.de-footer-brand p{line-height:1.6}.de-socials{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.de-socials a{font-size:.8rem}.de-footer-columns{display:flex;gap:50px;flex-wrap:wrap}.de-footer-columns nav{display:flex;flex-direction:column;gap:10px;min-width:135px}.de-footer-columns nav strong{margin-bottom:5px}.de-footer-company,.de-footer-bottom{max-width:1200px;margin:28px auto 0;padding-top:20px;border-top:1px solid #ffffff35;display:flex;gap:20px;flex-wrap:wrap;align-items:center}.de-footer-company address{font-style:normal}.de-footer-bottom{justify-content:space-between;font-size:.9rem;color:#d9ebff}
 @media(max-width:850px){.de-brand-stack{width:100%;justify-content:space-between}.de-footer-columns{gap:30px}}

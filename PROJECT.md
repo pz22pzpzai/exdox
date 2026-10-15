@@ -1,5 +1,9 @@
 # Exdox website
 
+## German pricing parity (2026-10-15)
+
+The unlinked, noindex `/de/pricing` review page now mirrors the English public pricing layout and its 31-step one-to-200-user allowance slider. `src/GermanPricing.tsx` holds the German copy and the same public price and capacity values as `PricingSection` in `src/App.tsx`. The one-user price follows the selected country's billing currency; larger plans bill in GBP and show a local reference-rate estimate when available. The German page explains conversion and Stripe's final charge, includes the same feature, trial, Xero, and bespoke enquiry sections, and links to German signup/contact routes. The sole-trader audience query is retained on the trial link. The English pricing component was not edited. Build and local slider, link, and overflow checks passed; the owner checks live deployment. Never delete or move mobile app keystores or signing details.
+
 ## German platform parity (2026-10-15)
 
 The unlinked, noindex `/de/platform` review page now mirrors `/platform` in section order and layout: introductory copy, six-step receipt walkthrough, three-step mileage walkthrough, nine capability cards, six supported document cards, five process steps, and three detailed workflow cards. All surrounding copy is German; the existing product screenshots are reused, and the capability pricing link and both trial buttons stay within `/de/` for signed-out visitors. `src/GermanSite.tsx` and `src/german.css` own the change; `src/App.tsx` and the English page were not edited. The website production build passed, and the local preview showed all sections and images without horizontal overflow. The owner checks the live website and deployment after the GitHub push. Never delete or move app keystores or signing details.
