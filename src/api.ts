@@ -453,6 +453,7 @@ export async function changeTwoFactor(token: string, input: {
 }
 
 export async function registerWithEmail(input: {
+  locale?: 'de';
   country?: import('./region').Country;
   accountType?: "owner" | "sole_trader" | "employee";
   email: string;
@@ -529,14 +530,14 @@ export async function confirmEmailWithToken(input: { email: string; token: strin
 
 }
 
-export async function resendConfirmationEmail(input: { email: string }): Promise<{ message: string; delivered?: boolean }> {
+export async function resendConfirmationEmail(input: { email: string; locale?: 'de' }): Promise<{ message: string; delivered?: boolean }> {
   return apiFetch("/confirm-email/resend", "", {
     method: "POST",
     body: JSON.stringify(input),
   });
 }
 
-export async function requestPasswordReset(input: { email: string }): Promise<{ message: string; delivered?: boolean }> {
+export async function requestPasswordReset(input: { email: string; locale?: 'de' }): Promise<{ message: string; delivered?: boolean }> {
   return apiFetch("/password-reset/request", "", {
     method: "POST",
     body: JSON.stringify(input),

@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /login
+Disallow: /de
 Disallow: /register
 Disallow: /billing
 Disallow: /dropbox

@@ -11,6 +11,7 @@ import {
 } from "react-router-dom";
 import AccountingPage from "./AccountingPage";
 import PublicAccountingInvoice from "./PublicAccountingInvoice";
+import { GermanSite } from "./GermanSite";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
 import {
@@ -1108,6 +1109,16 @@ export function App() {
         </div>
       </>
     );
+  }
+
+  if (location.pathname === "/confirm-email" && window.localStorage.getItem("exdox-preferred-language") === "de") {
+    return <Navigate to={`/de/confirm-email${location.search}`} replace />;
+  }
+  if (location.pathname === "/reset-password" && window.localStorage.getItem("exdox-preferred-language") === "de") {
+    return <Navigate to={`/de/reset-password${location.search}`} replace />;
+  }
+  if (location.pathname === "/de" || location.pathname.startsWith("/de/")) {
+    return <GermanSite session={session} />;
   }
 
   if (session && location.pathname === "/confirm-email") {

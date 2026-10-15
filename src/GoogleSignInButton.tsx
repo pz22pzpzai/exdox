@@ -29,10 +29,11 @@ function loadGoogleScript() {
   return scriptPromise;
 }
 
-export function GoogleSignInButton({ onCredential, text = 'continue_with', disabled = false }: {
+export function GoogleSignInButton({ onCredential, text = 'continue_with', disabled = false, supportText = 'Use the same Google account on the website and app.' }: {
   onCredential: (credential: string) => void;
   text?: 'continue_with' | 'signin_with' | 'signup_with';
   disabled?: boolean;
+  supportText?: string;
 }) {
   const target = useRef<HTMLDivElement>(null);
   const callback = useRef(onCredential);
@@ -67,5 +68,5 @@ export function GoogleSignInButton({ onCredential, text = 'continue_with', disab
   }, [clientId, text]);
 
   if (!clientId) return null;
-  return <div className={`google-sign-in${disabled ? ' google-sign-in-disabled' : ''}`}><div className="google-sign-in-control" ref={target} style={disabled ? { pointerEvents: 'none' } : undefined} /><span className="muted-copy">Use the same Google account on the website and app.</span>{error ? <div className="error-banner">{error}</div> : null}</div>;
+  return <div className={`google-sign-in${disabled ? ' google-sign-in-disabled' : ''}`}><div className="google-sign-in-control" ref={target} style={disabled ? { pointerEvents: 'none' } : undefined} /><span className="muted-copy">{supportText}</span>{error ? <div className="error-banner">{error}</div> : null}</div>;
 }
