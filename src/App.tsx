@@ -2129,7 +2129,7 @@ function DashboardShell(props: {
               {isRouteAllowed(props.session, "/costs") ? (
                 <Route
                   path="/costs/mileage/:id"
-                  element={<MileageCostReviewPage sessionToken={props.session.token} settings={props.store.settings} loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} onStatusChange={props.onClaimStatusChange} onSave={props.onClaimSave} onDelete={props.onClaimDelete} records={props.store.costs} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
+                  element={<MileageCostReviewPage sessionToken={props.session.token} settings={props.store.settings} loadClaim={props.loadClaim} loadClaimEvidenceAsset={props.loadClaimEvidenceAsset} onStatusChange={props.onClaimStatusChange} onSave={props.onClaimSave} onDelete={props.onClaimDelete} onReimbursementsExported={props.onReimbursementsExported} records={props.store.costs} isBusinessAdmin={businessAdmin} canUseApprovalWorkflows={approvalWorkflowsEnabled} />}
                 />
               ) : null}
               {isRouteAllowed(props.session, "/costs") ? (
@@ -5145,11 +5145,13 @@ function RecycleBinPage({ sessionToken, onRestore }: { sessionToken: string; onR
 function MileageCostReviewPage(props: {
   sessionToken: string;
   settings: OrganisationSettings | null;
+  isBusinessAdmin: boolean;
   loadClaim: (id: number) => Promise<{ claim: ClaimRecord; receipts: ReceiptRecord[]; evidence?: import("./types").ClaimEvidence[] }>;
   loadClaimEvidenceAsset: (claimId: number, evidenceId: string) => Promise<string>;
   onStatusChange: (id: number, status: ClaimRecord["status"]) => Promise<void>;
   onSave: (id: number, payload: { name?: string; description?: string | null; currency?: string; startPostcode?: string; endPostcode?: string; totalMiles?: number; mileageRate?: number }) => Promise<ClaimRecord>;
   onDelete: (id: number) => Promise<void>;
+  onReimbursementsExported: () => Promise<void>;
   records: ReceiptRecord[];
   canUseApprovalWorkflows: boolean;
 }) {
@@ -5165,6 +5167,8 @@ function MileageCostReviewPage(props: {
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [postApprovePrompt, setPostApprovePrompt] = useState<null | { nextRecord: ReceiptRecord | null }>(null);
+  const [reimbursementExporting, setReimbursementExporting] = useState(false);
+  const [reimbursementExportError, setReimbursementExportError] = useState<string | null>(null);
   const xeroConnected = useXeroConnected(props.sessionToken);
   const imageZoomStageRef = useRef<HTMLDivElement | null>(null);
   const imagePanStartRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
@@ -5238,7 +5242,7 @@ function MileageCostReviewPage(props: {
     try {
       await props.onStatusChange(claim.id, status);
       setClaim((current) => current ? { ...current, status } : current);
-      setFeedback(status === "approved" ? "Mileage cost approved and moved out of review." : status === "published" ? "Mileage cost marked as published in Exdox." : status === "payment_processing" ? "Mileage cost added to payment processing." : status === "paid" ? "Mileage cost marked as paid and added to Reports." : "Mileage cost returned for correction.");
+      setFeedback(status === "approved" ? "Mileage cost approved and moved out of review." : status === "published" ? "Mileage cost marked as published in Exdox." : status === "payment_processing" ? "Mileage cost added to payment processing." : status === "paid" ? "Mileage cost marked as paid and added to Reports." : status === "rejected" ? "Mileage expense rejected. The claimant has been notified." : "Mileage cost returned for correction.");
       if (status === "approved") {
         setPostApprovePrompt({ nextRecord: props.records.find((record) => record.id !== -claim.id && countsAsManualReview(record)) ?? null });
       }
@@ -5286,7 +5290,10 @@ function MileageCostReviewPage(props: {
           catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Could not delete this mileage expense."); }
           finally { setSaving(false); }
         }}>Delete Document</button>
-        {props.canUseApprovalWorkflows && xeroConnected === false && (claim.status === "pending" || claim.status === "approved") ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("published")}>Mark as Published</button> : null}
+        {props.isBusinessAdmin && props.canUseApprovalWorkflows && claim.status === "pending" ? <button className="danger-action" type="button" disabled={saving} onClick={() => {
+          if (window.confirm(`Reject ${claim.name || "this mileage expense"}? The claimant will be notified.`)) void setStatus("rejected");
+        }}>Reject Expense</button> : null}
+        {props.canUseApprovalWorkflows && (claim.status === "pending" || claim.status === "approved") ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("published")}>Mark as Published</button> : null}
       </div>
     </section>
     </div>
@@ -5322,6 +5329,37 @@ function MileageCostReviewPage(props: {
           const next = postApprovePrompt.nextRecord!; setPostApprovePrompt(null);
           navigate(next.mileageClaimId ? `/costs/mileage/${next.mileageClaimId}` : `/costs/${next.id}`);
         }}>Review the next expense</button> : null}
+        {!postApprovePrompt.nextRecord ? <>
+          <button className="primary-action" type="button" onClick={async () => {
+            if (await downloadCsv(`expenses-${new Date().toISOString().slice(0, 10)}.csv`, buildInboxExportRows(props.records, props.settings))) {
+              setFeedback("Expenses CSV downloaded.");
+            }
+            setPostApprovePrompt(null);
+          }}>Download expense detail CSV</button>
+          <div className="reimbursement-export-action">
+            {reimbursementExportError ? <div className="error-banner" role="alert">{reimbursementExportError}</div> : null}
+            <button className="secondary-action" type="button" disabled={reimbursementExporting} onClick={async () => {
+              setReimbursementExporting(true);
+              setReimbursementExportError(null);
+              setError(null);
+              setFeedback(null);
+              try {
+                const result = await exportEmployeeReimbursements(props.sessionToken);
+                const downloaded = await downloadCsv(`employee-reimbursements-${new Date().toISOString().slice(0, 10)}.csv`, buildEmployeeReimbursementPaymentRows(result.rows));
+                if (!downloaded) throw new Error("Your browser did not save the reimbursement payment summary. Allow downloads, then try again.");
+                setFeedback(result.notifications.failed
+                  ? `Employee reimbursement payment summary downloaded. ${result.notifications.sent} employee notification${result.notifications.sent === 1 ? " was" : "s were"} sent; ${result.notifications.failed} could not be delivered.`
+                  : `Employee reimbursement payment summary downloaded and ${result.notifications.sent} employee notification${result.notifications.sent === 1 ? " was" : "s were"} sent.`);
+                await props.onReimbursementsExported();
+                setPostApprovePrompt(null);
+              } catch (exportError) {
+                setReimbursementExportError(exportError instanceof Error ? exportError.message : "Could not prepare the employee reimbursement payment summary.");
+              } finally {
+                setReimbursementExporting(false);
+              }
+            }}>{reimbursementExporting ? "Preparing payment summary..." : "Download reimbursement payment summary"}</button>
+          </div>
+        </> : null}
         <button className="secondary-action" type="button" onClick={() => setPostApprovePrompt(null)}>Close</button>
       </div>
     </div>
@@ -6122,8 +6160,9 @@ function DocumentWorkspacePage(props: {
                 type="button"
                 onClick={() => {
                   const nextId = postApprovePrompt.nextReceiptId;
+                  const nextRecord = props.fallbackRecords.find((record) => record.id === nextId);
                   setPostApprovePrompt(null);
-                  navigate(`${props.mode === "sales" ? "/sales" : "/costs"}/${nextId}`);
+                  navigate(nextRecord?.mileageClaimId ? `/costs/mileage/${nextRecord.mileageClaimId}` : `${props.mode === "sales" ? "/sales" : "/costs"}/${nextId}`);
                 }}
               >
                 Review the next {reviewItemLabel}

@@ -1,5 +1,9 @@
 # Exdox website
 
+## Mileage Cost review parity (2026-10-15)
+
+Pending mileage Costs show the same five review actions as a regular Cost for a business admin with approval workflows: Approve Expense, Save Changes, Delete Document, Reject Expense, and Mark as Published. The published action stays visible when Xero is connected. Approval prompts route to the next Cost or mileage item correctly; when mileage is the last review item, the prompt offers expense detail CSV and reimbursement payment summary. The existing server reimbursement export includes approved mileage projections as Personal spend and starts their payment-processing state when exported. The owner checks live deployment and website behavior. Never delete or move mobile app keystores or signing details.
+
 ## German FAQ parity (2026-10-15)
 
 The unlinked, noindex `/de/faq` review page mirrors the English FAQ's search, three summary cards, four topic groups, 15 questions and answers, expandable items, and empty-result state. It preserves the six earlier German review questions about trials, Google signup, billing, and tax as a fifth group. `src/GermanFaq.tsx` holds the translated content and search; `src/GermanSite.tsx` routes to it. The English FAQ component was not edited. Build and local search, empty-state, and overflow checks passed. The owner checks live deployment. Never delete or move mobile app keystores or signing details.
