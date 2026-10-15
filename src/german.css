@@ -13,6 +13,8 @@
 .de-site .de-pricing h1{margin:0 0 20px;font-family:"Space Grotesk",sans-serif;font-size:clamp(2rem,3.4vw,2.8rem);letter-spacing:-.035em;line-height:1.08}
 .de-site .de-company{background:#fff}
 .de-site .de-contact{background:#fff}
+.de-site .de-legal-page{background:#fff}
+.de-site .de-legal-page .de-legal-note{box-sizing:border-box;margin:0 0 28px;line-height:1.6}
 .de-site .de-contact .contact-form-grid input,.de-site .de-contact .contact-form-grid select,.de-site .de-contact .contact-form-grid textarea{box-sizing:border-box;width:100%;min-width:0;padding:12px;border:1px solid #a9bfd5;border-radius:9px;background:#fff;color:#142948;font:inherit}
 .de-brand-stack{display:flex;align-items:center;gap:12px}.de-brand-stack .public-security-badge{display:inline-flex}.de-brand-stack .public-security-badge img{width:76.5px;height:14.25px}
 .de-footer{display:block}.de-footer-main{max-width:1200px;margin:auto;display:flex;justify-content:space-between;gap:48px;flex-wrap:wrap}.de-footer-brand{max-width:360px}.de-footer-brand>strong{font-size:1.35rem}.de-footer-brand p{line-height:1.6}.de-socials{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.de-socials a{font-size:.8rem}.de-footer-columns{display:flex;gap:50px;flex-wrap:wrap}.de-footer-columns nav{display:flex;flex-direction:column;gap:10px;min-width:135px}.de-footer-columns nav strong{margin-bottom:5px}.de-footer-company,.de-footer-bottom{max-width:1200px;margin:28px auto 0;padding-top:20px;border-top:1px solid #ffffff35;display:flex;gap:20px;flex-wrap:wrap;align-items:center}.de-footer-company address{font-style:normal}.de-footer-bottom{justify-content:space-between;font-size:.9rem;color:#d9ebff}
