@@ -93,11 +93,11 @@ const mileageSteps = [
   { number: '02', title: 'Strecke wählen', detail: 'Vergleichen Sie die vorgeschlagene Strecke mit einer Alternative, bevor Sie den Antrag einreichen.', image: '/branding/exdox-mileage-routes.webp', alt: 'Exdox zeigt mehrere Strecken für einen Fahrtkostenantrag' },
   { number: '03', title: 'Antrag einreichen', detail: 'Bestätigen Sie die gefahrenen Meilen und senden Sie den Antrag zur Prüfung in Ihren gemeinsamen Arbeitsbereich.', image: '/branding/exdox-mileage-claim.webp', alt: 'Exdox-Fahrtkostenantrag vor dem Einreichen' },
 ];
-function HomeJourney({ kind, session }: { kind: 'receipt' | 'mileage'; session: SessionState | null }) {
+function HomeJourney({ kind, session, platformPage = false }: { kind: 'receipt' | 'mileage'; session: SessionState | null; platformPage?: boolean }) {
   const receipt = kind === 'receipt';
   const steps = receipt ? receiptSteps : mileageSteps;
-  const titleId = receipt ? 'de-home-receipt-story-title' : 'de-home-journey-title';
-  return <section className={`product-journey${receipt ? ' receipt-story' : ''}`} aria-labelledby={titleId}>
+  const titleId = `de-${platformPage ? 'platform' : 'home'}-${receipt ? 'receipt-story' : 'journey'}-title`;
+  return <section className={`product-journey${receipt ? ' receipt-story' : ''}${platformPage ? ' product-journey-platform' : ''}`} aria-labelledby={titleId}>
     <div className="section-heading"><div><p className="section-kicker">{receipt ? 'Belegerfassung in der App' : 'Ein echter Exdox-Ablauf'}</p><h2 id={titleId}>{receipt ? 'Vom gescannten Beleg zum besseren Überblick über Ausgaben' : 'So entsteht ein Fahrtkostenantrag'}</h2></div><p>{receipt ? 'Sehen Sie den Scan und die Ansicht „Einkäufe“, prüfen Sie den Beleg im Web und erkunden Sie anschließend Zahlungsrunden in „Berichte“.' : 'Die Bilder zeigen die echte App. Auf dem Smartphone eingereichte Anträge stehen im Exdox-Arbeitsbereich zur Prüfung bereit.'}</p></div>
     <div className={`product-journey-grid${receipt ? ' receipt-story-grid' : ''}`}>{steps.map(step => <article className={`product-journey-step${receipt ? ' receipt-story-step' : ''}${receipt && step.number === '05' ? ' receipt-story-dashboard' : ''}`} key={step.number}><div className={`product-journey-image${receipt && step.number === '02' ? ' receipt-story-paper' : ''}`}><img src={step.image} alt={step.alt} width={receipt ? undefined : 593} height={receipt ? undefined : 1280} loading="lazy" /></div><div className="product-journey-copy"><span>{step.number}</span><h3>{step.title}</h3><p>{step.detail}</p></div></article>)}</div>
     <div className="product-journey-action"><Link className="public-button" to={session ? '/overview' : de('/register')}>{session ? 'Arbeitsbereich öffnen' : '14 Tage kostenlos testen'}</Link><span>Für den Einstieg sind keine Kartendaten erforderlich.</span></div>
@@ -127,7 +127,78 @@ function Home({ session }: { session: SessionState | null }) { return <div class
   <section className="home-benefits" aria-labelledby="de-home-benefits-title"><div className="section-heading"><div><p className="section-kicker">Mehr als Erfassung</p><h2 id="de-home-benefits-title">Ein Ort für die Arbeit nach dem Hochladen</h2></div><p>Geben Sie Ihrem Team einen klaren Weg vom eingereichten Beleg zum geprüften Datensatz.</p></div><div className="home-benefits-grid"><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l2 5-2 5H6L4 8l2-5ZM8 17h8M9 21h6" /></svg><h3>Belege und Rechnungen</h3><p>Senden Sie Dokumente per Smartphone oder Web und prüfen Sie anschließend die erkannten Angaben.</p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h8v5H4zM12 13h8v5h-8zM12 8h4M16 8v5M8 11v4h4" /></svg><h3>Prüfung und Freigabe</h3><p>Sehen Sie, was ansteht, und bearbeiten Sie Anträge und Dokumente weiter.</p></article><article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7zM15 3v5h5M10 13h6M10 17h6" /></svg><h3>Originale an einem Ort</h3><p>Bewahren Sie die Originaldatei beim Datensatz auf, damit Sie sie später leicht wiederfinden.</p></article></div><Link className="secondary-inline-link" to={de('/platform')}>Alle Exdox-Funktionen ansehen</Link></section>
   <section className="pricing-band"><div className="section-heading"><div><p className="section-kicker">Preise</p><h2>Alle Werkzeuge – mit der Kapazität, die Ihr Unternehmen braucht</h2></div><p>Jeder Tarif umfasst die Erfassung von Belegen und Rechnungen, die Prüfung von Kosten und Umsätzen, Anträge, Lieferanten- und Kundenregeln sowie das Dokumentenarchiv. Wählen Sie die benötigte Nutzerzahl und das monatliche Dokumentenkontingent.</p></div><ul className="pricing-teaser-features">{teaserFeatures.map(feature => <li key={feature}>{feature}</li>)}</ul><div className="section-actions"><Link className="public-button" to={de('/pricing')}>Preise ansehen</Link><Link className="secondary-inline-link" to={session ? '/overview' : de('/register')}>{session ? 'Arbeitsbereich öffnen' : 'Kostenlose Testphase starten'}</Link></div></section>
 </div>; }
-function Platform() { return <Panel eyebrow="Plattform" title="Von der Erfassung bis zum geprüften Datensatz."><p>Exdox verbindet mobile Belegerfassung mit einem Web-Arbeitsbereich für Kosten, Umsätze, Dokumente und Anträge.</p><Cards items={[{title:'1. Erfassen',text:'Fotografieren Sie einen Beleg in der App oder laden Sie eine Datei im Web hoch.'},{title:'2. Prüfen',text:'Kontrollieren Sie erkannte Angaben, Steuern und das Original, bevor Sie den Datensatz freigeben.'},{title:'3. Weiterverarbeiten',text:'Verfolgen Sie den Status, nutzen Sie Exporte und verbinden Sie unterstützte Abläufe mit Xero.'},{title:'Fahrtkosten',text:'Erfassen Sie Fahrten und reichen Sie Kilometeranträge ein. Verfügbare Streckenhilfen unterscheiden sich je nach Land.'},{title:'Dokumentenarchiv',text:'Bewahren Sie die Originaldatei beim passenden Vorgang auf.'},{title:'Team und Regeln',text:'Rollen, Freigaben sowie Lieferanten- und Kundenregeln unterstützen wiederkehrende Abläufe.'}]} /><p><Link className="de-button" to={de('/register')}>Kostenlos registrieren</Link></p></Panel>; }
+const platformCapabilities = [
+  ['costs', 'Belege und Rechnungen erfassen', 'Einreichung per App und Web'],
+  ['workflow', 'Freigabeabläufe', 'An einem Ort prüfen, freigeben und veröffentlichen'],
+  ['rules', 'Lieferantenregeln', 'Einheitliche Kategorien und Steuervorgaben'],
+  ['claims', 'Fahrtkosten und Spesenanträge', 'Einreichung, Fahrten und Freigabe für Mitarbeitende'],
+  ['health', 'Datenqualität', 'Unleserliche, doppelte und unsicher erkannte Belege nachverfolgen'],
+  ['claims', 'Dokumentenarchiv', 'Originalbelege schnell archivieren und wiederfinden'],
+  ['integrations', 'App und Web synchron', 'Einreichungs- und Prüfstatus bleiben abgestimmt'],
+  ['open-banking', 'Exporte aus Warteschlangen', 'CSV-Exporte für Posteingänge und Anträge'],
+] as const;
+const platformDocuments = [
+  ['Belege', 'Mobile Erfassung, Einreichung durch Mitarbeitende und Web-Upload'],
+  ['Eingangsrechnungen', 'Strukturierte Beträge, Steuerfelder und prüfbare Kategorien'],
+  ['Verkaufsdokumente', 'Separater Bereich für Umsätze mit demselben synchronisierten Prüfablauf'],
+  ['Fahrtkostenanträge', 'Fahrten durch Mitarbeitende erfassen und zur Freigabe vorbereiten'],
+  ['Begleitdokumente', 'Referenzbelege beim jeweiligen Prüfablauf aufbewahren'],
+  ['Archivdateien', 'Gespeicherte Referenzdokumente mit geschütztem Zugriff'],
+] as const;
+const platformProcess = [
+  ['1. Erfassen', 'Belege, Rechnungen und Begleitdateien sammeln', 'Nutzen Sie die mobile Erfassung, den Web-Upload und die Einreichung durch Mitarbeitende.'],
+  ['2. Auslesen', 'Beträge, Steuern, Lieferanten und Positionen auslesen', 'Strukturierte Erkennung, Steuerfelder und Dokumentdetails bleiben zur Prüfung sichtbar.'],
+  ['3. Prüfen', 'Ausnahmen bearbeiten statt alles neu einzutippen', 'Hinweise auf Prüfbedarf, Duplikate, unleserliche und unsicher erkannte Dokumente zeigen offene Punkte.'],
+  ['4. Archivieren', 'Originalbelege leicht wiederfinden', 'Archivspeicher, geschützter Dokumentenzugriff und Suchansichten halten die Quelldateien griffbereit.'],
+  ['5. Freigeben und veröffentlichen', 'Anträge, Prüfungen und Übergaben weiterführen', 'Anträge zur Freigabe, prüfbereite Einträge und Exportwege unterstützen die folgenden Schritte.'],
+] as const;
+const platformWorkflows = [
+  ['Über alle Einreichungswege erfassen', [
+    'Belege mobil in der App erfassen',
+    'Dateien per Drag-and-drop in Kosten- und Umsatz-Posteingänge laden',
+    'Eigener Einreichungsbereich für Mitarbeitende ohne Adminrechte',
+    'Fahrten und Spesenanträge durch Mitarbeitende erfassen',
+    'Klaren Status für jedes eingereichte Dokument verfolgen',
+    'Getrennte Bereiche für Einkaufs- und Verkaufsdokumente',
+  ]],
+  ['Prüfung automatisieren', [
+    'Lieferantenregeln für Kategorie, Steuersatz und Zahlungsmethode',
+    'Steuerprüfung mit bearbeitbaren Gesamt-, Netto- und Steuerbeträgen',
+    'Warteschlangen für Kosten, Umsätze und Anträge mit Prüfbedarf',
+    'Unleserliche und unsicher erkannte Dokumente nachverfolgen',
+    'Duplikate vor dem endgültigen Veröffentlichen erkennen',
+    'Dokumentdetails vor dem Veröffentlichen nachvollziehbar bearbeiten',
+  ]],
+  ['Mit Finanzkontrollen abschließen', [
+    'Eigener Archivbereich für durchsuchbare Originalbelege',
+    'Anträge zur Freigabe und Übergabe geprüfter Dokumente',
+    'Gefilterte CSV-Exporte aus Warteschlangen und Dokumentansichten',
+    'Steuereinstellungen und Prüfvorgaben auf Unternehmensebene',
+    'Synchronisierung derselben Belegdatensätze mit der App',
+  ]],
+] as const;
+function PlatformIcon({ name }: { name: string }) {
+  const paths: Record<string, ReactNode> = {
+    overview: <><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></>,
+    costs: <><path d="M6 3h12l2 5-2 5H6L4 8l2-5Z" /><path d="M8 17h8M9 21h6" /></>,
+    workflow: <><path d="M4 6h8v5H4zM12 13h8v5h-8z" /><path d="M12 8h4M16 8v5M8 11v4h4" /></>,
+    rules: <><circle cx="8" cy="8" r="3" /><circle cx="16" cy="16" r="3" /><path d="M10.5 10.5 13.5 13.5M16 3v4M3 16h4" /></>,
+    claims: <><path d="M7 3h8l4 4v14H7z" /><path d="M15 3v5h5M10 13h6M10 17h6" /></>,
+    health: <><path d="M12 21s-6-4.35-8.5-8.16C1.94 10.55 3.1 7 6.4 7c2 0 3.1 1.08 3.6 2 .5-.92 1.6-2 3.6-2 3.3 0 4.46 3.55 2.9 5.84C18 16.65 12 21 12 21Z" /><path d="M8 12h2l1.2-2.2L13 15l1.1-2H16" /></>,
+    integrations: <><path d="M7 12h10M12 7v10" /><path d="M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z" /></>,
+    'open-banking': <><path d="M4 7h16v13H4zM8 4h8l2 3H6l2-3Z" /><path d="M8 11h8M8 15h5" /></>,
+  };
+  return <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
+}
+function Platform({ session }: { session: SessionState | null }) { return <div className="de-platform">
+  <section className="public-page-intro"><p className="section-kicker">Plattform</p><h1>Sehen Sie, wie Belege und Fahrtkostenanträge durch Exdox laufen.</h1><p>Erfassen Sie Belege, erstellen Sie Fahrtkostenanträge und prüfen Sie die Angaben in einem Arbeitsbereich, der App und Website synchron hält.</p></section>
+  <HomeJourney kind="receipt" session={session} platformPage />
+  <HomeJourney kind="mileage" session={session} platformPage />
+  <section className="capabilities-band"><h2>Die wichtigsten Funktionen der Plattform</h2><div className="capabilities-grid">{platformCapabilities.map(([icon, title, detail]) => <article className="capability-card" key={title}><PlatformIcon name={icon} /><strong>{title}</strong><span>{detail}</span></article>)}<Link className="capability-card" to={de('/pricing')}><PlatformIcon name="overview" /><strong>Preise</strong><span>Wählen Sie Ihr Dokumenten- und Nutzerkontingent; prüfen Sie tarifabhängige Zusatzoptionen.</span></Link></div></section>
+  <section className="workflow-band"><div className="section-heading"><div><p className="section-kicker">Unterstützte Dokumente</p><h2>Für die Dokumente, mit denen Ihr Finanzteam bereits arbeitet</h2></div><p>Exdox zeigt Einreichungen aus App und Web an einem Ort – von Belegen und Rechnungen bis zu Fahrtkostenanträgen und archivierten Begleitdateien.</p></div><div className="document-grid">{platformDocuments.map(([title, detail]) => <article className="document-card" key={title}><strong>{title}</strong><span>{detail}</span></article>)}</div></section>
+  <section className="workflow-band"><div className="section-heading"><div><p className="section-kicker">Ablauf</p><h2>Von der Erfassung bis zur Veröffentlichung – in einem Arbeitsbereich</h2></div><p>Exdox unterstützt die tägliche Buchhaltungsarbeit: Belege sammeln, Daten auslesen, Ausnahmen prüfen, Originaldateien aufbewahren und Freigaben im selben synchronisierten Arbeitsbereich weiterführen.</p></div><div className="process-grid">{platformProcess.map(([step, title, detail]) => <article className="process-card" key={step}><span>{step}</span><strong>{title}</strong><p>{detail}</p></article>)}</div></section>
+  <section className="workflow-band"><div className="section-heading"><div><p className="section-kicker">Funktionsumfang</p><h2>Auf den Arbeitsablauf ausgerichtet, den Finanzteams von Dext kennen</h2></div><p>Erfassung, Prüfung, Regeln, Freigaben, Archiv und Exporte stehen im selben Exdox-Web-Arbeitsbereich zur Verfügung, der sich mit der App synchronisiert.</p></div><div className="workflow-grid">{platformWorkflows.map(([title, items]) => <article className="workflow-card" key={title}><strong>{title}</strong><ul>{items.map(item => <li key={item}>{item}</li>)}</ul></article>)}</div></section>
+</div>; }
 function Pricing() { return <Panel eyebrow="Preise" title="14 Tage kostenlos testen. Danach bewusst entscheiden."><p>Für einen neuen Arbeitsbereich brauchen Sie weder einen Tarif noch eine Karte. Nach 14 Tagen wählen Sie bei Bedarf im Bereich „Abrechnung“ einen Tarif und bezahlen erst dann.</p><Cards items={[{title:'1 Nutzer · 100 Dokumente',text:'Für einen neuen Arbeitsbereich mit Land Deutschland: 3 € pro Monat. Xero ist bei diesem Tarif eine gesonderte kostenpflichtige Option.'},{title:'5 Nutzer · 250 Dokumente',text:'15 £ pro Monat inklusive britischer Umsatzsteuer. Die Zahlung erfolgt in GBP; Ihre Bank kann Währungsumrechnung und Gebühren berechnen.'},{title:'Größere Teams',text:'Weitere Nutzer- und Dokumentkontingente sind im Arbeitsbereich verfügbar. Prüfen Sie den tatsächlichen Preis und die Abrechnungswährung vor der Zahlung.'}]} /><p>Preise und Verfügbarkeit können sich ändern. Es gelten die Angaben bei der Auswahl und im sicheren Stripe-Bezahlvorgang. Die Steuersituation Ihres Unternehmens prüfen Sie bitte selbst.</p><Link className="de-button" to={de('/register')}>Kostenlose Testphase starten</Link></Panel>; }
 const questions = [
   ['Brauche ich für die Testphase eine Karte?', 'Nein. Ein neuer Unternehmens- oder Selbstständigen-Arbeitsbereich startet mit einer 14-tägigen Testphase ohne Karte und ohne gewählten Tarif.'],
@@ -220,7 +291,7 @@ function Legal({ path }: { path: string }) {
 export function GermanSite({ session }: { session: SessionState | null }) {
   const location=useLocation(); const raw=location.pathname.slice(base.length); const path=raw===''||raw==='/'?'/':raw.replace(/\/+$/,'');
   let content:ReactNode;
-  if(path==='/') content=<Home session={session}/>; else if(path==='/platform') content=<Platform/>; else if(path==='/pricing') content=<Pricing/>; else if(path==='/faq') content=<Faq/>; else if(path==='/company') content=<Company/>; else if(path==='/contact') content=<Contact/>;
+  if(path==='/') content=<Home session={session}/>; else if(path==='/platform') content=<Platform session={session}/>; else if(path==='/pricing') content=<Pricing/>; else if(path==='/faq') content=<Faq/>; else if(path==='/company') content=<Company/>; else if(path==='/contact') content=<Contact/>;
   else if(path==='/register'||path==='/login'||path==='/confirm-email'||path==='/forgot-password'||path==='/reset-password') content=<Auth key={path} kind={path==='/register'?'register':path==='/login'?'login':path==='/confirm-email'?'confirm':path==='/forgot-password'?'forgot':'reset'}/>;
   else if(path==='/compare/dext') content=<Comparison/>;
   else if(legal.some(([url])=>url===path)) content=<Legal path={path}/>;

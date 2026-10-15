@@ -1,5 +1,9 @@
 # Exdox website
 
+## German platform parity (2026-10-15)
+
+The unlinked, noindex `/de/platform` review page now mirrors `/platform` in section order and layout: introductory copy, six-step receipt walkthrough, three-step mileage walkthrough, nine capability cards, six supported document cards, five process steps, and three detailed workflow cards. All surrounding copy is German; the existing product screenshots are reused, and the capability pricing link and both trial buttons stay within `/de/` for signed-out visitors. `src/GermanSite.tsx` and `src/german.css` own the change; `src/App.tsx` and the English page were not edited. The website production build passed, and the local preview showed all sections and images without horizontal overflow. The owner checks the live website and deployment after the GitHub push. Never delete or move app keystores or signing details.
+
 ## German homepage parity (2026-10-15)
 
 `/de/` now follows the English homepage's section order and uses the same mileage screenshots, Google Play badge, iPhone-interest action, Xero strip, receipt demo video, six-step receipt story, three-step mileage story, benefits, and pricing teaser. All surrounding page copy and destinations are German and stay under `/de/`; the country selector displays German country names without changing the stored country, and the German header/footer include the English homepage's major navigation, security badge, social destinations, company disclosure, and cookie controls. `src/GermanSite.tsx` and `src/german.css` own this change. The English homepage component and its styles were not edited. The original app screenshots and official Google Play badge retain the text embedded in those media files. The review section remains unlinked and noindex. The owner checks live deployment after the website push. Never delete or move signing material.
