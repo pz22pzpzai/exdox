@@ -1,5 +1,9 @@
 # Exdox website
 
+## Costs payment actions (2026-10-15)
+
+Costs Inbox displays Payment method beside each Cost. Ready includes approved Costs of every payment method, but the bulk Mark payments as paid action includes only approved Personal spend records and says so in its confirmation. Each approved Cost review, including a mileage claim, now offers Mark as paid in its normal toolbar; the action confirms actual payment first. The bulk action refreshes records after the server mutation completes, and an individually paid receipt refreshes attached claim state. Server source must deploy before the website; owner checks deployment and live behavior. Never delete or move signing material.
+
 ## Cost category learning and Smart Split (2026-10-07)
 
 Supplier/Customer Rules now edit fixed-net or percentage allocations. The Costs/Sales document review shows editable category/net lines, and the server sends those lines to mapped Xero accounts after approval. Costs without a matching rule use consistent approved supplier history to suggest a category; the app's explicit choice still syncs over it. The Dext checklist ticks Smart Split; broader smart suggestions remain open because category learning alone is narrower. Checklist count after this source change is 16 checked and 44 unchecked, including 40 Website unchecked. Local website/server builds and server tests passed; live workflow and Xero posting remain for the owner to check. Deploy server before website. Never delete or move signing material.

@@ -1425,18 +1425,22 @@ export function App() {
               onReceiptSave={async (id, payload) => {
                 const saved = await saveReceipt(session.token, id, payload);
                 if (saved.autoPublishWarning) setError(saved.autoPublishWarning);
+                const claims = saved.status === "Paid" && saved.claimId !== null
+                  ? await listClaims(session.token)
+                  : null;
                 setStore((current) => ({
                   ...current,
                   costs: current.costs.map((item) => (String(item.id) === String(id) ? saved : item)),
                   sales: current.sales.map((item) => (String(item.id) === String(id) ? saved : item)),
                   vault: current.vault.map((item) => (String(item.id) === String(id) ? saved : item)),
+                  claims: claims ?? current.claims,
                 }));
                 // Keep the shared header action counts in sync with every completed review.
                 void refreshActionQueues(session.token, session).catch(() => undefined);
               }}
               onReimbursementsMarkedPaid={async () => {
-                const [result, costs, claims] = await Promise.all([
-                  markEmployeeReimbursementsPaid(session.token),
+                const result = await markEmployeeReimbursementsPaid(session.token);
+                const [costs, claims] = await Promise.all([
                   listReceipts(session.token, "cost"),
                   listClaims(session.token),
                 ]);
@@ -4709,7 +4713,9 @@ function InboxPage({
           <p>
             {isVaultInbox
               ? "Store archive-only evidence in a separate workspace so reference documents do not clutter expense or sales review."
-              : "Bulk ingestion, organisation-scoped review, and controlled document updates in a dedicated workspace."}
+              : basePath === "/costs"
+                ? "Ready means approved. Only Personal spend costs are included in Mark payments as paid; check each row's payment method."
+                : "Bulk ingestion, organisation-scoped review, and controlled document updates in a dedicated workspace."}
           </p>
         </div>
         <div className="filter-row">
@@ -4809,7 +4815,7 @@ function InboxPage({
               type="button"
               disabled={markingPaymentsPaid}
               onClick={async () => {
-                if (!window.confirm(`Mark all ${paymentsToMarkPaidCount} approved reimbursement expense${paymentsToMarkPaidCount === 1 ? "" : "s"} as paid? Only do this after the payments have actually been made.`)) {
+                if (!window.confirm(`Mark all ${paymentsToMarkPaidCount} approved Personal spend expense${paymentsToMarkPaidCount === 1 ? "" : "s"} as paid? Other Ready costs are excluded. Only do this after the reimbursements have actually been paid.`)) {
                   return;
                 }
                 setMarkingPaymentsPaid(true);
@@ -4825,7 +4831,7 @@ function InboxPage({
             >
               {markingPaymentsPaid
                 ? "Marking paid..."
-                : `Mark ${paymentsToMarkPaidCount} payment${paymentsToMarkPaidCount === 1 ? "" : "s"} as paid`}
+                : `Mark ${paymentsToMarkPaidCount} Personal spend payment${paymentsToMarkPaidCount === 1 ? "" : "s"} as paid`}
             </button>
           ) : null}
         </div>
@@ -4948,6 +4954,7 @@ function InboxPage({
                   {vatTrackingEnabled ? <th>Net Amount</th> : null}
                   {vatTrackingEnabled ? <th>{countryTaxLabel(settings?.country ?? 'GB')} Amount</th> : null}
                   <th>{vatTrackingEnabled ? "Gross Total" : "Total"}</th>
+                  {basePath === "/costs" ? <th>Payment method</th> : null}
                   <th>Source</th>
                   <th>Action</th>
                 </tr>
@@ -5028,6 +5035,7 @@ function InboxPage({
                           ) : null}
                         </div>
                       </td>
+                      {basePath === "/costs" ? <td>{analyticsPaymentMethodLabel(record.paymentMethod)}</td> : null}
                       <td>{sourceLabel(record.receiptSource)}</td>
                       <td>
                         <button
@@ -5247,6 +5255,9 @@ function MileageCostReviewPage(props: {
         {props.canUseApprovalWorkflows && claim.status === "pending" ? <button className="primary-action" type="button" disabled={saving} onClick={() => void setStatus("approved")}>Approve Expense</button> : null}
         {claim.status === "pending" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Save Changes"}</button> : null}
         {props.canUseApprovalWorkflows && claim.status === "approved" ? <button className="secondary-action" type="button" disabled={saving} onClick={() => void setStatus("pending")}>Undo Approval</button> : null}
+        {props.canUseApprovalWorkflows && (claim.status === "approved" || claim.status === "payment_processing" || claim.status === "published") ? <button className="secondary-action" type="button" disabled={saving} onClick={() => {
+          if (window.confirm("Mark this mileage cost as paid? Only do this after payment has actually been made.")) void setStatus("paid");
+        }}>Mark as paid</button> : null}
         {props.canUseApprovalWorkflows && (claim.status === "approved" || claim.status === "published") && xeroConnected ? <button className="primary-action" type="button" disabled={saving} onClick={async () => { setSaving(true); setError(null); setFeedback(null); try { const result = await publishToXero(props.sessionToken, "claim", claim.id); setClaim((current) => current ? { ...current, status: "published" } : current); setFeedback(result.alreadyPublished ? "This mileage claim was already published to Xero." : `Mileage claim published to Xero${result.publication.xeroNumber ? ` as ${result.publication.xeroNumber}` : ""}.`); if (result.warning) setError(result.warning); } catch (publishError) { setError(publishError instanceof Error ? publishError.message : "Could not publish this mileage claim to Xero."); } finally { setSaving(false); } }}>Publish to Xero</button> : claim.status === "approved" && xeroConnected === false ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : claim.status === "approved" ? <button className="secondary-action" type="button" disabled>Checking Xero connection…</button> : null}
         <button className="danger-action" type="button" disabled={saving} onClick={async () => {
           if (!window.confirm("Move this mileage expense to the Recycle Bin? It can be restored for three days.")) return;
@@ -5885,6 +5896,20 @@ function DocumentWorkspacePage(props: {
         ) : null}
 
         <div className="toolbar">
+          {props.mode === "cost" && !receipt.needsReview && (receipt.status === "Ready" || receipt.status === "Payment processing" || receipt.status === "Published") ? (
+            <button className="secondary-action" type="button" disabled={saving} onClick={async () => {
+              if (!window.confirm("Mark this cost as paid? Only do this after payment has actually been made.")) return;
+              setSaving(true); setFeedback(null); setError(null);
+              try {
+                await props.onSave(receipt.id, { ...receipt, status: "Paid", needsReview: false });
+                const refreshed = await props.loadReceipt(receipt.id);
+                setReceipt(refreshed.receipt);
+                setFeedback("Cost marked as paid.");
+              } catch (paidError) {
+                setError(paidError instanceof Error ? paidError.message : "Could not mark this cost as paid.");
+              } finally { setSaving(false); }
+            }}>Mark as paid</button>
+          ) : null}
           {!isVaultRecord && receiptApproved && xeroConnected ? (
             <button
               className="primary-action"
