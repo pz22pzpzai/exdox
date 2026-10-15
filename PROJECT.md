@@ -1,5 +1,9 @@
 # Exdox website
 
+## German FAQ parity (2026-10-15)
+
+The unlinked, noindex `/de/faq` review page mirrors the English FAQ's search, three summary cards, four topic groups, 15 questions and answers, expandable items, and empty-result state. It preserves the six earlier German review questions about trials, Google signup, billing, and tax as a fifth group. `src/GermanFaq.tsx` holds the translated content and search; `src/GermanSite.tsx` routes to it. The English FAQ component was not edited. Build and local search, empty-state, and overflow checks passed. The owner checks live deployment. Never delete or move mobile app keystores or signing details.
+
 ## German pricing parity (2026-10-15)
 
 The unlinked, noindex `/de/pricing` review page now mirrors the English public pricing layout and its 31-step one-to-200-user allowance slider. `src/GermanPricing.tsx` holds the German copy and the same public price and capacity values as `PricingSection` in `src/App.tsx`. The one-user price follows the selected country's billing currency; larger plans bill in GBP and show a local reference-rate estimate when available. The German page explains conversion and Stripe's final charge, includes the same feature, trial, Xero, and bespoke enquiry sections, and links to German signup/contact routes. The sole-trader audience query is retained on the trial link. The English pricing component was not edited. Build and local slider, link, and overflow checks passed; the owner checks live deployment. Never delete or move mobile app keystores or signing details.

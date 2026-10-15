@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { authenticateWithGoogle, confirmEmailWithToken, loginWithEmail, registerWithEmail, requestPasswordReset, resetPasswordWithToken, resendConfirmationEmail, saveStoredSession, submitContactForm } from './api';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { GermanPricing } from './GermanPricing';
+import { GermanFaq } from './GermanFaq';
 import { cookieConsentStorageKey, setGoogleAnalyticsConsent, type CookieConsentChoice } from './googleAnalytics';
 import { countries, selectCountry, useSelectedCountry, type Country } from './region';
 import type { SessionState } from './types';
@@ -200,15 +201,6 @@ function Platform({ session }: { session: SessionState | null }) { return <div c
   <section className="workflow-band"><div className="section-heading"><div><p className="section-kicker">Ablauf</p><h2>Von der Erfassung bis zur Veröffentlichung – in einem Arbeitsbereich</h2></div><p>Exdox unterstützt die tägliche Buchhaltungsarbeit: Belege sammeln, Daten auslesen, Ausnahmen prüfen, Originaldateien aufbewahren und Freigaben im selben synchronisierten Arbeitsbereich weiterführen.</p></div><div className="process-grid">{platformProcess.map(([step, title, detail]) => <article className="process-card" key={step}><span>{step}</span><strong>{title}</strong><p>{detail}</p></article>)}</div></section>
   <section className="workflow-band"><div className="section-heading"><div><p className="section-kicker">Funktionsumfang</p><h2>Auf den Arbeitsablauf ausgerichtet, den Finanzteams von Dext kennen</h2></div><p>Erfassung, Prüfung, Regeln, Freigaben, Archiv und Exporte stehen im selben Exdox-Web-Arbeitsbereich zur Verfügung, der sich mit der App synchronisiert.</p></div><div className="workflow-grid">{platformWorkflows.map(([title, items]) => <article className="workflow-card" key={title}><strong>{title}</strong><ul>{items.map(item => <li key={item}>{item}</li>)}</ul></article>)}</div></section>
 </div>; }
-const questions = [
-  ['Brauche ich für die Testphase eine Karte?', 'Nein. Ein neuer Unternehmens- oder Selbstständigen-Arbeitsbereich startet mit einer 14-tägigen Testphase ohne Karte und ohne gewählten Tarif.'],
-  ['Wird nach 14 Tagen automatisch abgebucht?', 'Nein. Erst wenn der Inhaber einen Tarif auswählt und die erste Zahlung abschließt, beginnt ein kostenpflichtiges Abonnement.'],
-  ['Kann ich Google zur Registrierung nutzen?', 'Ja. Verwenden Sie dasselbe Google-Konto auf Website und Android-App. Ein bestehendes Konto mit E-Mail und Passwort wird nicht automatisch mit Google zusammengeführt.'],
-  ['Können Mitarbeitende einen eigenen Arbeitsbereich anlegen?', 'Mitarbeitende treten über eine Einladung dem vorhandenen Arbeitsbereich ihres Unternehmens bei. Eine Einladung startet keine eigene Testphase.'],
-  ['Welche Währung gilt?', 'Die Sprache der Website ändert Ihre Abrechnungswährung nicht. Diese richtet sich nach dem Land des Arbeitsbereichs und dem gewählten Tarif. Größere Tarife werden derzeit in GBP berechnet.'],
-  ['Kann Exdox deutsche Steuerregeln automatisch prüfen?', 'Exdox hilft bei Erfassung und Prüfung von Dokumenten. Es ersetzt keine steuerliche Beratung und bestimmt die richtige Behandlung für Ihr Unternehmen nicht automatisch.'],
-];
-function Faq() { return <Panel eyebrow="Häufige Fragen" title="Antworten zur Nutzung von Exdox."><div className="de-faq">{questions.map(([q,a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div><p>Weitere Hilfe? <Link to={de('/contact')}>Kontaktieren Sie uns.</Link></p></Panel>; }
 function Company() { return <Panel eyebrow="Über uns" title="Exdox verbindet Erfassung, Prüfung und Belege."><p>EXDOX LTD entwickelt einen gemeinsamen Ablauf für mobile Erfassung, Web-Prüfung, Freigaben und das Wiederfinden von Originaldokumenten.</p><Cards items={[{title:'Gemeinsamer Arbeitsbereich',text:'App und Website greifen auf denselben Unternehmens-Arbeitsbereich zu.'},{title:'Nachvollziehbare Prüfung',text:'Erkannte Angaben lassen sich mit dem Originalbeleg abgleichen.'},{title:'Kontakt',text:'Für Fragen zu Produkt, Zugang oder Abrechnung erreichen Sie unser Team über das Kontaktformular.'}]} /><Link className="de-button" to={de('/contact')}>Kontakt aufnehmen</Link></Panel>; }
 function Comparison() { return <Panel eyebrow="Vergleich" title="Exdox und Dext im Überblick."><p>Exdox bietet mobile Belegerfassung, eine Web-Prüfung, Anträge und eine Xero-Anbindung. Dext bietet ebenfalls Funktionen zur Belegverarbeitung und hat ein breiteres Angebot an Integrationen. Umfang, Preise und Abrechnung hängen vom gewählten Tarif ab.</p><p>Dieser Testtext enthält bewusst keine aktuellen Vergleichspreise. Prüfen Sie vor einer Entscheidung die veröffentlichten Tarifdetails beider Anbieter und den endgültigen Preis im Bezahlvorgang.</p><Link className="de-button" to={de('/pricing')}>Exdox-Tarife ansehen</Link></Panel>; }
 function Contact() {
@@ -291,7 +283,7 @@ function Legal({ path }: { path: string }) {
 export function GermanSite({ session }: { session: SessionState | null }) {
   const location=useLocation(); const raw=location.pathname.slice(base.length); const path=raw===''||raw==='/'?'/':raw.replace(/\/+$/,'');
   let content:ReactNode;
-  if(path==='/') content=<Home session={session}/>; else if(path==='/platform') content=<Platform session={session}/>; else if(path==='/pricing') content=<GermanPricing session={session}/>; else if(path==='/faq') content=<Faq/>; else if(path==='/company') content=<Company/>; else if(path==='/contact') content=<Contact/>;
+  if(path==='/') content=<Home session={session}/>; else if(path==='/platform') content=<Platform session={session}/>; else if(path==='/pricing') content=<GermanPricing session={session}/>; else if(path==='/faq') content=<GermanFaq/>; else if(path==='/company') content=<Company/>; else if(path==='/contact') content=<Contact/>;
   else if(path==='/register'||path==='/login'||path==='/confirm-email'||path==='/forgot-password'||path==='/reset-password') content=<Auth key={path} kind={path==='/register'?'register':path==='/login'?'login':path==='/confirm-email'?'confirm':path==='/forgot-password'?'forgot':'reset'}/>;
   else if(path==='/compare/dext') content=<Comparison/>;
   else if(legal.some(([url])=>url===path)) content=<Legal path={path}/>;
