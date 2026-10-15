@@ -4714,7 +4714,7 @@ function InboxPage({
             {isVaultInbox
               ? "Store archive-only evidence in a separate workspace so reference documents do not clutter expense or sales review."
               : basePath === "/costs"
-                ? "Ready means approved. Only Personal spend costs are included in Mark payments as paid; check each row's payment method."
+                ? "Ready means approved and awaiting payment. Approved Business card costs move straight to Paid; only Personal spend costs enter the bulk reimbursement action."
                 : "Bulk ingestion, organisation-scoped review, and controlled document updates in a dedicated workspace."}
           </p>
         </div>
@@ -5410,12 +5410,12 @@ function DocumentWorkspacePage(props: {
   const foreignCurrencyDocument = receiptCountry === 'GB' && Boolean(receipt.currency && receipt.currency.toUpperCase() !== "GBP");
   const receiptPublished = receipt.status === "Published";
   const receiptApproved = receipt.status === "Ready" && !receipt.needsReview;
+  const receiptXeroEligible = receiptApproved || (props.mode === "cost" && receipt.paymentMethod === "business_card" && receipt.status === "Paid");
   const canRejectExpense = props.isBusinessAdmin && props.mode === 'cost'
     && receipt.status === 'Review' && receipt.claimId === null;
   const reimbursementPaymentLocked =
     props.mode === "cost" &&
-    receipt.paymentMethod === "cash_personal" &&
-    (receipt.status === "Payment processing" || receipt.status === "Paid");
+    (receipt.status === "Paid" || (receipt.paymentMethod === "cash_personal" && receipt.status === "Payment processing"));
   const nextReviewReceipt = isVaultRecord
     ? null
     : props.fallbackRecords.find((record) => record.id !== receipt.id && countsAsManualReview(record));
@@ -5429,7 +5429,7 @@ function DocumentWorkspacePage(props: {
   ];
   const costsReadyForXero = reviewedRecordsForExport.filter((record) =>
     record.workspaceContext === "cost" &&
-    record.status === "Ready" &&
+    (record.status === "Ready" || (record.status === "Paid" && record.paymentMethod === "business_card")) &&
     !record.needsReview &&
     !record.mileageClaimId
   );
@@ -5717,7 +5717,7 @@ function DocumentWorkspacePage(props: {
           {reimbursementPaymentLocked ? (
             <span className="field-hint">
               {receipt.status === "Paid"
-                ? "This reimbursement has been marked as paid."
+                ? "This cost has been marked as paid."
                 : "This reimbursement is in the active payment batch."}
             </span>
           ) : null}
@@ -5910,7 +5910,7 @@ function DocumentWorkspacePage(props: {
               } finally { setSaving(false); }
             }}>Mark as paid</button>
           ) : null}
-          {!isVaultRecord && receiptApproved && xeroConnected ? (
+          {!isVaultRecord && receiptXeroEligible && xeroConnected ? (
             <button
               className="primary-action"
               type="button"
@@ -5919,7 +5919,9 @@ function DocumentWorkspacePage(props: {
                 setSaving(true); setFeedback(null); setError(null);
                 try {
                   const result = await publishToXero(props.sessionToken, "receipt", receipt.id);
-                  setReceipt({ ...receipt, status: "Published" });
+                  const refreshed = await props.loadReceipt(receipt.id);
+                  setReceipt(refreshed.receipt);
+                  await props.onReimbursementsExported?.();
                   setFeedback(result.alreadyPublished ? "This document was already published to Xero." : `Published to Xero${result.publication.xeroNumber ? ` as ${result.publication.xeroNumber}` : ""}.`);
                   if (result.warning) setError(result.warning);
                 } catch (publishError) { setError(publishError instanceof Error ? publishError.message : "Could not publish this document to Xero."); }
@@ -5928,7 +5930,7 @@ function DocumentWorkspacePage(props: {
             >
               {saving ? "Publishing…" : "Publish to Xero"}
             </button>
-          ) : !isVaultRecord && receiptApproved && xeroConnected === false ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : !isVaultRecord && receiptApproved ? <button className="secondary-action" type="button" disabled>Checking Xero connection…</button> : null}
+          ) : !isVaultRecord && receiptXeroEligible && xeroConnected === false ? <Link className="secondary-action link-action" to="/settings/integrations">Connect Xero</Link> : !isVaultRecord && receiptXeroEligible ? <button className="secondary-action" type="button" disabled>Checking Xero connection…</button> : null}
           {!isVaultRecord && !reimbursementPaymentLocked ? (
             <button
               className={receiptApproved && !receiptPublished ? "secondary-action" : "primary-action"}
@@ -5957,6 +5959,8 @@ function DocumentWorkspacePage(props: {
                   setFeedback(
                     receiptApproved && !receiptPublished
                       ? "Approval removed. The expense is back in review."
+                      : refreshed.receipt.status === "Paid" && refreshed.receipt.paymentMethod === "business_card"
+                        ? "Expense approved and marked paid because it was paid with a business card."
                       : refreshed.receipt.status === "Published"
                         ? `${props.mode === "cost" ? "Expense" : "Sales document"} approved and published to Xero.`
                       : props.mode === "cost"
@@ -6052,7 +6056,7 @@ function DocumentWorkspacePage(props: {
               Reject Expense
             </button>
           ) : null}
-          {!isVaultRecord ? (
+          {!isVaultRecord && !reimbursementPaymentLocked ? (
           <button
             className="secondary-action"
             type="button"
@@ -6130,7 +6134,7 @@ function DocumentWorkspacePage(props: {
                         type="button"
                         disabled={xeroCostsPublishing || reimbursementExporting}
                         onClick={async () => {
-                          if (!window.confirm(`Publish all ${costsReadyForXero.length} approved cost${costsReadyForXero.length === 1 ? "" : "s"} to Xero? Successful records will move to Published and will no longer need to be marked paid in Exdox.`)) {
+                          if (!window.confirm(`Publish all ${costsReadyForXero.length} approved cost${costsReadyForXero.length === 1 ? "" : "s"} to Xero? Business card costs already marked Paid will stay Paid; other successful records will move to Published.`)) {
                             return;
                           }
                           setXeroCostsPublishing(true);

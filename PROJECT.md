@@ -1,5 +1,9 @@
 # Exdox website
 
+## Business-card approval status (2026-10-15)
+
+The Costs Inbox explains that approved Business-card Costs are already paid and move directly to Paid. The Cost review reflects the server-returned Paid status and does not offer a second approval or manual published-status change. Paid Business-card Costs can still be published to Xero, and Xero publication keeps their Paid state. The post-approval bulk Xero option also includes paid card Costs. Server source must deploy first; owner checks live site and workflow. Never delete or move signing material.
+
 ## Costs payment actions (2026-10-15)
 
 Costs Inbox displays Payment method beside each Cost. Ready includes approved Costs of every payment method, but the bulk Mark payments as paid action includes only approved Personal spend records and says so in its confirmation. Each approved Cost review, including a mileage claim, now offers Mark as paid in its normal toolbar; the action confirms actual payment first. The bulk action refreshes records after the server mutation completes, and an individually paid receipt refreshes attached claim state. Server source must deploy before the website; owner checks deployment and live behavior. Never delete or move signing material.
