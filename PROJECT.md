@@ -1,5 +1,9 @@
 # Exdox website
 
+## German Contact page parity (2026-10-15)
+
+`src/GermanContact.tsx` replaces the short `/de/contact` review placeholder with the English Contact page's introduction, two-column form and guidance layout, 14 translated subject choices, main email link, and three guidance cards. Existing `/de/company` and `/de/pricing` subject query links select the corresponding German options. Signed-in name, email and company prefill; the existing `submitContactForm` API is reused, with German status messages and no English page changes. The page remains noindex and absent from English navigation. Build and local topic, validation, card count, robots and desktop overflow checks passed; no message was submitted. The owner checks live deployment and delivery. Never delete or move mobile app keystores or signing details.
+
 ## German About page parity (2026-10-15)
 
 `src/GermanCompany.tsx` replaces the short `/de/company` review placeholder with a German counterpart to English `/company`: the same introductory message, three product/operations cards, a support heading, and four support cards. Signed-out links stay under `/de/`, and signed-in primary actions return to Billing or the workspace. Access and billing help open `/de/contact` with a German subject. The page remains unlinked from the English site and noindex during review. `src/GermanSite.tsx` routes the page; the English About component was not edited. The production build and local desktop card, link, robots, and overflow checks passed. The owner checks live deployment. Never delete or move mobile app keystores or signing details.

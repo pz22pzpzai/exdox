@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { authenticateWithGoogle, confirmEmailWithToken, loginWithEmail, registerWithEmail, requestPasswordReset, resetPasswordWithToken, resendConfirmationEmail, saveStoredSession, submitContactForm } from './api';
+import { authenticateWithGoogle, confirmEmailWithToken, loginWithEmail, registerWithEmail, requestPasswordReset, resetPasswordWithToken, resendConfirmationEmail, saveStoredSession } from './api';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { GermanPricing } from './GermanPricing';
 import { GermanFaq } from './GermanFaq';
 import { GermanCompany } from './GermanCompany';
+import { GermanContact } from './GermanContact';
 import { cookieConsentStorageKey, setGoogleAnalyticsConsent, type CookieConsentChoice } from './googleAnalytics';
 import { countries, selectCountry, useSelectedCountry, type Country } from './region';
 import type { SessionState } from './types';
@@ -203,13 +204,6 @@ function Platform({ session }: { session: SessionState | null }) { return <div c
   <section className="workflow-band"><div className="section-heading"><div><p className="section-kicker">Funktionsumfang</p><h2>Auf den Arbeitsablauf ausgerichtet, den Finanzteams von Dext kennen</h2></div><p>Erfassung, Prüfung, Regeln, Freigaben, Archiv und Exporte stehen im selben Exdox-Web-Arbeitsbereich zur Verfügung, der sich mit der App synchronisiert.</p></div><div className="workflow-grid">{platformWorkflows.map(([title, items]) => <article className="workflow-card" key={title}><strong>{title}</strong><ul>{items.map(item => <li key={item}>{item}</li>)}</ul></article>)}</div></section>
 </div>; }
 function Comparison() { return <Panel eyebrow="Vergleich" title="Exdox und Dext im Überblick."><p>Exdox bietet mobile Belegerfassung, eine Web-Prüfung, Anträge und eine Xero-Anbindung. Dext bietet ebenfalls Funktionen zur Belegverarbeitung und hat ein breiteres Angebot an Integrationen. Umfang, Preise und Abrechnung hängen vom gewählten Tarif ab.</p><p>Dieser Testtext enthält bewusst keine aktuellen Vergleichspreise. Prüfen Sie vor einer Entscheidung die veröffentlichten Tarifdetails beider Anbieter und den endgültigen Preis im Bezahlvorgang.</p><Link className="de-button" to={de('/pricing')}>Exdox-Tarife ansehen</Link></Panel>; }
-function Contact() {
-  const location = useLocation();
-  const [busy,setBusy]=useState(false), [message,setMessage]=useState(''), [error,setError]=useState('');
-  async function send(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form=new FormData(event.currentTarget); setBusy(true); setError(''); setMessage(''); try { await submitContactForm({fullName:String(form.get('name')).trim(),email:String(form.get('email')).trim(),organisationName:String(form.get('company')).trim(),subject:String(form.get('subject')).trim(),message:String(form.get('message')).trim()}); setMessage('Ihre Nachricht wurde gesendet.'); event.currentTarget.reset(); } catch(e) { setError(e instanceof Error ? e.message : 'Die Nachricht konnte nicht gesendet werden.'); } finally { setBusy(false); } }
-  return <Panel eyebrow="Kontakt" title="Wie können wir Ihnen helfen?"><p>Fragen zu Zugang, Abrechnung, Datenschutz oder Exdox senden Sie an unser Team. Sie können auch an contact@exdox.co.uk schreiben.</p><form className="de-form" onSubmit={send}><label>Vollständiger Name<input name="name" required /></label><label>E-Mail-Adresse<input name="email" type="email" required /></label><label>Unternehmen (optional)<input name="company" /></label><label>Betreff<input name="subject" defaultValue={new URLSearchParams(location.search).get('subject') ?? ''} required /></label><label>Nachricht<textarea name="message" rows={6} required /></label>{error && <p role="alert" className="de-error">{error}</p>}{message && <p role="status" className="de-success">{message}</p>}<button className="de-button" disabled={busy}>Nachricht senden</button></form></Panel>;
-}
-
 function Auth({ kind }: { kind: 'register' | 'login' | 'confirm' | 'forgot' | 'reset' }) {
   const location=useLocation(), params=new URLSearchParams(location.search);
   const [busy,setBusy]=useState(false), [error,setError]=useState(''), [message,setMessage]=useState('');
@@ -283,7 +277,7 @@ function Legal({ path }: { path: string }) {
 export function GermanSite({ session }: { session: SessionState | null }) {
   const location=useLocation(); const raw=location.pathname.slice(base.length); const path=raw===''||raw==='/'?'/':raw.replace(/\/+$/,'');
   let content:ReactNode;
-  if(path==='/') content=<Home session={session}/>; else if(path==='/platform') content=<Platform session={session}/>; else if(path==='/pricing') content=<GermanPricing session={session}/>; else if(path==='/faq') content=<GermanFaq/>; else if(path==='/company') content=<GermanCompany session={session}/>; else if(path==='/contact') content=<Contact/>;
+  if(path==='/') content=<Home session={session}/>; else if(path==='/platform') content=<Platform session={session}/>; else if(path==='/pricing') content=<GermanPricing session={session}/>; else if(path==='/faq') content=<GermanFaq/>; else if(path==='/company') content=<GermanCompany session={session}/>; else if(path==='/contact') content=<GermanContact session={session}/>;
   else if(path==='/register'||path==='/login'||path==='/confirm-email'||path==='/forgot-password'||path==='/reset-password') content=<Auth key={path} kind={path==='/register'?'register':path==='/login'?'login':path==='/confirm-email'?'confirm':path==='/forgot-password'?'forgot':'reset'}/>;
   else if(path==='/compare/dext') content=<Comparison/>;
   else if(legal.some(([url])=>url===path)) content=<Legal path={path}/>;
