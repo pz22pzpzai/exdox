@@ -52,6 +52,9 @@ function Seo({ path }: { path: string }) {
 
 function Shell({ children, session }: { children: ReactNode; session: SessionState | null }) {
   const country = useSelectedCountry();
+  useEffect(() => {
+    if (!localStorage.getItem('exdox-public-country')) selectCountry('DE');
+  }, []);
   const [consent, setConsent] = useState<CookieConsentChoice | null>(() => {
     const saved = localStorage.getItem(cookieConsentStorageKey);
     return saved === 'all_cookies' || saved === 'essential_only' ? saved : null;

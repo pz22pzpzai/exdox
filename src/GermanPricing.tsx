@@ -12,18 +12,18 @@ const baseSteps = [
   { users: 25, documents: 1250, price: 75 },
 ];
 
-// Keep these public review values aligned with the English pricing slider in App.tsx.
+// Match the amounts passed to Stripe by the server. Some English display prices differ by pennies.
 const pricingSteps = [
   ...baseSteps,
   ...Array.from({ length: 14 }, (_, index) => {
     const users = 30 + index * 5;
     let price: number;
     if (users <= 60) price = 75 + ((users - 25) / 5) * 14;
-    else if (users <= 80) price = 173 + ((users - 60) / 5) * 14.405;
-    else price = 230.62 + ((users - 80) / 5) * 14.405;
+    else if (users <= 80) price = (17300 + ((users - 60) / 5) * 1441) / 100;
+    else price = (23062 + ((users - 80) / 5) * 1441) / 100;
     return { users, documents: users * 50, price: Number(price.toFixed(2)) };
   }),
-  { users: 100, documents: 5000, price: 288.24 },
+  { users: 100, documents: 5000, price: 288.26 },
   ...Array.from({ length: 10 }, (_, index) => {
     const users = 110 + index * 10;
     return { users, documents: users * 50 + 5000, price: Number((377.05 + index * 28.81).toFixed(2)) };
@@ -50,12 +50,17 @@ export function GermanPricing({ session }: { session: SessionState | null }) {
   const step = pricingSteps[sliderIndex] ?? pricingSteps[0]!;
   const registration = audience === 'sole_trader' ? '/de/register?audience=sole_trader' : '/de/register';
   const billingRoute = session && (session.user.isOwner || session.allowedWebRoutes?.includes('/billing')) ? '/billing' : '/overview';
+  const euroBilling = country === 'DE' && (!session?.billing?.stripeSubscriptionId || session.billing.priceCurrency?.toLowerCase() === 'eur');
   const displayedPrice = step.users === 1
-    ? formatMoney(3, countryCurrency(country))
+    ? formatMoney(3, euroBilling ? 'EUR' : countryCurrency(country))
+    : euroBilling
+      ? formatMoney(step.price, 'EUR')
     : referenceRate
       ? `≈ ${formatMoney(step.price * referenceRate.value, referenceRate.currency)}`
       : formatMoney(step.price, 'GBP');
-  const billingNote = step.users === 1
+  const billingNote = euroBilling
+    ? 'Abrechnung in EUR für Arbeitsbereiche in Deutschland. Der angezeigte Betrag ist der monatliche Stripe-Preis.'
+    : step.users === 1
     ? `${countryCurrency(country)} pro Monat${country === 'GB' ? ', einschließlich britischer Umsatzsteuer' : ''}. Prüfen Sie den endgültigen Betrag bei Stripe.`
     : country === 'GB'
       ? 'Abrechnung in GBP, einschließlich britischer Umsatzsteuer.'

@@ -340,6 +340,15 @@ const pricingSliderSteps: Array<{
   }),
 ];
 
+function stripeMonthlyPlanPrice(step: { users: number; monthlyPrice: number }) {
+  if (step.users >= 60 && step.users <= 100) {
+    return (step.users <= 80
+      ? 17300 + ((step.users - 60) / 5) * 1441
+      : 23062 + ((step.users - 80) / 5) * 1441) / 100;
+  }
+  return step.monthlyPrice;
+}
+
 function resolvePricingSliderStep(
   planId: BillingPlanId,
   monthlyDocumentLimit?: number,
@@ -12845,7 +12854,7 @@ function BillingPage(props: { session: SessionState }) {
             <p>Choose a monthly plan when you are ready. No payment has been taken for the trial. Your selected plan starts after you confirm its price in Stripe.</p>
             <label htmlFor="trial-paid-plan">Choose users and monthly documents</label>
             <select id="trial-paid-plan" value={trialPlanIndex} onChange={(event) => setTrialPlanIndex(Number(event.target.value))}>
-              {pricingSliderSteps.map((step, index) => <option key={`${step.planId}-${step.users}`} value={index}>{step.users} {step.users === 1 ? "user" : "users"} · {step.documents.toLocaleString()} documents · {step.users === 1 ? currency(trialXeroPurchased ? 10 : 3, countryCurrency(billingCountry ?? selectedCountry)) : currency(priceWithVat(step.monthlyPrice))}/month</option>)}
+              {pricingSliderSteps.map((step, index) => <option key={`${step.planId}-${step.users}`} value={index}>{step.users} {step.users === 1 ? "user" : "users"} · {step.documents.toLocaleString()} documents · {currency(step.users === 1 && trialXeroPurchased ? 10 : stripeMonthlyPlanPrice(step), billing?.priceCurrency?.toUpperCase() ?? (step.users === 1 ? countryCurrency(billingCountry ?? selectedCountry) : 'GBP'))}/month</option>)}
             </select>
             {trialXeroPurchased ? <p>Your {currency(5, countryCurrency(billingCountry ?? selectedCountry))} Xero trial payment is credited against your first invoice. {chosenPaidStep.users === 1 ? "The sole trader price shown above includes Xero." : "Xero is included in the selected business plan."}</p> : null}
             <button className="primary-action" type="button" disabled={busyPlan !== null || !billing.stripeConfigured || trialXeroPurchased === null || (chosenPaidStep.users === 1 && billingCountry === null)} onClick={async () => {
@@ -12952,6 +12961,7 @@ function BillingPage(props: { session: SessionState }) {
 function BillingUpgradePage(props: { session: SessionState }) {
   const navigate = useNavigate();
   const billing = props.session.billing;
+  const priceCurrency = billing?.priceCurrency?.toUpperCase();
   const currentIndex = billing
     ? Math.max(0, pricingSliderSteps.findIndex((step) => step.planId === billing.planId && step.documents === billing.monthlyDocumentLimit && step.users === billing.includedUsers))
     : 0;
@@ -12998,10 +13008,10 @@ function BillingUpgradePage(props: { session: SessionState }) {
       <div className="pricing-page-layout upgrade-plan-layout">
         <article className="slider-pricing-card">
           <div className="slider-price-row">
-            <strong>{currency(selectedStep.monthlyPrice)}</strong>
+            <strong>{priceCurrency ? currency(stripeMonthlyPlanPrice(selectedStep), priceCurrency) : 'Check price in Stripe'}</strong>
             <span>per month</span>
           </div>
-          <span className="slider-vat-note">GBP, includes VAT</span>
+          <span className="slider-vat-note">{priceCurrency === 'GBP' ? 'GBP, includes VAT' : priceCurrency === 'EUR' ? 'Billed in EUR' : 'Billing currency unavailable'}</span>
           <div className="slider-capacity-copy">
             <strong>{selectedStep.documents.toLocaleString()}</strong>
             <span>documents per month</span>
@@ -13032,14 +13042,14 @@ function BillingUpgradePage(props: { session: SessionState }) {
                 onChange={(event) => setConfirmedChange(event.target.checked)}
               />
               <span>
-                I confirm the subscription will change to {currency(selectedStep.monthlyPrice)} per month. Stripe will calculate and collect any prorated difference for the current billing period. The next full monthly payment will use this new price.
+                I confirm the subscription will change to {priceCurrency ? currency(stripeMonthlyPlanPrice(selectedStep), priceCurrency) : 'the price shown in Stripe'} per month. Stripe will calculate and collect any prorated difference for the current billing period. The next full monthly payment will use this new price.
               </span>
             </label>
           ) : null}
           <button
             className="primary-action"
             type="button"
-            disabled={!isHigherAllowance || !confirmedChange || busy}
+            disabled={!priceCurrency || !isHigherAllowance || !confirmedChange || busy}
             onClick={async () => {
               setBusy(true);
               setMessage(null);

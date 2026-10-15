@@ -365,6 +365,7 @@ export type BillingSummary = {
   currentUserCount: number;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
+  priceCurrency?: string | null;
   stripeConfigured: boolean;
   cancellationScheduledFor: string | null;
 };
