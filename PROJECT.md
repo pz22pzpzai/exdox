@@ -1,5 +1,9 @@
 # Exdox website
 
+## German About page parity (2026-10-15)
+
+`src/GermanCompany.tsx` replaces the short `/de/company` review placeholder with a German counterpart to English `/company`: the same introductory message, three product/operations cards, a support heading, and four support cards. Signed-out links stay under `/de/`, and signed-in primary actions return to Billing or the workspace. Access and billing help open `/de/contact` with a German subject. The page remains unlinked from the English site and noindex during review. `src/GermanSite.tsx` routes the page; the English About component was not edited. The production build and local desktop card, link, robots, and overflow checks passed. The owner checks live deployment. Never delete or move mobile app keystores or signing details.
+
 ## Mileage Cost review parity (2026-10-15)
 
 Pending mileage Costs show the same five review actions as a regular Cost for a business admin with approval workflows: Approve Expense, Save Changes, Delete Document, Reject Expense, and Mark as Published. The published action stays visible when Xero is connected. Approval prompts route to the next Cost or mileage item correctly; when mileage is the last review item, the prompt offers expense detail CSV and reimbursement payment summary. The existing server reimbursement export includes approved mileage projections as Personal spend and starts their payment-processing state when exported. The owner checks live deployment and website behavior. Never delete or move mobile app keystores or signing details.
