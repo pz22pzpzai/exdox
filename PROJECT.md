@@ -1,5 +1,9 @@
 # Exdox website
 
+## Private platform Admin overview (2026-10-16)
+
+`src/PlatformAdminPage.tsx` is the read-only account overview at `/platform-admin`; its Admin link is first in both desktop and mobile dashboard navigation only for active business admin `terryreedbfv@outlook.com`. It shows account names, people and emails, trial/subscription state, signup date, and current document/user allowance usage. It fetches on opening, every minute while visible, and on manual Refresh, so new signups appear. The matching API route must deploy before this UI. The owner checks live deployment and behavior. Never delete or move app keystores or signing details.
+
 ## German legal pages and signup review (2026-10-15)
 
 `src/GermanLegal.tsx` gives the seven unlinked `/de/` legal review routes full German text following every section of the English Terms, Privacy, Data Processing Agreement, subprocessors, retention, cookies, and account-deletion pages. Each page identifies its 15 October German review version, links to the dated English original, and says the translation has not been legally approved. The German Terms explain the current EUR billing for new German workspaces; the English original is unchanged. `src/GermanSite.tsx` routes the pages and uses the edited address when a visitor requests a replacement confirmation email. The site build passed. Local preview checks found the expected section counts (11, 9, 6, 5, 5, 8, 6), English original links, noindex tags, and no desktop overflow; registration showed German legal links and an inactive submit button until Terms are accepted. The server source produces German confirmation and reset emails with `/de/` links for requests carrying `locale: 'de'`. No real account or payment was created, so live delivery and completed signup remain for owner testing. The post-login workspace remains English. The owner checks deployment and live behavior after push. Never delete or move keystores or signing details.

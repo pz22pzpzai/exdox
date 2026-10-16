@@ -880,6 +880,25 @@ button.status-box:focus-visible {
   content-visibility: auto;
 }
 
+.platform-admin-page { max-width: 100%; }
+.platform-admin-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+.platform-admin-metrics > div { display: flex; flex-direction: column; gap: 4px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #f4f8fc; }
+.platform-admin-metrics span { color: var(--muted-text); font-size: .88rem; }
+.platform-admin-metrics strong { font-size: 1.5rem; }
+.platform-admin-controls { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 16px; }
+.platform-admin-controls label { display: grid; gap: 6px; font-weight: 700; }
+.platform-admin-controls input { width: min(360px, 80vw); padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.platform-admin-controls > span { color: var(--muted-text); }
+.platform-admin-table-wrap { width: 100%; overflow-x: auto; }
+.platform-admin-table { width: 100%; border-collapse: collapse; min-width: 850px; }
+.platform-admin-table th, .platform-admin-table td { padding: 14px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+.platform-admin-table th { background: #f4f8fc; }
+.platform-admin-table td > strong, .platform-admin-table td > small, .platform-admin-users strong, .platform-admin-users a, .platform-admin-users small { display: block; }
+.platform-admin-table small { margin-top: 4px; color: var(--muted-text); }
+.platform-admin-users { display: grid; gap: 12px; }
+.platform-admin-users a { overflow-wrap: anywhere; }
+@media (max-width: 760px) { .platform-admin-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 .data-table th,
 .data-table td {
   padding: 16px 12px;

@@ -3,6 +3,7 @@ import type {
   BillingPlanDefinition,
   BillingPlanId,
   BillingSummary,
+  PlatformWorkspaceOverview,
   BankRequisition,
   ClaimEvidence,
   ClaimRecord,
@@ -592,6 +593,11 @@ export async function fetchBilling(token: string): Promise<{
   plans: BillingPlanDefinition[];
 }> {
   return apiFetch("/billing", token);
+}
+
+export async function fetchPlatformWorkspaces(token: string): Promise<PlatformWorkspaceOverview[]> {
+  const response = await apiFetch<{ workspaces: PlatformWorkspaceOverview[] }>("/platform-admin/workspaces", token);
+  return response.workspaces;
 }
 
 export async function createBillingCheckoutSession(

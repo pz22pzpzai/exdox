@@ -154,6 +154,7 @@ const salesCategoryOptions = [
 ];
 
 const navItems = [
+  { to: "/platform-admin", label: "Admin", icon: "settings" },
   { to: "/overview", label: "Overview", icon: "overview" },
   { to: "/accounting", label: "Accounting", icon: "billing" },
   { to: "/overview/data-health", label: "Workspace Health", icon: "health" },
@@ -179,6 +180,7 @@ const navItems = [
 const newlyIncludedNavigationRoutes = new Set(["/rules", "/customer-rules", "/vault", "/employee/vault"]);
 
 const privateAppRoutePrefixes = [
+  "/platform-admin",
   "/accounting",
   "/overview",
   "/costs",
@@ -369,6 +371,7 @@ const brandMarkSrc = "/branding/exdox-mark.webp";
 const publicBrandMarkSrc = "/branding/exdox-mark-header-v2-96.webp";
 const PageTutorial = lazy(() => import("./PageTutorial").then(({ PageTutorial }) => ({ default: PageTutorial })));
 const AuthenticatorQrCode = lazy(() => import("./AuthenticatorQrCode"));
+const PlatformAdminPage = lazy(() => import("./PlatformAdminPage"));
 const websiteOrigin = "https://www.exdox.co.uk";
 
 type SeoConfig = {
@@ -1720,6 +1723,7 @@ function DashboardShell(props: {
   const navigate = useNavigate();
   const businessAdmin = isBusinessAdmin(props.session);
   const accountingUnlocked = props.session.user.status === "active" && props.session.user.email.trim().toLowerCase() === "terryreedbfv@outlook.com";
+  const platformAdminUnlocked = businessAdmin && accountingUnlocked;
   const approvalWorkflowsEnabled = hasSessionFeature(props.session, "approval_workflows");
   const costReviewCount = props.store.costs.filter((receipt) => countsAsManualReview(receipt)).length;
   const salesReviewCount = props.store.sales.filter((receipt) => countsAsManualReview(receipt)).length;
@@ -1744,8 +1748,9 @@ function DashboardShell(props: {
     : "No actions needed";
   const visibleNavItems = businessAdmin
     ? navItems
-      .filter((item) => props.session.user.isOwner || item.to !== "/billing")
+      .filter((item) => (props.session.user.isOwner || item.to !== "/billing") && (platformAdminUnlocked || item.to !== "/platform-admin"))
       .map((item) => {
+        if (item.to === "/platform-admin") return { ...item, locked: false, activating: false };
         if (item.to === "/accounting") return { ...item, locked: !accountingUnlocked, activating: false };
         const allowed = isRouteAllowed(props.session, item.to);
         const activating = !allowed
@@ -2068,6 +2073,7 @@ function DashboardShell(props: {
         <Routes>
           {businessAdmin ? (
             <>
+              {platformAdminUnlocked ? <Route path="/platform-admin" element={<Suspense fallback={<div className="empty-state">Loading Admin…</div>}><PlatformAdminPage token={props.session.token} /></Suspense>} /> : null}
               <Route path="/accounting" element={<AccountingPage token={props.session.token} unlocked={accountingUnlocked} organisationName={props.store.settings?.organisationName ?? ''} />} />
               {isRouteAllowed(props.session, "/overview") ? (
                 <Route path="/overview" element={<OverviewPage session={props.session} store={props.store} />} />

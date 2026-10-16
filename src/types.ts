@@ -370,6 +370,18 @@ export type BillingSummary = {
   cancellationScheduledFor: string | null;
 };
 
+export type PlatformWorkspaceOverview = {
+  organisationId: number;
+  organisationName: string;
+  country: string;
+  createdAt: string;
+  billing: Pick<BillingSummary, "planId" | "status" | "billingCycle" | "trialEndsAt" | "monthlyDocumentLimit" | "monthlyDocumentUsage" | "includedUsers" | "currentUserCount"> & {
+    billingPeriodStartedAt: string;
+    hasSubscription: boolean;
+  };
+  users: Array<{ id: number; fullName: string | null; email: string; role: string; status: string; createdAt: string | null }>;
+};
+
 export type BillingPlanDefinition = {
   id: BillingPlanId;
   label: string;
