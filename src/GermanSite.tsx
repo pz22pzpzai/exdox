@@ -7,6 +7,7 @@ import { GermanFaq } from './GermanFaq';
 import { GermanCompany } from './GermanCompany';
 import { GermanContact } from './GermanContact';
 import { GermanLegal } from './GermanLegal';
+import { englishPathForGerman, equivalentLanguageSearch, rememberPublicLanguage } from './languageRouting';
 import { cookieConsentStorageKey, setGoogleAnalyticsConsent, type CookieConsentChoice } from './googleAnalytics';
 import { countries, selectCountry, useSelectedCountry, type Country } from './region';
 import type { SessionState } from './types';
@@ -34,13 +35,17 @@ const legal = [
   ['/terms', 'Nutzungsbedingungen'], ['/privacy', 'Datenschutz'], ['/data-processing-agreement', 'Auftragsverarbeitung'],
   ['/subprocessors', 'Unterauftragsverarbeiter'], ['/data-retention', 'Aufbewahrung'], ['/cookies', 'Cookies'], ['/account-deletion', 'Konto löschen'],
 ] as const;
+const authPageTitles: Record<string, string> = {
+  '/register': 'Registrieren', '/login': 'Anmelden', '/confirm-email': 'E-Mail bestätigen',
+  '/forgot-password': 'Passwort zurücksetzen', '/reset-password': 'Neues Passwort festlegen',
+};
 
 function Seo({ path }: { path: string }) {
   useEffect(() => {
     const oldLanguage = document.documentElement.lang;
     document.documentElement.lang = 'de';
     const oldTitle = document.title;
-    document.title = `${[...pages, ...legal].find(([url]) => url === path)?.[1] ?? (path === '/register' ? 'Registrieren' : path === '/login' ? 'Anmelden' : 'Exdox')} | Exdox`;
+    document.title = `${[...pages, ...legal].find(([url]) => url === path)?.[1] ?? authPageTitles[path] ?? 'Exdox'} | Exdox`;
     let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
     if (!robots) { robots = document.createElement('meta'); robots.name = 'robots'; document.head.appendChild(robots); }
     const oldRobots = robots.content;
@@ -54,6 +59,9 @@ function Seo({ path }: { path: string }) {
 }
 
 function Shell({ children, session }: { children: ReactNode; session: SessionState | null }) {
+  const location = useLocation();
+  const englishPath = englishPathForGerman(location.pathname) ?? '/';
+  const englishSearch = equivalentLanguageSearch(location.pathname, location.search, 'en');
   const country = useSelectedCountry();
   useEffect(() => {
     if (!localStorage.getItem('exdox-public-country')) selectCountry('DE');
@@ -74,7 +82,7 @@ function Shell({ children, session }: { children: ReactNode; session: SessionSta
       <div className="de-brand-stack"><Link className="de-brand" to={de('/')}><img src="/branding/exdox-mark-header-v2-96.webp" alt="" />Exdox</Link><a className="public-security-badge" href="https://internet.nl/site/exdox.co.uk/4323228/" target="_blank" rel="noopener noreferrer"><img src="/branding/internetnl-website-test-100.svg" width="204" height="38" alt="Internet.nl-Websitetest: Exdox erreichte am 29. September 2026 100 Prozent. Bericht ansehen." /></a></div>
       <nav className="de-desktop-nav" aria-label="Deutschsprachige Seiten">{pages.map(([url, label]) => <Link key={url} to={de(url)}>{label}</Link>)}</nav>
       <details className="de-mobile-menu"><summary>Menü</summary><nav aria-label="Deutschsprachige Seiten">{pages.map(([url, label]) => <Link key={url} to={de(url)}>{label}</Link>)}</nav></details>
-      <div className="de-header-actions"><label>Land <select value={country} onChange={e => selectCountry(e.target.value as Country)}>{countries.map(item => <option key={item.code} value={item.code}>{countryLabel(item)}</option>)}</select></label><Link to={de('/login')}>Anmelden</Link><Link className="de-button" to={session ? '/overview' : de('/register')}>{session ? 'Zum Arbeitsbereich' : 'Kostenlos testen'}</Link><Link to="/" lang="en">English</Link></div>
+      <div className="de-header-actions"><label>Land <select value={country} onChange={e => selectCountry(e.target.value as Country)}>{countries.map(item => <option key={item.code} value={item.code}>{countryLabel(item)}</option>)}</select></label><Link to={de('/login')}>Anmelden</Link><Link className="de-button" to={session ? '/overview' : de('/register')}>{session ? 'Zum Arbeitsbereich' : 'Kostenlos testen'}</Link><Link to={`${englishPath}${englishSearch}`} lang="en" onClick={() => rememberPublicLanguage('en')}>English</Link></div>
     </header>
     <main>{children}</main>
     <footer className="de-footer"><div className="de-footer-main"><div className="de-footer-brand"><strong>Exdox</strong><p>Belegerfassung, Prüfung, Anträge, Archiv und Finanzkontrollen in einem verbundenen Ablauf.</p><span>Mobile Erfassung, Web-Prüfung, Freigaben und CSV-Exporte</span><div className="de-socials" aria-label="Soziale Medien"><a href="https://www.facebook.com/profile.php?id=61594025846475" target="_blank" rel="noreferrer">Facebook</a><a href="https://www.youtube.com/@exdox_expenses" target="_blank" rel="noreferrer">YouTube</a><a href="https://www.tiktok.com/@terry.reed" target="_blank" rel="noreferrer">TikTok</a><a href="https://x.com/exdox_expenses" target="_blank" rel="noreferrer">X</a><a href="https://www.instagram.com/exdox.co.uk/" target="_blank" rel="noreferrer">Instagram</a><a href="https://www.linkedin.com/in/terry-reed-109031220/" target="_blank" rel="noreferrer">LinkedIn</a></div></div><div className="de-footer-columns"><nav aria-label="Produkt"><strong>Produkt</strong><Link to={de('/')}>Startseite</Link><Link to={de('/platform')}>Plattform</Link><Link to={de('/pricing')}>Preise</Link></nav><nav aria-label="Hilfe"><strong>Hilfe</strong><Link to={de('/faq')}>Häufige Fragen</Link><Link to={de('/company')}>Über uns</Link><Link to={de('/contact')}>Kontakt</Link><button type="button" onClick={() => setShowCookies(true)}>Cookie-Einstellungen</button></nav><nav aria-label="Rechtliches"><strong>Rechtliches</strong>{legal.map(([url, label]) => <Link key={url} to={de(url)}>{label}</Link>)}</nav></div></div><div className="de-footer-company"><strong>EXDOX LTD</strong><span>Registriert in England und Wales · Unternehmensnummer <a href="https://find-and-update.company-information.service.gov.uk/company/17488771" target="_blank" rel="noreferrer">17488771</a></span><address>Eingetragener Sitz: 1 Cannon Hill, Bracknell, United Kingdom, RG12 7QA</address></div><div className="de-footer-bottom"><span>© {new Date().getFullYear()} exdox.co.uk</span><span>{consent === 'all_cookies' ? 'Cookie-Auswahl: Alle Cookies akzeptiert' : consent === 'essential_only' ? 'Cookie-Auswahl: Nur notwendige Cookies' : 'Cookie-Auswahl: Noch nicht festgelegt'}</span></div></footer>
@@ -210,7 +218,10 @@ function Auth({ kind }: { kind: 'register' | 'login' | 'confirm' | 'forgot' | 'r
   const [busy,setBusy]=useState(false), [error,setError]=useState(''), [message,setMessage]=useState('');
   const [emailValue,setEmailValue]=useState(params.get('email') ?? '');
   const [accountType,setAccountType]=useState<'owner'|'sole_trader'|'employee'>(params.get('inviteToken') ? 'employee' : params.get('audience') === 'sole_trader' ? 'sole_trader' : 'owner');
-  const [country,setCountry]=useState<Country>('DE'), [organisationName,setOrganisationName]=useState(''), [terms,setTerms]=useState(false);
+  const [country,setCountry]=useState<Country>(() => {
+    const saved = window.localStorage.getItem('exdox-public-country');
+    return countries.find(item => item.code === saved)?.code ?? 'DE';
+  }), [organisationName,setOrganisationName]=useState(''), [terms,setTerms]=useState(false);
   const [twoFactor,setTwoFactor]=useState(false), [code,setCode]=useState(''), [method,setMethod]=useState<'email'|'authenticator'|'recovery'>('email');
   const titles={register:'Exdox kostenlos testen',login:'Bei Exdox anmelden',confirm:'E-Mail-Adresse bestätigen',forgot:'Passwort zurücksetzen',reset:'Neues Passwort festlegen'};
   const afterAuth=() => { window.location.assign('/overview'); };

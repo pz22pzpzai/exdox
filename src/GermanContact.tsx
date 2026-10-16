@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { submitContactForm } from './api';
+import { contactSubjectForLanguage } from './languageRouting';
 import type { SessionState } from './types';
 
 const contactEmail = 'contact@exdox.co.uk';
@@ -23,7 +24,8 @@ const subjectOptions = [
 
 export function GermanContact({ session }: { session: SessionState | null }) {
   const location = useLocation();
-  const requestedSubject = new URLSearchParams(location.search).get('subject')?.trim();
+  const rawSubject = new URLSearchParams(location.search).get('subject')?.trim();
+  const requestedSubject = rawSubject ? contactSubjectForLanguage(rawSubject, 'de') ?? rawSubject : undefined;
   const [name, setName] = useState(session?.user.fullName?.trim() || '');
   const [email, setEmail] = useState(session?.user.email || '');
   const [company, setCompany] = useState(session?.organisations.find(item => item.id === session.activeOrganisationId)?.name?.trim() || '');

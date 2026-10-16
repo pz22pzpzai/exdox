@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { rememberPublicLanguage } from './languageRouting';
 
 type LegalSection = { heading: string; body: ReactNode };
 type LegalDocument = { title: string; updatedOn: string; intro: string; sections: LegalSection[] };
@@ -128,7 +129,7 @@ export function GermanLegal({ path }: { path: string }) {
   return <div className="de-legal-page">
     <section className="public-page-intro"><p className="section-kicker">Rechtliches</p><h1>{document.title}</h1><p>{document.intro}</p></section>
     <section className="company-band policy-band">
-      <p className="de-legal-note">Diese deutsche Übersetzung ist eine Prüffassung und wurde noch nicht rechtlich freigegeben. Maßgeblich bleibt die <a href={path}>englische Originalfassung</a>.</p>
+      <p className="de-legal-note">Diese deutsche Übersetzung ist eine Prüffassung und wurde noch nicht rechtlich freigegeben. Maßgeblich bleibt die <Link to={path} lang="en" onClick={() => rememberPublicLanguage('en')}>englische Originalfassung</Link>.</p>
       <div className="policy-meta"><strong>{document.title}</strong><span>Deutsche Prüffassung: 15. Oktober 2026 · Englische Originalfassung: {document.updatedOn}</span></div>
       <div className="policy-grid">{document.sections.map(section => <article className="company-card policy-card" key={section.heading}><strong>{section.heading}</strong><div className="policy-copy">{section.body}</div></article>)}</div>
     </section>

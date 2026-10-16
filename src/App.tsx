@@ -12,6 +12,7 @@ import {
 import AccountingPage from "./AccountingPage";
 import PublicAccountingInvoice from "./PublicAccountingInvoice";
 import { GermanSite } from "./GermanSite";
+import { equivalentLanguageSearch, germanPathForEnglish, rememberPublicLanguage } from "./languageRouting";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
 import {
@@ -11033,6 +11034,9 @@ function PublicSite({ session = null }: { session?: SessionState | null }) {
 
 function PublicLayout(props: { activePath: string; children: React.ReactNode; session?: SessionState | null }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const germanPath = germanPathForEnglish(location.pathname);
+  const germanSearch = equivalentLanguageSearch(location.pathname, location.search, 'de');
   const signedIn = Boolean(props.session);
   const selectedCountry = useSelectedCountry();
 
@@ -11087,6 +11091,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
               {countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
             </select>
           </label>
+          {germanPath ? <Link className="public-language-link" to={`${germanPath}${germanSearch}`} lang="de" onClick={() => { selectCountry(selectedCountry); rememberPublicLanguage('de'); }}>Deutsch</Link> : null}
           {signedIn && props.session ? (
             <>
               <Link to={signedInPublicSecondaryRoute(props.session)}>{signedInPublicSecondaryLabel(props.session)}</Link>
@@ -11120,6 +11125,7 @@ function PublicLayout(props: { activePath: string; children: React.ReactNode; se
                   {countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}
                 </select>
               </label>
+              {germanPath ? <Link className="public-language-link" to={`${germanPath}${germanSearch}`} lang="de" onClick={() => { selectCountry(selectedCountry); rememberPublicLanguage('de'); setMobileMenuOpen(false); }}>Deutsch</Link> : null}
               {signedIn && props.session ? (
                 <>
                   <Link to={signedInPublicSecondaryRoute(props.session)} onClick={() => setMobileMenuOpen(false)}>

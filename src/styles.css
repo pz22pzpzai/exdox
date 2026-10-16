@@ -3793,6 +3793,10 @@ input {
   align-items: center;
 }
 
+.public-language-link {
+  white-space: nowrap;
+}
+
 .public-menu-button {
   display: none;
   align-items: center;

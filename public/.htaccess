@@ -1,11 +1,26 @@
 RewriteEngine On
 RewriteBase /
 
+# Route only pages that have a finished German counterpart. An explicit English
+# choice wins over the Cloudflare country header. No browser-side lookup is made.
+RewriteCond %{HTTP:Cookie} (^|;[[:space:]]*)exdox_lang=de(;|$) [NC,OR]
+RewriteCond %{HTTP:CF-IPCountry} ^DE$ [NC]
+RewriteCond %{HTTP:Cookie} !(^|;[[:space:]]*)exdox_lang=en(;|$) [NC]
+RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+RewriteRule ^$ /de/ [R=302,L,NE]
+
+RewriteCond %{HTTP:Cookie} (^|;[[:space:]]*)exdox_lang=de(;|$) [NC,OR]
+RewriteCond %{HTTP:CF-IPCountry} ^DE$ [NC]
+RewriteCond %{HTTP:Cookie} !(^|;[[:space:]]*)exdox_lang=en(;|$) [NC]
+RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+RewriteRule ^(platform|pricing|faq|company|contact|terms|privacy|data-processing-agreement|subprocessors|data-retention|cookies|account-deletion|register|login|forgot-password)/?$ /de/$1 [R=302,L,NE]
+
 <Files "security.txt">
   ForceType text/plain
 </Files>
 
 <IfModule mod_headers.c>
+  Header always set Cache-Control "private, no-store" "expr=%{REQUEST_STATUS} == 302"
   SetEnvIf Request_URI "^/de(/|$)" german_preview
   Header always set X-Robots-Tag "noindex, nofollow, noarchive" env=german_preview
   Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
